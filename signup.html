@@ -1,3 +1,88 @@
-<link rel="stylesheet" href="css/styles.css">
-<script type="module" src="js/signup.js"></script>
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PillRemind | Sign Up</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="module" src="js/signup.js"></script>
+</head>
+<body>
+  <main class="auth-container">
+    <section class="auth-card">
+      <div class="brand-icon">✚</div>
+      <h1>PillRemind</h1>
+      <p class="subtitle">Your health, one reminder at a time.</p>
+
+      <h2>Create Account</h2>
+      <p class="description">Sign up to start managing your medication reminders.</p>
+
+      <form id="signupForm">
+        <div class="name-fields">
+          <div>
+            <label for="firstName">First Name</label>
+            <input
+              type="text"
+              id="firstName"
+              placeholder="First name"
+              autocomplete="given-name"
+              required
+            >
+          </div>
+          <div>
+            <label for="lastName">Last Name</label>
+            <input
+              type="text"
+              id="lastName"
+              placeholder="Last name"
+              autocomplete="family-name"
+              required
+            >
+          </div>
+        </div>
+
+        <label for="email">Email Address</label>
+        <input
+          type="email"
+          id="email"
+          placeholder="Enter your Gmail address"
+          autocomplete="email"
+          required
+        >
+
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          placeholder="Create a password"
+          autocomplete="new-password"
+          minlength="8"
+          required
+        >
+        <p id="passwordStrength" class="password-strength"></p>
+
+        <label for="confirmPassword">Confirm Password</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          placeholder="Re-enter your password"
+          autocomplete="new-password"
+          required
+        >
+
+        <p id="formMessage" class="message" role="status" aria-live="polite"></p>
+
+        <button class="primary-button" id="submitButton" type="submit">
+          Create Account
+        </button>
+      </form>
+
+      <p class="switch-page">
+        Already have an account?
+        <a href="index.html">Log in</a>
+      </p>
+    </section>
+  </main>
+</body>
+</html>
