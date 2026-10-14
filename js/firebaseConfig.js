@@ -4,13 +4,14 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_WEB_API_KEY",
+  apiKey: "AIzaSyClvnZ-4_I6d9Mp8G8onm6BJ9lg-CibG4M",
   authDomain: "pillremind-e6294.firebaseapp.com",
   databaseURL: "https://pillremind-e6294-default-rtdb.firebaseio.com",
   projectId: "pillremind-e6294",
-  storageBucket: "YOUR_ACTUAL_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_ACTUAL_MESSAGING_SENDER_ID",
-  appId: "YOUR_ACTUAL_WEB_APP_ID"
+  storageBucket: "pillremind-e6294.firebasestorage.app",
+  messagingSenderId: "234864452295",
+  appId: "1:234864452295:web:b6e5c193c0f497602bd4e2",
+  measurementId: "G-78016SLGVL"
 };
 
 const app = initializeApp(firebaseConfig);
