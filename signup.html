@@ -4,37 +4,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PillRemind | Sign Up</title>
+  <meta name="theme-color" content="#176b45">
+  <title>Sign Up | PillRemind</title>
+
   <link rel="stylesheet" href="css/styles.css">
   <script type="module" src="js/signup.js"></script>
 </head>
 <body>
   <main class="auth-container">
     <section class="auth-card">
-      <div class="brand-icon">✚</div>
-      <h1>PillRemind</h1>
-      <p class="subtitle">Your health, one reminder at a time.</p>
+      <header class="brand">
+        <div class="brand-icon" aria-hidden="true">+</div>
+        <h1>PillRemind</h1>
+        <p>Your health, one reminder at a time.</p>
+      </header>
 
-      <h2>Create Account</h2>
-      <p class="description">Sign up to start managing your medication reminders.</p>
+      <div class="form-heading">
+        <h2>Create your account</h2>
+        <p>Enter your details to get started with PillRemind.</p>
+      </div>
 
       <form id="signupForm">
         <div class="name-fields">
-          <div>
-            <label for="firstName">First Name</label>
+          <div class="form-group">
+            <label for="firstName">First name</label>
             <input
               type="text"
               id="firstName"
+              name="firstName"
               placeholder="First name"
               autocomplete="given-name"
               required
             >
           </div>
-          <div>
-            <label for="lastName">Last Name</label>
+
+          <div class="form-group">
+            <label for="lastName">Last name</label>
             <input
               type="text"
               id="lastName"
+              name="lastName"
               placeholder="Last name"
               autocomplete="family-name"
               required
@@ -42,36 +51,54 @@
           </div>
         </div>
 
-        <label for="email">Email Address</label>
-        <input
-          type="email"
-          id="email"
-          placeholder="Enter your Gmail address"
-          autocomplete="email"
-          required
-        >
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="you@gmail.com"
+            autocomplete="email"
+            required
+          >
+        </div>
 
-        <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          placeholder="Create a password"
-          autocomplete="new-password"
-          minlength="8"
-          required
-        >
-        <p id="passwordStrength" class="password-strength"></p>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Create a password"
+            autocomplete="new-password"
+            minlength="8"
+            required
+          >
+          <p
+            id="passwordStrength"
+            class="password-strength"
+            aria-live="polite"
+          ></p>
+        </div>
 
-        <label for="confirmPassword">Confirm Password</label>
-        <input
-          type="password"
-          id="confirmPassword"
-          placeholder="Re-enter your password"
-          autocomplete="new-password"
-          required
-        >
+        <div class="form-group">
+          <label for="confirmPassword">Confirm password</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            placeholder="Enter your password again"
+            autocomplete="new-password"
+            required
+          >
+        </div>
 
-        <p id="formMessage" class="message" role="status" aria-live="polite"></p>
+        <p
+          id="formMessage"
+          class="message"
+          role="status"
+          aria-live="polite"
+        ></p>
 
         <button class="primary-button" id="submitButton" type="submit">
           Create Account

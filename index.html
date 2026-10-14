@@ -4,51 +4,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PillRemind | Login</title>
+  <meta name="theme-color" content="#176b45">
+  <title>Log In | PillRemind</title>
+
   <link rel="stylesheet" href="css/styles.css">
   <script type="module" src="js/login.js"></script>
 </head>
 <body>
   <main class="auth-container">
     <section class="auth-card">
-      <div class="brand-icon">✚</div>
-      <h1>PillRemind</h1>
-      <p class="subtitle">Your health, one reminder at a time.</p>
+      <header class="brand">
+        <div class="brand-icon" aria-hidden="true">+</div>
+        <h1>PillRemind</h1>
+        <p>Your health, one reminder at a time.</p>
+      </header>
 
-      <h2>Welcome Back</h2>
-      <p class="description">Log in to your account to continue.</p>
+      <div class="form-heading">
+        <h2>Welcome back</h2>
+        <p>Log in to continue to your account.</p>
+      </div>
 
       <form id="loginForm">
-        <label for="email">Email Address</label>
-        <input
-          type="email"
-          id="email"
-          placeholder="Enter your email"
-          autocomplete="email"
-          required
-        >
-
-        <label for="password">Password</label>
-        <div class="password-field">
+        <div class="form-group">
+          <label for="email">Email address</label>
           <input
-            type="password"
-            id="password"
-            placeholder="Enter your password"
-            autocomplete="current-password"
+            type="email"
+            id="email"
+            name="email"
+            placeholder="you@gmail.com"
+            autocomplete="email"
             required
           >
-          <button
-            class="toggle-password"
-            type="button"
-            data-toggle-password="password"
-          >Show</button>
         </div>
 
-        <button class="forgot-link" id="forgotPassword" type="button">
-          Forgot password?
-        </button>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="password-field">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+              required
+            >
+            <button
+              class="toggle-password"
+              type="button"
+              data-toggle-password="password"
+              aria-label="Show password"
+            >Show</button>
+          </div>
+        </div>
 
-        <p id="formMessage" class="message" role="status" aria-live="polite"></p>
+        <div class="form-options">
+          <button class="text-button" id="forgotPassword" type="button">
+            Forgot password?
+          </button>
+        </div>
+
+        <p
+          id="formMessage"
+          class="message"
+          role="status"
+          aria-live="polite"
+        ></p>
 
         <button class="primary-button" id="submitButton" type="submit">
           Log In
