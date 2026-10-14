@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,12 +6,257 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#175638">
   <title>Sign Up | PillRemind</title>
-  <link rel="stylesheet" href="css/styles.css">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --green: #175638;
+      --green-dark: #10442b;
+      --green-light: #e7f4eb;
+      --background: #f2f7f3;
+      --text: #203b2d;
+      --muted: #78867d;
+      --border: #dce7df;
+      --white: #ffffff;
+    }
+
+    body {
+      font-family: Inter, Arial, sans-serif;
+      background: var(--background);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 16px;
+    }
+
+    .auth-container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 450px;
+      background: var(--white);
+      padding: 36px;
+      border: 1px solid #e8eee9;
+      border-radius: 22px;
+      box-shadow: 0 15px 45px rgba(23, 86, 56, 0.09);
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .brand-icon {
+      width: 58px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      border-radius: 17px;
+      background: var(--green-light);
+      color: var(--green);
+      font-size: 38px;
+      font-weight: 500;
+    }
+
+    .brand h1 {
+      font-size: 28px;
+      color: var(--green);
+      letter-spacing: -0.8px;
+      margin-bottom: 7px;
+    }
+
+    .brand p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .form-heading {
+      margin-bottom: 24px;
+    }
+
+    .form-heading h2 {
+      font-size: 24px;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .form-heading p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .name-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-group {
+      min-width: 0;
+      margin-bottom: 19px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 9px;
+    }
+
+    .form-group input {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      padding: 13px 14px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      background: #fcfdfc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-group input::placeholder {
+      color: #a2ada5;
+    }
+
+    .form-group input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(23, 86, 56, 0.10);
+    }
+
+    .password-strength {
+      min-height: 17px;
+      margin-top: 7px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .message {
+      display: none;
+      padding: 11px 13px;
+      margin-bottom: 17px;
+      border-radius: 9px;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .message:not(:empty) {
+      display: block;
+    }
+
+    .primary-button {
+      width: 100%;
+      padding: 14px 18px;
+      background: var(--green);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .primary-button:hover {
+      background: var(--green-dark);
+    }
+
+    .primary-button:active {
+      transform: scale(0.99);
+    }
+
+    .primary-button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .switch-page {
+      margin-top: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .switch-page a {
+      color: var(--green);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .switch-page a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 16px 12px;
+      }
+
+      .auth-card {
+        padding: 28px 21px;
+        border-radius: 18px;
+      }
+
+      .brand {
+        margin-bottom: 26px;
+      }
+
+      .brand h1 {
+        font-size: 25px;
+      }
+
+      .form-heading h2 {
+        font-size: 22px;
+      }
+
+      .name-fields {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      .form-group {
+        margin-bottom: 17px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        transition: none !important;
+      }
+    }
+  </style>
+
   <script type="module" src="js/signup.js"></script>
 </head>
+
 <body>
   <main class="auth-container">
     <section class="auth-card" aria-labelledby="signupTitle">
+
       <header class="brand">
         <div class="brand-icon" aria-hidden="true">+</div>
         <h1>PillRemind</h1>
@@ -73,11 +318,9 @@
             minlength="8"
             required
           >
-          <p
-            id="passwordStrength"
-            class="password-strength"
-            aria-live="polite"
-          ></p>
+          <p id="passwordStrength"
+             class="password-strength"
+             aria-live="polite"></p>
         </div>
 
         <div class="form-group">
@@ -92,24 +335,23 @@
           >
         </div>
 
-        <p
-          id="formMessage"
-          class="message"
-          role="status"
-          aria-live="polite"
-        ></p>
+        <p id="formMessage"
+           class="message"
+           role="status"
+           aria-live="polite"></p>
 
-        <button
-          class="primary-button"
-          id="submitButton"
-          type="submit"
-        >Create Account</button>
+        <button class="primary-button"
+                id="submitButton"
+                type="submit">
+          Create Account
+        </button>
       </form>
 
       <p class="switch-page">
         Already have an account?
         <a href="index.html">Log in</a>
       </p>
+
     </section>
   </main>
 </body>
