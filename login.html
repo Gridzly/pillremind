@@ -1,0 +1,580 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#175638">
+  <title>PillMinder | Login & Signup</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --green: #175638;
+      --green-dark: #10442b;
+      --green-light: #e7f4eb;
+      --background: #f2f7f3;
+      --text: #203b2d;
+      --muted: #78867d;
+      --border: #dce7df;
+      --white: #ffffff;
+      --error: #b42318;
+      --error-bg: #fef3f2;
+      --success: #176b3a;
+      --success-bg: #ecfdf3;
+    }
+
+    body {
+      font-family: Inter, Arial, sans-serif;
+      background: var(--background);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 16px;
+    }
+
+    .auth-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 430px;
+      background: var(--white);
+      padding: 38px;
+      border: 1px solid #e8eee9;
+      border-radius: 22px;
+      box-shadow: 0 15px 45px rgba(23, 86, 56, 0.09);
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .brand-icon {
+      width: 66px;
+      height: 66px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      border-radius: 19px;
+      background: var(--green-light);
+    }
+
+    .brand-icon svg {
+      width: 45px;
+      height: 45px;
+    }
+
+    .brand h1 {
+      font-size: 28px;
+      color: var(--green);
+      letter-spacing: -0.8px;
+      margin-bottom: 7px;
+    }
+
+    .brand p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .form-heading {
+      margin-bottom: 24px;
+    }
+
+    .form-heading h2 {
+      font-size: 24px;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .form-heading p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .form-group {
+      margin-bottom: 19px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 9px;
+    }
+
+    .form-group input,
+    .form-group select {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      background: #fcfdfc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+    }
+
+    .form-group input::placeholder {
+      color: #a2ada5;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(23, 86, 56, 0.10);
+    }
+
+    .password-field {
+      position: relative;
+    }
+
+    .password-field input {
+      padding-right: 68px;
+    }
+
+    .toggle-password {
+      position: absolute;
+      top: 50%;
+      right: 13px;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      color: var(--green);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .form-options {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: -3px;
+      margin-bottom: 21px;
+    }
+
+    .text-button {
+      padding: 0;
+      background: transparent;
+      border: none;
+      color: var(--green);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .text-button:hover {
+      text-decoration: underline;
+    }
+
+    .message {
+      display: none;
+      padding: 11px 13px;
+      margin-bottom: 17px;
+      border-radius: 9px;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .message:not(:empty) {
+      display: block;
+    }
+
+    .message.error {
+      color: var(--error);
+      background: var(--error-bg);
+      border: 1px solid #fecdca;
+    }
+
+    .message.success {
+      color: var(--success);
+      background: var(--success-bg);
+      border: 1px solid #abefc6;
+    }
+
+    .primary-button {
+      width: 100%;
+      padding: 15px 18px;
+      background: var(--green);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .primary-button:hover {
+      background: var(--green-dark);
+    }
+
+    .primary-button:active {
+      transform: scale(0.99);
+    }
+
+    .primary-button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .switch-page {
+      margin-top: 23px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .switch-page button {
+      color: var(--green);
+      font-weight: 600;
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: inherit;
+      cursor: pointer;
+    }
+
+    .switch-page button:hover {
+      text-decoration: underline;
+    }
+
+    .role-note {
+      padding: 12px;
+      margin-top: -5px;
+      margin-bottom: 19px;
+      background: var(--green-light);
+      color: var(--green-dark);
+      border-radius: 9px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 16px 12px;
+      }
+
+      .auth-card {
+        padding: 29px 22px;
+        border-radius: 18px;
+      }
+
+      .brand h1 {
+        font-size: 25px;
+      }
+
+      .form-heading h2 {
+        font-size: 22px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        transition: none !important;
+      }
+    }
+  </style>
+
+  <!-- Your existing Firebase authentication script -->
+  <script type="module" src="js/login.js"></script>
+</head>
+
+<body>
+  <main class="auth-container">
+    <section class="auth-card" aria-labelledby="pageTitle">
+
+      <!-- PillMinder brand and logo -->
+      <header class="brand">
+        <div class="brand-icon" aria-label="PillMinder logo">
+          <svg viewBox="0 0 64 64" fill="none"
+               xmlns="http://www.w3.org/2000/svg"
+               role="img" aria-label="Medicine capsule with a checkmark">
+            <rect x="17" y="8" width="30" height="48" rx="15"
+                  transform="rotate(35 32 32)"
+                  fill="#175638"/>
+            <path d="M19 19L45 37"
+                  stroke="#FFFFFF"
+                  stroke-width="2.5"
+                  opacity="0.8"/>
+            <path d="M24 34L29 39L40 27"
+                  stroke="#FFFFFF"
+                  stroke-width="4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <h1>PillMinder</h1>
+        <p>Your trusted partner for medication reminders.</p>
+      </header>
+
+      <!-- LOGIN FORM -->
+      <div id="loginSection">
+        <div class="form-heading">
+          <h2 id="pageTitle">Welcome back!</h2>
+          <p>Log in to your PillMinder account.</p>
+        </div>
+
+        <div id="loginMessage" class="message"
+             role="alert" aria-live="polite"></div>
+
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginEmail">Email address</label>
+            <input
+              type="email"
+              id="loginEmail"
+              name="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required>
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <div class="password-field">
+              <input
+                type="password"
+                id="loginPassword"
+                name="password"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+                required>
+              <button type="button"
+                      class="toggle-password"
+                      data-target="loginPassword">
+                Show
+              </button>
+            </div>
+          </div>
+
+          <div class="form-options">
+            <button type="button"
+                    class="text-button"
+                    id="forgotPasswordButton">
+              Forgot password?
+            </button>
+          </div>
+
+          <button type="submit" class="primary-button"
+                  id="loginSubmit">
+            Log In
+          </button>
+        </form>
+
+        <p class="switch-page">
+          Don't have an account?
+          <button type="button" id="showSignup">
+            Sign up
+          </button>
+        </p>
+      </div>
+
+      <!-- SIGNUP FORM -->
+      <div id="signupSection" class="hidden">
+        <div class="form-heading">
+          <h2>Create your account</h2>
+          <p>Join PillMinder to manage medication reminders.</p>
+        </div>
+
+        <div id="signupMessage" class="message"
+             role="alert" aria-live="polite"></div>
+
+        <form id="signupForm">
+          <div class="form-group">
+            <label for="signupName">Full name</label>
+            <input
+              type="text"
+              id="signupName"
+              name="name"
+              placeholder="Enter your full name"
+              autocomplete="name"
+              required>
+          </div>
+
+          <div class="form-group">
+            <label for="signupEmail">Email address</label>
+            <input
+              type="email"
+              id="signupEmail"
+              name="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required>
+          </div>
+
+          <div class="form-group">
+            <label for="signupRole">Account role</label>
+            <select id="signupRole" name="role" required>
+              <option value="" disabled selected>
+                Select your role
+              </option>
+              <option value="caregiver">
+                Authorized person / Caregiver
+              </option>
+              <option value="medicine_taker">
+                Medicine taker
+              </option>
+            </select>
+          </div>
+
+          <div class="role-note">
+            Caregivers manage medicine details and schedules.
+            Medicine takers receive medication reminders.
+            Account permissions must also be enforced by your
+            Firebase backend.
+          </div>
+
+          <div class="form-group">
+            <label for="signupPassword">Password</label>
+            <div class="password-field">
+              <input
+                type="password"
+                id="signupPassword"
+                name="password"
+                placeholder="At least 6 characters"
+                autocomplete="new-password"
+                minlength="6"
+                required>
+              <button type="button"
+                      class="toggle-password"
+                      data-target="signupPassword">
+                Show
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="confirmPassword">Confirm password</label>
+            <div class="password-field">
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                placeholder="Re-enter your password"
+                autocomplete="new-password"
+                minlength="6"
+                required>
+              <button type="button"
+                      class="toggle-password"
+                      data-target="confirmPassword">
+                Show
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="primary-button"
+                  id="signupSubmit">
+            Create Account
+          </button>
+        </form>
+
+        <p class="switch-page">
+          Already have an account?
+          <button type="button" id="showLogin">
+            Log in
+          </button>
+        </p>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    // Switch between the login and signup screens.
+    const loginSection = document.getElementById("loginSection");
+    const signupSection = document.getElementById("signupSection");
+
+    document.getElementById("showSignup").addEventListener("click", () => {
+      loginSection.classList.add("hidden");
+      signupSection.classList.remove("hidden");
+      clearMessages();
+    });
+
+    document.getElementById("showLogin").addEventListener("click", () => {
+      signupSection.classList.add("hidden");
+      loginSection.classList.remove("hidden");
+      clearMessages();
+    });
+
+    // Show or hide password fields.
+    document.querySelectorAll(".toggle-password").forEach(button => {
+      button.addEventListener("click", () => {
+        const input = document.getElementById(button.dataset.target);
+        const showPassword = input.type === "password";
+
+        input.type = showPassword ? "text" : "password";
+        button.textContent = showPassword ? "Hide" : "Show";
+      });
+    });
+
+    // Display messages safely as text.
+    function showMessage(elementId, message, type = "error") {
+      const element = document.getElementById(elementId);
+      element.textContent = message;
+      element.className = "message " + type;
+    }
+
+    function clearMessages() {
+      document.getElementById("loginMessage").textContent = "";
+      document.getElementById("signupMessage").textContent = "";
+    }
+
+    // Check matching passwords before passing signup to Firebase.
+    document.getElementById("signupForm").addEventListener("submit", event => {
+      const password = document.getElementById("signupPassword").value;
+      const confirm = document.getElementById("confirmPassword").value;
+
+      if (password !== confirm) {
+        event.preventDefault();
+        showMessage("signupMessage", "Passwords do not match.");
+      }
+    });
+
+    // Prevent the browser from submitting the forgot-password button
+    // as part of the login form. Firebase handling belongs in login.js.
+    document.getElementById("forgotPasswordButton").addEventListener("click", () => {
+      const email = document.getElementById("loginEmail").value.trim();
+
+      if (!email) {
+        showMessage("loginMessage", "Enter your email address first.");
+        document.getElementById("loginEmail").focus();
+        return;
+      }
+
+      showMessage(
+        "loginMessage",
+        "Password reset must be connected to Firebase in js/login.js."
+      );
+    });
+  </script>
+</body>
+</html>
