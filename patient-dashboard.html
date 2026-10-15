@@ -4,362 +4,317 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#175638">
-  <title>Patient Dashboard | Medminder</title>
+  <title>Medminder | My Medicines</title>
 
   <style>
     :root {
       --green: #175638;
       --dark: #10442b;
-      --light: #e7f4eb;
-      --page: #f4f8f5;
-      --text: #203b2d;
-      --muted: #78867d;
-      --border: #e1eae3;
+      --mint: #e7f4eb;
+      --bg: #f4f8f5;
+      --text: #24372b;
+      --muted: #758178;
+      --border: #e0e9e2;
       --white: #fff;
     }
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      margin: 0;
-      font-family: Inter, Arial, sans-serif;
-      background: var(--page);
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      padding-bottom: 90px;
+      line-height: 1.5;
     }
 
     button { font: inherit; cursor: pointer; }
-    [hidden] { display: none !important; }
 
-    .topbar {
+    header {
       background: white;
       border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 5;
+      padding: 15px 18px;
     }
 
-    .topbar-inner {
-      max-width: 1050px;
+    .header-inner {
+      max-width: 850px;
       margin: auto;
-      padding: 15px 22px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
     }
 
     .brand {
+      color: var(--green);
+      font-size: 21px;
+      font-weight: 800;
       display: flex;
       align-items: center;
-      gap: 10px;
-      color: var(--green);
-      font-size: 23px;
-      font-weight: 800;
+      gap: 9px;
     }
 
     .logo {
-      width: 40px;
-      height: 40px;
-      border-radius: 13px;
-      background: var(--green);
-      color: white;
       display: grid;
       place-items: center;
-      font-size: 22px;
+      background: var(--mint);
+      border-radius: 11px;
+      width: 39px;
+      height: 39px;
+      font-size: 21px;
     }
 
     .logout {
+      padding: 9px 13px;
       border: 1px solid var(--border);
-      background: white;
-      color: var(--green);
-      padding: 10px 14px;
       border-radius: 10px;
-      font-weight: 650;
-    }
-
-    .logout:hover { background: var(--light); }
-
-    .container {
-      max-width: 1050px;
-      margin: 0 auto;
-      padding: 28px 22px;
-    }
-
-    .welcome { margin-bottom: 25px; }
-
-    .eyebrow {
-      color: var(--green);
-      font-size: 13px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    h1 {
-      font-size: clamp(25px, 4vw, 34px);
-      letter-spacing: -1px;
-      margin: 0 0 9px;
-    }
-
-    .muted {
-      color: var(--muted);
-      line-height: 1.6;
-      font-size: 14px;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 15px;
-      margin-bottom: 25px;
-    }
-
-    .stat, .panel {
       background: white;
-      border: 1px solid var(--border);
-      border-radius: 17px;
-      padding: 21px;
-    }
-
-    .stat-icon {
-      width: 43px;
-      height: 43px;
-      border-radius: 13px;
-      background: var(--light);
-      display: grid;
-      place-items: center;
-      font-size: 22px;
-      margin-bottom: 15px;
-    }
-
-    .stat-number {
       color: var(--green);
-      font-size: 29px;
-      font-weight: 800;
-      margin-bottom: 5px;
+      font-weight: 700;
     }
 
-    .panel { margin-bottom: 18px; }
-
-    .panel h2 {
-      margin: 0 0 8px;
-      font-size: 18px;
+    main {
+      width: min(100% - 28px, 850px);
+      margin: 25px auto 100px;
     }
 
-    .panel-header {
+    .welcome { margin-bottom: 20px; }
+    h1 { font-size: 27px; color: var(--dark); }
+    .muted { color: var(--muted); font-size: 14px; }
+
+    .welcome-card {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 12px;
-      margin-bottom: 17px;
+      background: var(--mint);
+      border: 1px solid #d8e9dc;
+      border-radius: 15px;
+      padding: 16px;
+      margin-bottom: 22px;
     }
+
+    .avatar {
+      background: white;
+      border-radius: 50%;
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      font-size: 23px;
+      flex-shrink: 0;
+    }
+
+    .welcome-card h2 { font-size: 16px; color: var(--dark); }
+    .welcome-card p { font-size: 13px; color: #587260; }
 
     .section { display: none; }
     .section.active { display: block; }
 
-    .record {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 14px 0;
-      border-bottom: 1px solid var(--border);
-      overflow-wrap: anywhere;
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 11px;
+      margin-bottom: 25px;
     }
 
-    .record:last-child { border-bottom: 0; }
-    .record p { margin: 5px 0 0; }
-
-    .pill {
-      background: var(--light);
-      color: var(--green);
-      border-radius: 20px;
-      padding: 5px 9px;
-      font-size: 12px;
-      height: fit-content;
-      white-space: nowrap;
+    .summary-card, .item {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
     }
 
-    .primary {
-      border: 0;
+    .summary-card { padding: 14px; }
+    .summary-icon {
+      width: 35px;
+      height: 35px;
+      display: grid;
+      place-items: center;
+      background: var(--mint);
       border-radius: 10px;
-      padding: 12px 16px;
-      color: white;
-      background: var(--green);
-      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 18px;
     }
 
-    .primary:hover { background: var(--dark); }
+    .summary-number { font-size: 25px; font-weight: 800; color: var(--green); }
+    .summary-label { color: var(--muted); font-size: 12px; }
+
+    .heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 22px 0 13px;
+    }
+
+    h2 { font-size: 19px; color: var(--dark); }
+    .list { display: grid; gap: 10px; }
+    .item { padding: 14px; }
+    .item h3 { font-size: 15px; margin-bottom: 3px; }
+    .item p { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
 
     .empty {
-      color: var(--muted);
+      padding: 23px 14px;
       text-align: center;
-      padding: 24px 12px;
+      background: white;
+      border: 1px dashed #cbd9ce;
+      border-radius: 13px;
+      color: var(--muted);
       font-size: 14px;
     }
 
     .error {
-      margin-bottom: 18px;
-      padding: 13px;
+      display: none;
+      background: #fff0f0;
+      color: #b52d2d;
+      padding: 12px;
       border-radius: 10px;
-      background: #fff0ee;
-      color: #a5221b;
-      overflow-wrap: anywhere;
+      margin-bottom: 15px;
+      font-size: 14px;
     }
 
     .bottom-nav {
       position: fixed;
+      z-index: 5;
       bottom: 0;
       left: 0;
-      right: 0;
-      z-index: 10;
-      background: #ffffff;
+      width: 100%;
+      background: white;
       border-top: 1px solid var(--border);
-      padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
     }
 
     .nav-inner {
-      max-width: 570px;
+      max-width: 500px;
       margin: auto;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 7px;
+      gap: 8px;
     }
 
-    .nav-button {
-      border: 0;
-      border-radius: 12px;
-      padding: 9px 5px;
+    .nav-btn {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 5px;
+      gap: 3px;
+      padding: 8px 3px;
+      border: none;
+      border-radius: 10px;
       background: transparent;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
+      font-weight: 700;
     }
 
-    .nav-button .nav-icon { font-size: 21px; }
+    .nav-btn .icon { font-size: 20px; }
+    .nav-btn.active { background: var(--mint); color: var(--green); }
 
-    .nav-button.active {
-      background: var(--light);
-      color: var(--green);
-      font-weight: 750;
-    }
-
-    @media (max-width: 600px) {
-      .container { padding: 22px 15px; }
-      .topbar-inner { padding: 12px 15px; }
-      .brand { font-size: 21px; }
-      .stat, .panel { padding: 17px; }
-      .stats { gap: 11px; }
-      .logout { padding: 9px 11px; }
-      .record { flex-wrap: wrap; }
-      .panel-header { align-items: flex-start; }
+    @media (max-width: 480px) {
+      h1 { font-size: 24px; }
+      .summary { gap: 7px; }
+      .summary-card { padding: 10px 8px; }
+      .summary-number { font-size: 22px; }
+      .summary-label { font-size: 11px; }
     }
   </style>
 </head>
 
-<body data-role="patient">
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="brand">
-        <div class="logo" aria-hidden="true">✚</div>
-        <span>Medminder</span>
-      </div>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="brand"><span class="logo">💊</span> Medminder</div>
       <button class="logout" id="logoutButton" type="button">Log out</button>
     </div>
   </header>
 
-  <main class="container" id="loading">
-    <p class="muted">Loading your account...</p>
-  </main>
+  <main>
+    <div id="loading" class="muted">Loading your medicines...</div>
+    <div id="error" class="error" role="alert"></div>
 
-  <main class="container" id="app" hidden>
-    <div id="error" class="error" role="alert" hidden></div>
-
-    <header class="welcome">
-      <div class="eyebrow" id="accountRole">PATIENT DASHBOARD</div>
-      <h1 id="welcomeTitle">Welcome back!</h1>
-      <p class="muted">Review your medication schedule and dose history.</p>
-    </header>
-
-    <section class="section active" id="medicinesSection">
-      <div class="stats">
-        <article class="stat">
-          <div class="stat-icon">💊</div>
-          <div class="stat-number" id="medicineCount">0</div>
-          <div class="muted">My medicines</div>
-        </article>
-        <article class="stat">
-          <div class="stat-icon">⏰</div>
-          <div class="stat-number" id="reminderCount">0</div>
-          <div class="muted">My reminders</div>
-        </article>
+    <div id="app" style="display:none">
+      <div class="welcome">
+        <h1 id="welcomeTitle">Hello!</h1>
+        <p class="muted">Let's keep track of your daily medicines.</p>
       </div>
 
-      <section class="panel">
-        <h2>My Medicines</h2>
-        <p class="muted">Your saved medication list and instructions.</p>
-        <div id="medicineList"><p class="empty">Loading medicines...</p></div>
-      </section>
-    </section>
+      <div class="welcome-card">
+        <div class="avatar">🌷</div>
+        <div>
+          <h2>My medication plan</h2>
+          <p id="accountRole">Your medicines and reminders</p>
+        </div>
+      </div>
 
-    <section class="section" id="remindersSection">
-      <section class="panel">
-        <h2>My Reminders</h2>
-        <p class="muted">Review your saved medication schedule.</p>
-        <div id="reminderList"><p class="empty">Loading reminders...</p></div>
-      </section>
-    </section>
+      <section id="medicinesSection" class="section active">
+        <div class="summary">
+          <div class="summary-card">
+            <div class="summary-icon">💊</div>
+            <div id="medicineCount" class="summary-number">0</div>
+            <div class="summary-label">My medicines</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">🔔</div>
+            <div id="reminderCount" class="summary-number">0</div>
+            <div class="summary-label">Reminders</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-icon">📅</div>
+            <div class="summary-number" id="todayLabel">Today</div>
+            <div class="summary-label">Today's plan</div>
+          </div>
+        </div>
 
-    <section class="section" id="historySection">
-      <section class="panel">
-        <h2>Medication History</h2>
-        <p class="muted">Review recorded medication activity.</p>
-        <div id="historyList"><p class="empty">Loading history...</p></div>
+        <div class="heading"><h2>My medicines</h2></div>
+        <div id="medicineList" class="list">
+          <div class="empty">Your medicines will appear here.</div>
+        </div>
       </section>
-    </section>
+
+      <section id="remindersSection" class="section">
+        <div class="heading"><h2>My reminders</h2></div>
+        <div id="reminderList" class="list">
+          <div class="empty">Your reminders will appear here.</div>
+        </div>
+      </section>
+
+      <section id="historySection" class="section">
+        <div class="heading"><h2>Medication history</h2></div>
+        <div id="historyList" class="list">
+          <div class="empty">Recorded medication activity will appear here.</div>
+        </div>
+      </section>
+    </div>
   </main>
 
-  <nav class="bottom-nav" aria-label="Patient dashboard navigation">
+  <nav class="bottom-nav" aria-label="Main navigation">
     <div class="nav-inner">
-      <button class="nav-button active" data-section="medicinesSection" type="button" aria-current="page">
-        <span class="nav-icon">💊</span><span>Medicines</span>
+      <button class="nav-btn active" type="button" data-target="medicinesSection">
+        <span class="icon">🏠</span><span>Home</span>
       </button>
-      <button class="nav-button" data-section="remindersSection" type="button">
-        <span class="nav-icon">🔔</span><span>Reminders</span>
+      <button class="nav-btn" type="button" data-target="remindersSection">
+        <span class="icon">🔔</span><span>Reminders</span>
       </button>
-      <button class="nav-button" data-section="historySection" type="button">
-        <span class="nav-icon">📋</span><span>History</span>
+      <button class="nav-btn" type="button" data-target="historySection">
+        <span class="icon">📋</span><span>History</span>
       </button>
     </div>
   </nav>
 
-  <script type="module" src="js/dashboard.js"></script>
-
   <script>
-    document.querySelectorAll(".nav-button").forEach((button) => {
-      button.addEventListener("click", () => {
-        document.querySelectorAll(".nav-button").forEach((item) => {
-          item.classList.remove("active");
-          item.removeAttribute("aria-current");
+    document.querySelectorAll(".nav-btn").forEach(function(button) {
+      button.addEventListener("click", function() {
+        document.querySelectorAll(".section").forEach(function(section) {
+          section.classList.toggle("active", section.id === button.dataset.target);
         });
-
-        document.querySelectorAll(".section").forEach((section) => {
-          section.classList.remove("active");
+        document.querySelectorAll(".nav-btn").forEach(function(nav) {
+          nav.classList.toggle("active", nav === button);
         });
-
-        button.classList.add("active");
-        button.setAttribute("aria-current", "page");
-
-        const section = document.getElementById(button.dataset.section);
-        if (section) section.classList.add("active");
+        window.scrollTo({ top: 0, behavior: "smooth" });
       });
     });
+
+    document.getElementById("todayLabel").textContent =
+      new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
   </script>
+
+  <script type="module" src="js/dashboard.js"></script>
 </body>
 </html>
