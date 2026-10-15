@@ -151,6 +151,27 @@ async function saveHistory(action, detail) {
   }
 }
 
+
+function organizeMedicinePage() {
+  const medicineSection = document.getElementById("medicinesSection");
+  const stats = document.querySelector(".stats");
+  const intakeSummary = document.getElementById("intakeSummary");
+
+  if (!medicineSection) return;
+
+  // Keep the dashboard overview only inside Medicines.
+  if (stats && !medicineSection.contains(stats)) {
+    medicineSection.prepend(stats);
+  }
+
+  if (intakeSummary && !medicineSection.contains(intakeSummary)) {
+    medicineSection.appendChild(intakeSummary);
+  }
+
+  // Open Medicines as the default page.
+  showSection("medicinesSection");
+}
+
 /* -------------------------------------------------------
    STYLES FOR PROFILE AND NOTIFICATIONS
 ------------------------------------------------------- */
@@ -1682,6 +1703,7 @@ async function loadUserData(user) {
     injectProfileAndNotifications();
     setupQuantityInput();
     setupIntakeSummary();
+    organizeMedicinePage();
 
     if ($("loading")) $("loading").style.display = "none";
     if ($("app")) $("app").style.display = "block";
