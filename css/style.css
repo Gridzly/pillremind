@@ -101,36 +101,45 @@ a {
   box-shadow: var(--shadow-card);
 }
 
-/* Brand */
 
 .brand {
-  margin-bottom: 34px;
-  text-align: center;
-}
-
-.brand-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 58px;
-  height: 58px;
-  margin: 0 auto 14px;
-  color: var(--white);
-  background: linear-gradient(145deg, #278456, #145d3b);
-  border-radius: 18px;
-  box-shadow: 0 7px 16px rgba(28, 112, 72, 0.18);
-  font-size: 32px;
-  font-weight: 500;
-  line-height: 1;
+  gap: 12px;
+  margin-bottom: 32px;
 }
 
-.brand h1 {
-  margin: 0;
-  color: var(--green-800);
-  font-size: clamp(27px, 4vw, 31px);
-  font-weight: 750;
-  letter-spacing: -1px;
+.brand-icon {
+  background: var(--green);
+  flex-shrink: 0;
 }
+
+.brand-icon svg {
+  width: 43px;
+  height: 43px;
+}
+
+.brand-text {
+  text-align: left;
+}
+
+.brand p {
+  font-size: 12px;
+}
+
+@media (max-width: 480px) {
+  .brand-icon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .brand-icon svg {
+    width: 37px;
+    height: 37px;
+  }
+}
+
 
 .brand p {
   margin: 8px 0 0;
