@@ -4,224 +4,408 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Medminder | Caregiver</title>
+  <meta name="theme-color" content="#175638">
+  <title>Medminder | Caregiver Dashboard</title>
 
   <style>
     :root {
       --green: #175638;
       --dark: #10442b;
       --mint: #e7f4eb;
-      --bg: #f4f8f5;
-      --text: #24372b;
-      --muted: #758178;
-      --border: #e0e9e2;
-      --white: #fff;
+      --bg: #f2f7f3;
+      --text: #203b2d;
+      --muted: #78867d;
+      --border: #dce7df;
+      --white: #ffffff;
+      --danger: #b42318;
+      --danger-bg: #fef3f2;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: Inter, Arial, Helvetica, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.5;
+      min-height: 100vh;
     }
 
-    button, input, textarea, select { font: inherit; }
-    button { cursor: pointer; }
+    button, input, textarea, select {
+      font: inherit;
+    }
 
-    header {
-      background: white;
+    button {
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible {
+      outline: 3px solid rgba(23, 86, 56, 0.2);
+      outline-offset: 2px;
+    }
+
+    .topbar {
+      background: var(--white);
       border-bottom: 1px solid var(--border);
-      padding: 15px 18px;
+      padding: 14px 18px;
     }
 
     .header-inner {
-      max-width: 850px;
+      max-width: 900px;
       margin: auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 14px;
     }
 
     .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       color: var(--green);
-      font-size: 21px;
+      font-size: 22px;
       font-weight: 800;
-      display: flex;
-      align-items: center;
-      gap: 9px;
+      letter-spacing: -0.5px;
     }
 
-    .logo {
+    .brand-icon {
+      width: 45px;
+      height: 45px;
       display: grid;
       place-items: center;
       background: var(--mint);
-      border-radius: 11px;
-      width: 39px;
-      height: 39px;
-      font-size: 21px;
-    }
-
-    .logout, .secondary {
-      padding: 9px 13px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: white;
-      color: var(--green);
-      font-weight: 700;
-    }
-
-    main {
-      width: min(100% - 28px, 850px);
-      margin: 25px auto 100px;
-    }
-
-    .welcome { margin-bottom: 20px; }
-    h1 { font-size: 27px; color: var(--dark); }
-    .muted { color: var(--muted); font-size: 14px; }
-
-    .patient {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: var(--mint);
-      border: 1px solid #d8e9dc;
-      border-radius: 15px;
-      padding: 16px;
-      margin-bottom: 22px;
-    }
-
-    .avatar {
-      background: white;
-      border-radius: 50%;
-      width: 46px;
-      height: 46px;
-      display: grid;
-      place-items: center;
-      font-size: 23px;
+      border-radius: 13px;
       flex-shrink: 0;
     }
 
-    .patient h2 { font-size: 16px; color: var(--dark); }
-    .patient p { font-size: 13px; color: #587260; }
-
-    .section { display: none; }
-    .section.active { display: block; }
-
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 11px;
-      margin-bottom: 25px;
+    .brand-icon svg {
+      width: 34px;
+      height: 34px;
     }
 
-    .summary-card, .panel, .item {
-      background: white;
+    .logout,
+    .secondary {
       border: 1px solid var(--border);
-      border-radius: 14px;
-    }
-
-    .summary-card { padding: 14px; }
-    .summary-icon {
-      width: 35px;
-      height: 35px;
-      display: grid;
-      place-items: center;
-      background: var(--mint);
+      background: var(--white);
+      color: var(--green);
       border-radius: 10px;
-      margin-bottom: 8px;
-      font-size: 18px;
-    }
-
-    .summary-number { font-size: 25px; font-weight: 800; color: var(--green); }
-    .summary-label { color: var(--muted); font-size: 12px; }
-
-    .heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin: 22px 0 13px;
-    }
-
-    h2 { font-size: 19px; color: var(--dark); }
-
-    .primary {
-      border: none;
-      border-radius: 10px;
-      padding: 11px 14px;
-      background: var(--green);
-      color: white;
-      font-weight: 700;
-    }
-
-    .primary:hover { background: var(--dark); }
-
-    .panel { padding: 17px; margin-bottom: 15px; }
-    .form-panel { display: none; }
-    .form-panel.open { display: block; }
-    .form-panel h3 { margin-bottom: 13px; font-size: 17px; }
-
-    .field { margin-bottom: 13px; }
-    .field label {
-      display: block;
+      padding: 10px 14px;
       font-size: 13px;
       font-weight: 700;
-      margin-bottom: 6px;
+      transition: background 0.2s;
     }
 
-    .field input, .field textarea, .field select {
-      width: 100%;
-      border: 1px solid #d7e1d9;
-      border-radius: 10px;
-      padding: 11px;
-      background: white;
-      color: var(--text);
+    .logout:hover,
+    .secondary:hover {
+      background: var(--mint);
     }
 
-    .actions { display: flex; gap: 9px; flex-wrap: wrap; }
+    main {
+      width: min(100% - 32px, 900px);
+      margin: 28px auto 110px;
+    }
 
-    .list { display: grid; gap: 10px; }
+    .welcome {
+      margin-bottom: 21px;
+    }
 
-    .item { padding: 14px; }
-    .item h3 { font-size: 15px; margin-bottom: 3px; }
-    .item p { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+    .welcome h1 {
+      color: var(--dark);
+      font-size: 28px;
+      letter-spacing: -0.7px;
+      margin-bottom: 5px;
+    }
 
-    .empty {
-      padding: 23px 14px;
-      text-align: center;
-      background: white;
-      border: 1px dashed #cbd9ce;
-      border-radius: 13px;
+    .muted {
       color: var(--muted);
       font-size: 14px;
     }
 
+    .patient-banner {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 17px;
+      margin-bottom: 23px;
+      background: var(--mint);
+      border: 1px solid #d8e9dc;
+      border-radius: 16px;
+    }
+
+    .patient-avatar {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      background: var(--white);
+      border-radius: 14px;
+      font-size: 24px;
+    }
+
+    .patient-banner h2 {
+      color: var(--dark);
+      font-size: 16px;
+      margin-bottom: 3px;
+    }
+
+    .patient-banner p {
+      color: #587260;
+      font-size: 13px;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 13px;
+      margin-bottom: 27px;
+    }
+
+    .summary-card,
+    .panel,
+    .record {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      box-shadow: 0 3px 12px rgba(16, 68, 43, 0.025);
+    }
+
+    .summary-card {
+      padding: 17px;
+      min-width: 0;
+    }
+
+    .summary-icon {
+      width: 39px;
+      height: 39px;
+      display: grid;
+      place-items: center;
+      background: var(--mint);
+      border-radius: 12px;
+      font-size: 19px;
+      margin-bottom: 12px;
+    }
+
+    .summary-number {
+      color: var(--green);
+      font-size: 27px;
+      line-height: 1.25;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .summary-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 22px 0 14px;
+    }
+
+    .section-heading h2 {
+      color: var(--dark);
+      font-size: 19px;
+    }
+
+    .primary {
+      border: none;
+      border-radius: 10px;
+      padding: 11px 15px;
+      background: var(--green);
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 700;
+      transition: background 0.2s;
+    }
+
+    .primary:hover {
+      background: var(--dark);
+    }
+
+    .panel {
+      padding: 19px;
+      margin-bottom: 16px;
+    }
+
+    .form-panel {
+      display: none;
+    }
+
+    .form-panel.open {
+      display: block;
+    }
+
+    .form-panel h3 {
+      color: var(--dark);
+      font-size: 17px;
+      margin-bottom: 15px;
+    }
+
+    .field {
+      margin-bottom: 15px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 7px;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      display: block;
+      width: 100%;
+      padding: 12px 13px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fcfdfc;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      outline: none;
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(23, 86, 56, 0.08);
+    }
+
+    .field textarea {
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .record-list {
+      display: grid;
+      gap: 11px;
+    }
+
+    .record {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .record-info {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .record-info strong {
+      display: block;
+      color: var(--dark);
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .record-info p {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 3px;
+      white-space: pre-wrap;
+    }
+
+    .record-date {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 7px;
+    }
+
+    .remove-button {
+      flex-shrink: 0;
+      padding: 7px 10px;
+      border: 1px solid #fecdca;
+      border-radius: 8px;
+      background: var(--danger-bg);
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .empty {
+      padding: 27px 16px;
+      text-align: center;
+      background: var(--white);
+      border: 1px dashed #cbd9ce;
+      border-radius: 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .empty-icon {
+      font-size: 26px;
+      margin-bottom: 8px;
+    }
+
+    .empty h3 {
+      color: var(--dark);
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .empty p {
+      font-size: 13px;
+    }
+
     .error {
       display: none;
-      background: #fff0f0;
-      color: #b52d2d;
-      padding: 12px;
+      padding: 13px 15px;
+      margin-bottom: 17px;
+      border: 1px solid #fecdca;
       border-radius: 10px;
-      margin-bottom: 15px;
-      font-size: 14px;
+      background: var(--danger-bg);
+      color: var(--danger);
+      font-size: 13px;
+      overflow-wrap: anywhere;
     }
 
     .bottom-nav {
       position: fixed;
-      z-index: 5;
-      bottom: 0;
+      z-index: 10;
       left: 0;
+      bottom: 0;
       width: 100%;
-      background: white;
+      padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
+      background: rgba(255, 255, 255, 0.98);
       border-top: 1px solid var(--border);
-      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
     }
 
     .nav-inner {
-      max-width: 500px;
+      max-width: 520px;
       margin: auto;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -232,116 +416,250 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       gap: 3px;
-      padding: 8px 3px;
+      padding: 8px 4px;
       border: none;
-      border-radius: 10px;
+      border-radius: 11px;
       background: transparent;
       color: var(--muted);
       font-size: 11px;
       font-weight: 700;
     }
 
-    .nav-btn .icon { font-size: 20px; }
-    .nav-btn.active { background: var(--mint); color: var(--green); }
+    .nav-btn .icon {
+      font-size: 20px;
+      line-height: 1.3;
+    }
 
-    @media (max-width: 480px) {
-      h1 { font-size: 24px; }
-      .summary { gap: 7px; }
-      .summary-card { padding: 10px 8px; }
-      .summary-number { font-size: 22px; }
-      .summary-label { font-size: 11px; }
-      .heading h2 { font-size: 17px; }
-      .primary { padding: 10px; font-size: 13px; }
+    .nav-btn.active {
+      background: var(--mint);
+      color: var(--green);
+    }
+
+    .loading {
+      padding: 20px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 600px) {
+      main {
+        width: min(100% - 24px, 900px);
+        margin-top: 22px;
+      }
+
+      .topbar {
+        padding: 12px;
+      }
+
+      .brand {
+        font-size: 20px;
+      }
+
+      .brand-icon {
+        width: 41px;
+        height: 41px;
+      }
+
+      .welcome h1 {
+        font-size: 25px;
+      }
+
+      .summary {
+        gap: 8px;
+      }
+
+      .summary-card {
+        padding: 12px 10px;
+      }
+
+      .summary-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 17px;
+        margin-bottom: 9px;
+      }
+
+      .summary-number {
+        font-size: 23px;
+      }
+
+      .summary-label {
+        font-size: 11px;
+      }
+
+      .section-heading h2 {
+        font-size: 17px;
+      }
+
+      .primary {
+        padding: 10px 11px;
+        font-size: 12px;
+      }
+
+      .panel {
+        padding: 15px;
+      }
+
+      .record {
+        padding: 13px;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-card {
+        display: grid;
+        grid-template-columns: 38px 1fr;
+        align-items: center;
+        column-gap: 10px;
+      }
+
+      .summary-icon {
+        grid-row: span 2;
+        margin: 0;
+      }
+
+      .summary-label {
+        margin-top: 0;
+      }
+
+      .logout {
+        padding: 9px 10px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+      }
     }
   </style>
 </head>
 
 <body>
-  <header>
+  <header class="topbar">
     <div class="header-inner">
-      <div class="brand"><span class="logo">💊</span> Medminder</div>
-      <button class="logout" id="logoutButton" type="button">Log out</button>
+      <div class="brand">
+        <span class="brand-icon" aria-label="Medminder logo">
+          <svg viewBox="0 0 64 64" fill="none"
+               xmlns="http://www.w3.org/2000/svg"
+               role="img" aria-label="Medicine capsule with a checkmark">
+            <rect x="17" y="8" width="30" height="48" rx="15"
+                  transform="rotate(35 32 32)" fill="#175638"/>
+            <path d="M19 19L45 37" stroke="#FFFFFF"
+                  stroke-width="2.5" opacity="0.8"/>
+            <path d="M24 34L29 39L40 27" stroke="#FFFFFF"
+                  stroke-width="4" stroke-linecap="round"
+                  stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span>Medminder</span>
+      </div>
+
+      <button class="logout" id="logoutButton" type="button">
+        Log out
+      </button>
     </div>
   </header>
 
   <main>
-    <div id="loading" class="muted">Loading your dashboard...</div>
-    <div id="error" class="error" role="alert"></div>
+    <div id="loading" class="loading">Loading your dashboard...</div>
+    <div id="error" class="error" role="alert" aria-live="polite"></div>
 
-    <div id="app" style="display:none">
-      <div class="welcome">
-        <h1 id="welcomeTitle">Hello!</h1>
-        <p class="muted">Let's help your family stay on schedule.</p>
-      </div>
+    <div id="app" style="display: none;">
+      <section class="welcome">
+        <h1 id="welcomeTitle">Welcome!</h1>
+        <p class="muted">Here's your medication management overview.</p>
+      </section>
 
-      <div class="patient">
-        <div class="avatar">👩</div>
+      <section class="patient-banner">
+        <div class="patient-avatar">👩</div>
         <div>
-          <h2>Mom's medication plan</h2>
-          <p id="accountRole">Caregiver account</p>
+          <h2>Medication management</h2>
+          <p id="accountRole">Caregiver dashboard</p>
         </div>
-      </div>
+      </section>
 
       <section id="medicinesSection" class="section active">
         <div class="summary">
-          <div class="summary-card">
+          <article class="summary-card">
             <div class="summary-icon">💊</div>
             <div id="medicineCount" class="summary-number">0</div>
-            <div class="summary-label">Medicines</div>
-          </div>
-          <div class="summary-card">
+            <div class="summary-label">Total medicines</div>
+          </article>
+
+          <article class="summary-card">
             <div class="summary-icon">🔔</div>
             <div id="reminderCount" class="summary-number">0</div>
-            <div class="summary-label">Reminders</div>
-          </div>
-          <div class="summary-card">
+            <div class="summary-label">Scheduled reminders</div>
+          </article>
+
+          <article class="summary-card">
             <div class="summary-icon">📅</div>
-            <div class="summary-number" id="todayLabel">Today</div>
+            <div id="todayLabel" class="summary-number">Today</div>
             <div class="summary-label">Medication plan</div>
-          </div>
+          </article>
         </div>
 
-        <div class="heading">
-          <h2>Mom's medicines</h2>
-          <button id="addMedicineButton" class="primary" type="button">+ Add</button>
+        <div class="section-heading">
+          <h2>Medicines</h2>
+          <button id="addMedicineButton" class="primary" type="button">
+            + Add medicine
+          </button>
         </div>
 
         <div id="medicineForm" class="panel form-panel">
           <h3>Add a medicine</h3>
+
           <form id="addMedicineForm">
             <div class="field">
               <label for="medicineName">Medicine name</label>
-              <input id="medicineName" type="text" placeholder="e.g. Vitamin D" required>
+              <input id="medicineName" type="text"
+                     placeholder="e.g. Vitamin D" required>
             </div>
+
             <div class="field">
               <label for="medicineDose">Dosage</label>
-              <input id="medicineDose" type="text" placeholder="e.g. 1 tablet" required>
+              <input id="medicineDose" type="text"
+                     placeholder="e.g. 1 tablet" required>
             </div>
+
             <div class="field">
               <label for="medicineNotes">Notes (optional)</label>
-              <textarea id="medicineNotes" rows="2" placeholder="Instructions from the doctor"></textarea>
+              <textarea id="medicineNotes" rows="3"
+                        placeholder="Instructions from the doctor"></textarea>
             </div>
+
             <div class="actions">
               <button class="primary" type="submit">Save medicine</button>
-              <button id="cancelMedicineButton" class="secondary" type="button">Cancel</button>
+              <button id="cancelMedicineButton" class="secondary"
+                      type="button">Cancel</button>
             </div>
           </form>
         </div>
 
-        <div id="medicineList" class="list">
+        <div id="medicineList" class="record-list">
           <div class="empty">Your medicines will appear here.</div>
         </div>
       </section>
 
       <section id="remindersSection" class="section">
-        <div class="heading">
-          <h2>Medicine reminders</h2>
-          <button id="addReminderButton" class="primary" type="button">+ Set reminder</button>
+        <div class="section-heading">
+          <h2>Scheduled reminders</h2>
+          <button id="addReminderButton" class="primary" type="button">
+            + Set reminder
+          </button>
         </div>
 
         <div id="reminderForm" class="panel form-panel">
-          <h3>Set a reminder</h3>
+          <h3>Create a reminder</h3>
+
           <form id="addReminderForm">
             <div class="field">
               <label for="reminderMedicine">Medicine</label>
@@ -349,30 +667,37 @@
                 <option value="">Select a medicine</option>
               </select>
             </div>
+
             <div class="field">
               <label for="reminderTime">Reminder time</label>
               <input id="reminderTime" type="time" required>
             </div>
+
             <div class="field">
               <label for="reminderStartDate">Start date</label>
               <input id="reminderStartDate" type="date" required>
             </div>
+
             <div class="actions">
               <button class="primary" type="submit">Save reminder</button>
-              <button id="cancelReminderButton" class="secondary" type="button">Cancel</button>
+              <button id="cancelReminderButton" class="secondary"
+                      type="button">Cancel</button>
             </div>
           </form>
         </div>
 
-        <div id="reminderList" class="list">
+        <div id="reminderList" class="record-list">
           <div class="empty">Your reminders will appear here.</div>
         </div>
       </section>
 
       <section id="historySection" class="section">
-        <div class="heading"><h2>Medication history</h2></div>
-        <div id="historyList" class="list">
-          <div class="empty">Recorded medication activity will appear here.</div>
+        <div class="section-heading">
+          <h2>Activity history</h2>
+        </div>
+
+        <div id="historyList" class="record-list">
+          <div class="empty">Your activity will appear here.</div>
         </div>
       </section>
     </div>
@@ -380,49 +705,80 @@
 
   <nav class="bottom-nav" aria-label="Main navigation">
     <div class="nav-inner">
-      <button class="nav-btn active" type="button" data-target="medicinesSection">
-        <span class="icon">🏠</span><span>Home</span>
+      <button class="nav-btn active" type="button"
+              data-target="medicinesSection" aria-current="page">
+        <span class="icon">⌂</span>
+        <span>Home</span>
       </button>
-      <button class="nav-btn" type="button" data-target="remindersSection">
-        <span class="icon">🔔</span><span>Reminders</span>
+
+      <button class="nav-btn" type="button"
+              data-target="remindersSection">
+        <span class="icon">♧</span>
+        <span>Reminders</span>
       </button>
-      <button class="nav-btn" type="button" data-target="historySection">
-        <span class="icon">📋</span><span>History</span>
+
+      <button class="nav-btn" type="button"
+              data-target="historySection">
+        <span class="icon">▤</span>
+        <span>History</span>
       </button>
     </div>
   </nav>
 
   <script>
-    document.querySelectorAll(".nav-btn").forEach(function(button) {
-      button.addEventListener("click", function() {
-        document.querySelectorAll(".section").forEach(function(section) {
-          section.classList.toggle("active", section.id === button.dataset.target);
+    // Bottom navigation
+    document.querySelectorAll(".nav-btn").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".section").forEach(section => {
+          section.classList.toggle(
+            "active",
+            section.id === button.dataset.target
+          );
         });
-        document.querySelectorAll(".nav-btn").forEach(function(nav) {
-          nav.classList.toggle("active", nav === button);
+
+        document.querySelectorAll(".nav-btn").forEach(nav => {
+          const selected = nav === button;
+          nav.classList.toggle("active", selected);
+
+          if (selected) {
+            nav.setAttribute("aria-current", "page");
+          } else {
+            nav.removeAttribute("aria-current");
+          }
         });
+
         window.scrollTo({ top: 0, behavior: "smooth" });
       });
     });
 
-    document.getElementById("addMedicineButton").addEventListener("click", function() {
+    // Open and close the medicine form
+    document.getElementById("addMedicineButton").addEventListener("click", () => {
       document.getElementById("medicineForm").classList.add("open");
+      document.getElementById("medicineName").focus();
     });
 
-    document.getElementById("cancelMedicineButton").addEventListener("click", function() {
+    document.getElementById("cancelMedicineButton").addEventListener("click", () => {
+      document.getElementById("addMedicineForm").reset();
       document.getElementById("medicineForm").classList.remove("open");
     });
 
-    document.getElementById("addReminderButton").addEventListener("click", function() {
+    // Open and close the reminder form
+    document.getElementById("addReminderButton").addEventListener("click", () => {
       document.getElementById("reminderForm").classList.add("open");
+      document.getElementById("reminderTime").focus();
     });
 
-    document.getElementById("cancelReminderButton").addEventListener("click", function() {
+    document.getElementById("cancelReminderButton").addEventListener("click", () => {
+      document.getElementById("addReminderForm").reset();
       document.getElementById("reminderForm").classList.remove("open");
     });
 
+    // Show today's date
     document.getElementById("todayLabel").textContent =
-      new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      new Date().toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric"
+      });
   </script>
 
   <script type="module" src="js/dashboard.js"></script>
