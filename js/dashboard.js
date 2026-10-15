@@ -30,9 +30,16 @@ let reminders = {};
 let historyRecords = {};
 let isSavingMedicine = false;
 let isSavingReminder = false;
-let notificationItems = [];
 
 const LOW_STOCK_LIMIT = 5;
+const UPCOMING_WINDOW = 24 * 60 * 60 * 1000;
+
+function makeElement(tag, className = "", text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text !== undefined) el.textContent = text;
+  return el;
+}
 
 function showMessage(id, message, type = "error") {
   const el = $(id);
@@ -50,7 +57,6 @@ function clearMessage(id) {
 
 function showPageMessage(message, type = "error") {
   showMessage("pageMessage", message, type);
-  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function userPath(section) {
@@ -64,18 +70,10 @@ function normalizeRole(value) {
     .replace(/[\s-]+/g, "_");
 }
 
-function makeElement(tag, className = "", text) {
-  const el = document.createElement(tag);
-  if (className) el.className = className;
-  if (text !== undefined) el.textContent = text;
-  return el;
-}
-
 function formatDate(dateString) {
   if (!dateString) return "No date selected";
 
   const [year, month, day] = String(dateString).split("-").map(Number);
-
   if (!year || !month || !day) return String(dateString);
 
   return new Date(year, month - 1, day).toLocaleDateString("en-PH", {
@@ -153,6 +151,10 @@ async function saveHistory(action, detail) {
   }
 }
 
+/* -------------------------------------------------------
+   STYLES FOR PROFILE AND NOTIFICATIONS
+------------------------------------------------------- */
+
 function injectFeatureStyles() {
   if ($("medminderFeatureStyles")) return;
 
@@ -160,282 +162,389 @@ function injectFeatureStyles() {
   style.id = "medminderFeatureStyles";
 
   style.textContent = `
-    .feature-badge {
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      border-radius:999px;
-      padding:6px 10px;
-      font-size:12px;
-      font-weight:800;
-      background:#e7f4eb;
-      color:#175638;
+    [hidden] {
+      display: none !important;
     }
 
     .notice-card {
-      border:1px solid #e0e9e2;
-      border-radius:14px;
-      background:#fff;
-      padding:15px;
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:12px;
+      border: 1px solid #e0e9e2;
+      border-radius: 14px;
+      background: #fff;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
     }
 
-    .notice-card.notice-danger {
-      background:#fff8f7;
-      border-color:#f4d0cc;
+    .notice-danger {
+      background: #fff8f7;
+      border-color: #f4d0cc;
     }
 
-    .notice-card.notice-warning {
-      background:#fffaf0;
-      border-color:#f1dfb8;
+    .notice-warning {
+      background: #fffaf0;
+      border-color: #f1dfb8;
     }
 
-    .notice-card.notice-info {
-      background:#f5fbf6;
-      border-color:#d6e9da;
+    .notice-info {
+      background: #f5fbf6;
+      border-color: #d6e9da;
     }
 
-    .notice-title { font-weight:800; overflow-wrap:anywhere; }
+    .notice-title {
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
     .notice-detail {
-      color:#718077;
-      font-size:13px;
-      line-height:1.6;
-      margin-top:5px;
-      overflow-wrap:anywhere;
+      color: #718077;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-top: 5px;
+      overflow-wrap: anywhere;
     }
 
-    .profile-avatar {
-      width:64px;
-      height:64px;
-      border-radius:20px;
-      display:grid;
-      place-items:center;
-      flex-shrink:0;
-      background:#e7f4eb;
-      color:#175638;
-      font-size:25px;
-      font-weight:800;
-    }
-
-    .profile-header {
-      display:flex;
-      align-items:center;
-      gap:15px;
-      margin-bottom:22px;
-    }
-
-    .security-note {
-      padding:13px;
-      border-radius:12px;
-      background:#f2f7f3;
-      color:#52675a;
-      font-size:13px;
-      line-height:1.6;
-      margin-top:12px;
+    .feature-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      background: #e7f4eb;
+      color: #175638;
     }
 
     .notification-count {
-      display:inline-grid;
-      place-items:center;
-      min-width:20px;
-      height:20px;
-      padding:0 5px;
-      border-radius:999px;
-      background:#b42318;
-      color:white;
-      font-size:11px;
-      font-weight:800;
+      display: inline-grid;
+      place-items: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: #b42318;
+      color: white;
+      font-size: 11px;
+      font-weight: 800;
     }
 
-    @media(max-width:420px) {
-      .notice-card { flex-direction:column; }
-      .notice-card .record-actions { width:100%; }
-      .profile-header { align-items:flex-start; }
+    .profile-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      background: #e7f4eb;
+      color: #175638;
+      font-size: 25px;
+      font-weight: 800;
+    }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 22px;
+    }
+
+    .security-note {
+      padding: 13px;
+      border-radius: 12px;
+      background: #f2f7f3;
+      color: #52675a;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-top: 12px;
+    }
+
+    #notificationsSection,
+    #profileSection {
+      width: 100%;
+    }
+
+    #notificationsSection .panel,
+    #profileSection .panel {
+      margin-bottom: 20px;
+    }
+
+    #profileSection input {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    @media (max-width: 520px) {
+      .notice-card {
+        flex-direction: column;
+      }
+
+      .notice-card .record-actions {
+        width: 100%;
+      }
+
+      .profile-header {
+        align-items: flex-start;
+      }
+
+      .nav-inner {
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+      }
     }
   `;
 
   document.head.appendChild(style);
 }
 
+/* -------------------------------------------------------
+   CREATE NOTIFICATIONS AND PROFILE PAGES
+------------------------------------------------------- */
+
 function injectProfileAndNotifications() {
-  if ($("profileSection") || $("notificationsSection")) return;
+  if ($("profileSection") && $("notificationsSection")) {
+    return;
+  }
 
   const main = document.querySelector("main.container");
   const nav = document.querySelector(".nav-inner");
 
-  if (!main || !nav) return;
+  if (!main || !nav) {
+    console.error("Could not find main.container or .nav-inner in dashboard.html.");
+    return;
+  }
 
-  const notificationsSection = makeElement("section", "section");
-  notificationsSection.id = "notificationsSection";
+  if (!$("notificationsSection")) {
+    const notificationsSection = makeElement("section", "section");
+    notificationsSection.id = "notificationsSection";
+    notificationsSection.hidden = true;
 
-  notificationsSection.innerHTML = `
-    <div class="panel">
-      <div class="panel-heading">
-        <div>
-          <h2>Notifications</h2>
-          <p class="muted small">
-            Upcoming reminders, missed doses, and medicine stock warnings.
-          </p>
-        </div>
-        <span id="notificationCount" class="feature-badge">0 alerts</span>
-      </div>
-
-      <div id="notificationSummary" class="message" role="status"></div>
-
-      <div id="notificationList" class="record-list">
-        <div class="empty-state">Checking your medicine schedule...</div>
-      </div>
-
-      <p class="security-note">
-        Missed-dose alerts are based on your saved reminder times and the
-        intake records you enter. Medminder cannot confirm whether you took
-        medicine unless you record the intake.
-      </p>
-    </div>
-  `;
-
-  const profileSection = makeElement("section", "section");
-  profileSection.id = "profileSection";
-
-  profileSection.innerHTML = `
-    <div class="panel">
-      <div class="panel-heading">
-        <div>
-          <h2>My profile</h2>
-          <p class="muted small">Edit your personal information.</p>
-        </div>
-      </div>
-
-      <div class="profile-header">
-        <div id="profileAvatar" class="profile-avatar">M</div>
-        <div>
-          <h3 id="profileDisplayName">Your profile</h3>
-          <p id="profileEmailLabel" class="muted small" style="margin:5px 0 0"></p>
-        </div>
-      </div>
-
-      <div id="profileMessage" class="message" role="status" aria-live="polite"></div>
-
-      <form id="profileForm">
-        <div class="form-grid">
-          <div class="field">
-            <label for="profileFirstName">First name *</label>
-            <input id="profileFirstName" maxlength="80" required>
+    notificationsSection.innerHTML = `
+      <div class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Notifications</h2>
+            <p class="muted small">
+              Upcoming reminders, missed doses, and medicine stock warnings.
+            </p>
           </div>
+          <span id="notificationCount" class="feature-badge">0 alerts</span>
+        </div>
 
-          <div class="field">
-            <label for="profileLastName">Last name</label>
-            <input id="profileLastName" maxlength="80">
-          </div>
+        <div id="notificationList" class="record-list">
+          <div class="empty-state">Checking your medicine schedule...</div>
+        </div>
 
-          <div class="field full">
-            <label for="profileEmail">Email address *</label>
-            <input id="profileEmail" type="email" maxlength="254" required>
+        <p class="security-note">
+          Notifications are based on your saved reminder times and the intake
+          records you enter. Medminder cannot confirm that you took a medicine
+          unless you record the intake.
+        </p>
+      </div>
+    `;
+
+    const historySection = $("historySection");
+    main.insertBefore(notificationsSection, historySection || null);
+  }
+
+  if (!$("profileSection")) {
+    const profileSection = makeElement("section", "section");
+    profileSection.id = "profileSection";
+    profileSection.hidden = true;
+
+    profileSection.innerHTML = `
+      <div class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>My Profile</h2>
+            <p class="muted small">Manage your personal information.</p>
           </div>
         </div>
 
-        <div class="form-actions">
-          <button id="saveProfileButton" class="btn btn-primary" type="submit">
-            Save profile
-          </button>
+        <div class="profile-header">
+          <div id="profileAvatar" class="profile-avatar">M</div>
+          <div>
+            <h3 id="profileDisplayName">Your profile</h3>
+            <p id="profileEmailLabel" class="muted small" style="margin:5px 0 0"></p>
+          </div>
         </div>
-      </form>
-    </div>
 
-    <div class="panel">
-      <div class="panel-heading">
-        <div>
-          <h2>Change password</h2>
-          <p class="muted small">Choose a strong password for your account.</p>
-        </div>
+        <div id="profileMessage" class="message"
+          role="status" aria-live="polite"></div>
+
+        <form id="profileForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="profileFirstName">First name *</label>
+              <input id="profileFirstName" maxlength="80" required>
+            </div>
+
+            <div class="field">
+              <label for="profileLastName">Last name</label>
+              <input id="profileLastName" maxlength="80">
+            </div>
+
+            <div class="field full">
+              <label for="profileEmail">Email address *</label>
+              <input id="profileEmail" type="email" maxlength="254" required>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="saveProfileButton" class="btn btn-primary" type="submit">
+              Save profile
+            </button>
+          </div>
+        </form>
       </div>
 
-      <div id="passwordMessage" class="message" role="status" aria-live="polite"></div>
-
-      <form id="passwordForm">
-        <div class="form-grid">
-          <div class="field full">
-            <label for="currentPassword">Current password *</label>
-            <input id="currentPassword" type="password" autocomplete="current-password" required>
-          </div>
-
-          <div class="field">
-            <label for="newPassword">New password *</label>
-            <input id="newPassword" type="password" minlength="8"
-              autocomplete="new-password" required>
-            <span class="muted small">Use at least 8 characters.</span>
-          </div>
-
-          <div class="field">
-            <label for="confirmNewPassword">Confirm new password *</label>
-            <input id="confirmNewPassword" type="password" minlength="8"
-              autocomplete="new-password" required>
+      <div class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Change Password</h2>
+            <p class="muted small">Update the password for your account.</p>
           </div>
         </div>
 
-        <div class="form-actions">
-          <button id="changePasswordButton" class="btn btn-primary" type="submit">
-            Update password
-          </button>
-        </div>
-      </form>
+        <div id="passwordMessage" class="message"
+          role="status" aria-live="polite"></div>
 
-      <div class="security-note">
-        For security, Medminder verifies your current password before changing
-        your password or email. If Firebase requires a fresh login, sign in
-        again and retry.
+        <form id="passwordForm">
+          <div class="form-grid">
+            <div class="field full">
+              <label for="currentPassword">Current password *</label>
+              <input id="currentPassword" type="password"
+                autocomplete="current-password" required>
+            </div>
+
+            <div class="field">
+              <label for="newPassword">New password *</label>
+              <input id="newPassword" type="password" minlength="8"
+                autocomplete="new-password" required>
+              <span class="muted small">Use at least 8 characters.</span>
+            </div>
+
+            <div class="field">
+              <label for="confirmNewPassword">Confirm new password *</label>
+              <input id="confirmNewPassword" type="password" minlength="8"
+                autocomplete="new-password" required>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="changePasswordButton" class="btn btn-primary" type="submit">
+              Update password
+            </button>
+          </div>
+        </form>
+
+        <div class="security-note">
+          Your current password is verified before a password or email change.
+          Keep your new password private.
+        </div>
       </div>
-    </div>
-  `;
+    `;
 
-  const historySection = $("historySection");
-  main.insertBefore(notificationsSection, historySection);
-  main.insertBefore(profileSection, historySection);
+    const historySection = $("historySection");
+    main.insertBefore(profileSection, historySection || null);
+  }
 
-  const definitions = [
-    ["notificationsSection", "🔔", "Notifications"],
-    ["profileSection", "👤", "Profile"]
+  const navigationItems = [
+    {
+      target: "notificationsSection",
+      icon: "🔔",
+      label: "Notifications"
+    },
+    {
+      target: "profileSection",
+      icon: "👤",
+      label: "Profile"
+    }
   ];
 
-  definitions.forEach(([target, icon, label]) => {
-    const button = makeElement("button", "nav-btn");
-    button.type = "button";
-    button.dataset.target = target;
+  navigationItems.forEach(item => {
+    let button = nav.querySelector(
+      `.nav-btn[data-target="${item.target}"]`
+    );
 
-    const iconElement = makeElement("span", "", icon);
-    iconElement.setAttribute("aria-hidden", "true");
+    if (!button) {
+      button = makeElement("button", "nav-btn");
+      button.type = "button";
+      button.dataset.target = item.target;
+      nav.appendChild(button);
+    }
 
-    const labelElement = makeElement("span", "", label);
-    labelElement.style.fontSize = "11px";
-    labelElement.style.fontWeight = "700";
+    button.replaceChildren();
 
-    button.append(iconElement, labelElement);
-    nav.appendChild(button);
+    const icon = makeElement("span", "", item.icon);
+    icon.setAttribute("aria-hidden", "true");
+
+    const label = makeElement("span", "", item.label);
+    label.style.fontSize = "11px";
+    label.style.fontWeight = "700";
+
+    button.append(icon, label);
   });
 
   nav.style.gridTemplateColumns = "repeat(5, minmax(0, 1fr))";
 
-  document.querySelectorAll(".nav-btn").forEach(button => {
-    button.addEventListener("click", () => showSection(button.dataset.target));
-  });
+  if ($("profileForm")) {
+    $("profileForm").onsubmit = saveProfile;
+  }
 
-  $("profileForm").addEventListener("submit", saveProfile);
-  $("passwordForm").addEventListener("submit", changePassword);
+  if ($("passwordForm")) {
+    $("passwordForm").onsubmit = changePassword;
+  }
 }
 
+/* -------------------------------------------------------
+   PAGE NAVIGATION
+------------------------------------------------------- */
+
 function showSection(sectionId) {
+  const selectedSection = $(sectionId);
+
+  if (!selectedSection) {
+    console.warn("Section not found:", sectionId);
+    return;
+  }
+
+  const isStandalonePage =
+    sectionId === "notificationsSection" ||
+    sectionId === "profileSection";
+
+  // Hide all section pages except the selected section.
+  document.querySelectorAll("main.container .section").forEach(section => {
+    const active = section.id === sectionId;
+
+    section.hidden = !active;
+    section.classList.toggle("active", active);
+  });
+
+  // Hide the dashboard overview when Profile or Notifications is selected.
+  const dashboardOverviewElements = [
+    $("todayLabel"),
+    $("welcomeTitle"),
+    $("quickAddReminder"),
+    $("pageMessage"),
+    document.querySelector(".stats"),
+    $("intakeSummary")
+  ];
+
+  dashboardOverviewElements.forEach(element => {
+    if (element) {
+      element.hidden = isStandalonePage;
+    }
+  });
+
+  // Update navigation state.
   document.querySelectorAll(".nav-btn").forEach(button => {
-    button.classList.toggle("active", button.dataset.target === sectionId);
-  });
+    const active = button.dataset.target === sectionId;
 
-  document.querySelectorAll(".section").forEach(section => {
-    section.classList.toggle("active", section.id === sectionId);
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-current", active ? "page" : "false");
   });
-
-  window.scrollTo({ top: 0, behavior: "smooth" });
 
   if (sectionId === "notificationsSection") {
     renderNotifications();
@@ -444,10 +553,29 @@ function showSection(sectionId) {
   if (sectionId === "profileSection") {
     populateProfile();
   }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
+
+// One delegated handler supports both existing and dynamically created buttons.
+document.addEventListener("click", event => {
+  const button = event.target.closest(".nav-btn");
+  if (!button) return;
+
+  const target = button.dataset.target;
+  if (!target) return;
+
+  event.preventDefault();
+  showSection(target);
+});
+
+/* -------------------------------------------------------
+   MEDICINE QUANTITY AND SUMMARY
+------------------------------------------------------- */
 
 function setupQuantityInput() {
   const grid = document.querySelector("#addMedicineForm .form-grid");
+
   if (!grid || $("medicineQuantity")) return;
 
   const field = makeElement("div", "field");
@@ -468,8 +596,11 @@ function setupQuantityInput() {
   field.append(
     label,
     input,
-    makeElement("div", "muted small",
-      "Enter the number of tablets, capsules, or doses you have.")
+    makeElement(
+      "div",
+      "muted small",
+      "Enter the number of tablets, capsules, or doses you have."
+    )
   );
 
   grid.appendChild(field);
@@ -488,7 +619,9 @@ function setupIntakeSummary() {
     <div class="panel-heading">
       <div>
         <h2>Medicine intake tracker</h2>
-        <p class="muted small">Record each dose and track your remaining quantity.</p>
+        <p class="muted small">
+          Record each dose and track your remaining quantity.
+        </p>
       </div>
       <span aria-hidden="true" style="font-size:28px">💊</span>
     </div>
@@ -507,8 +640,9 @@ function setupIntakeSummary() {
         <div id="totalRemaining" style="font-size:24px;font-weight:800;color:#175638">0</div>
       </div>
     </div>
+
     <p class="muted small" style="margin-bottom:0">
-      The totals are calculated from saved medicine quantities and recorded intakes.
+      Totals are calculated from saved medicine quantities and recorded intakes.
     </p>
   `;
 
@@ -528,30 +662,6 @@ function setupIntakeSummary() {
   document.head.appendChild(style);
 }
 
-async function refreshData() {
-  if (!currentUser) return;
-
-  const [profileSnapshot, medicineSnapshot, reminderSnapshot, historySnapshot] =
-    await Promise.all([
-      get(ref(db, `users/${currentUser.uid}`)),
-      get(ref(db, userPath("medicines"))),
-      get(ref(db, userPath("reminders"))),
-      get(ref(db, userPath("history")))
-    ]);
-
-  userData = profileSnapshot.exists() ? profileSnapshot.val() : {};
-  medicines = medicineSnapshot.exists() ? medicineSnapshot.val() : {};
-  reminders = reminderSnapshot.exists() ? reminderSnapshot.val() : {};
-  historyRecords = historySnapshot.exists() ? historySnapshot.val() : {};
-
-  renderMedicines();
-  renderReminders();
-  renderHistory();
-  renderSummary();
-  renderIntakeSummary();
-  renderNotifications();
-}
-
 function renderIntakeSummary() {
   let totalQuantity = 0;
   let totalTaken = 0;
@@ -569,20 +679,29 @@ function renderIntakeSummary() {
 }
 
 function renderSummary() {
-  const medicineEntries = Object.entries(medicines || {});
-  const reminderEntries = Object.entries(reminders || {});
+  if ($("medicineCount")) {
+    $("medicineCount").textContent = Object.keys(medicines || {}).length;
+  }
 
-  $("medicineCount").textContent = medicineEntries.length;
-  $("reminderCount").textContent = reminderEntries.length;
+  if ($("reminderCount")) {
+    $("reminderCount").textContent = Object.keys(reminders || {}).length;
+  }
 
   const now = Date.now();
 
-  const upcoming = reminderEntries
+  const upcoming = Object.entries(reminders || {})
     .map(([id, reminder]) => ({ id, ...reminder }))
     .filter(reminder => !reminder.takenAt && !reminder.completed)
-    .map(reminder => ({ ...reminder, timestamp: getReminderTimestamp(reminder) }))
-    .filter(reminder => reminder.timestamp !== null && reminder.timestamp >= now)
+    .map(reminder => ({
+      ...reminder,
+      timestamp: getReminderTimestamp(reminder)
+    }))
+    .filter(reminder =>
+      reminder.timestamp !== null && reminder.timestamp >= now
+    )
     .sort((a, b) => a.timestamp - b.timestamp);
+
+  if (!$("nextReminder") || !$("nextReminderDetail")) return;
 
   if (!upcoming.length) {
     $("nextReminder").textContent = "None yet";
@@ -595,8 +714,42 @@ function renderSummary() {
     `${upcoming[0].medicineName || "Medicine"} · ${formatDate(upcoming[0].startDate)}`;
 }
 
+/* -------------------------------------------------------
+   LOAD AND REFRESH FIREBASE DATA
+------------------------------------------------------- */
+
+async function refreshData() {
+  if (!currentUser) return;
+
+  const [profileSnapshot, medicineSnapshot, reminderSnapshot, historySnapshot] =
+    await Promise.all([
+      get(ref(db, `users/${currentUser.uid}`)),
+      get(ref(db, userPath("medicines"))),
+      get(ref(db, userPath("reminders"))),
+      get(ref(db, userPath("history")))
+    ]);
+
+  userData = profileSnapshot.exists() ? profileSnapshot.val() : {};
+  medicines = medicineSnapshot.exists() ? medicineSnapshot.val() || {} : {};
+  reminders = reminderSnapshot.exists() ? reminderSnapshot.val() || {} : {};
+  historyRecords = historySnapshot.exists() ? historySnapshot.val() || {} : {};
+
+  renderMedicines();
+  renderReminders();
+  renderHistory();
+  renderSummary();
+  renderIntakeSummary();
+  renderNotifications();
+}
+
+/* -------------------------------------------------------
+   MEDICINE LIST
+------------------------------------------------------- */
+
 function renderMedicines() {
   const container = $("medicineList");
+  if (!container) return;
+
   container.replaceChildren();
 
   const entries = Object.entries(medicines || {}).sort((a, b) =>
@@ -605,14 +758,20 @@ function renderMedicines() {
 
   if (!entries.length) {
     container.appendChild(makeElement(
-      "div", "empty-state", "No medicines added yet. Select “Add medicine” to get started."
+      "div",
+      "empty-state",
+      "No medicines added yet. Select “Add medicine” to get started."
     ));
   }
 
   for (const [id, medicine] of entries) {
     const record = makeElement("article", "record");
     const main = makeElement("div", "record-main");
-    const title = makeElement("div", "record-title", medicine.name || "Unnamed medicine");
+    const title = makeElement(
+      "div",
+      "record-title",
+      medicine.name || "Unnamed medicine"
+    );
 
     const initial = getInitialQuantity(medicine);
     const remaining = getQuantity(medicine);
@@ -633,7 +792,11 @@ function renderMedicines() {
     const actions = makeElement("div", "record-actions");
 
     if (initial > 0 && remaining > 0) {
-      const takenButton = makeElement("button", "btn btn-primary btn-small", "✓ Mark as taken");
+      const takenButton = makeElement(
+        "button",
+        "btn btn-primary btn-small",
+        "✓ Mark as taken"
+      );
       takenButton.type = "button";
 
       takenButton.addEventListener("click", async () => {
@@ -683,43 +846,22 @@ function renderMedicines() {
       stockButton.disabled = true;
 
       try {
-        const medicineRef = ref(db, `${userPath("medicines")}/${id}`);
-
-        const result = await runTransaction(medicineRef, current => {
-          if (!current) return;
-
-          const oldInitial = getInitialQuantity(current);
-          const oldRemaining = getQuantity(current);
-
-          current.initialQuantity = oldInitial + amount;
-          current.quantityRemaining = oldRemaining + amount;
-          current.stockUpdatedAt = Date.now();
-
-          return current;
-        });
-
-        if (!result.committed) {
-          showPageMessage("Could not update the medicine quantity.");
-          return;
-        }
-
-        await saveHistory("Medicine stock added", `${medicine.name} · ${amount} units added`);
-        await refreshData();
-        showPageMessage(`Added ${amount} units to ${medicine.name}.`, "success");
-      } catch (error) {
-        console.error(error);
-        showPageMessage("Could not update the quantity. Please try again.");
+        await addStock(id, amount);
       } finally {
         stockButton.disabled = false;
       }
     });
 
-    const removeButton = makeElement("button", "btn btn-danger btn-small", "Remove");
+    const removeButton = makeElement(
+      "button",
+      "btn btn-danger btn-small",
+      "Remove"
+    );
     removeButton.type = "button";
 
     removeButton.addEventListener("click", async () => {
       if (!confirm(
-        `Remove ${medicine.name}? Its associated reminders will not be deleted automatically.`
+        `Remove ${medicine.name}? Associated reminders will remain until you remove them.`
       )) return;
 
       try {
@@ -739,7 +881,10 @@ function renderMedicines() {
     container.appendChild(record);
   }
 
+  // Refresh the medicine dropdown while preserving the selected value.
   const selector = $("reminderMedicine");
+  if (!selector) return;
+
   const previousValue = selector.value;
   selector.replaceChildren();
 
@@ -748,13 +893,60 @@ function renderMedicines() {
   selector.appendChild(placeholder);
 
   for (const [id, medicine] of Object.entries(medicines || {})) {
-    const option = makeElement("option", "", medicine.name || "Unnamed medicine");
+    const option = makeElement(
+      "option",
+      "",
+      medicine.name || "Unnamed medicine"
+    );
     option.value = id;
     selector.appendChild(option);
   }
 
   if (medicines[previousValue]) selector.value = previousValue;
 }
+
+/* -------------------------------------------------------
+   ADD MEDICINE STOCK
+------------------------------------------------------- */
+
+async function addStock(medicineId, amount) {
+  const medicine = medicines[medicineId];
+  if (!medicine) return;
+
+  try {
+    const medicineRef = ref(db, `${userPath("medicines")}/${medicineId}`);
+
+    const result = await runTransaction(medicineRef, current => {
+      if (!current) return;
+
+      current.initialQuantity = getInitialQuantity(current) + amount;
+      current.quantityRemaining = getQuantity(current) + amount;
+      current.stockUpdatedAt = Date.now();
+
+      return current;
+    });
+
+    if (!result.committed) {
+      showPageMessage("Could not update the medicine quantity.");
+      return;
+    }
+
+    await saveHistory(
+      "Medicine stock added",
+      `${medicine.name} · ${amount} units added`
+    );
+
+    await refreshData();
+    showPageMessage(`Added ${amount} units to ${medicine.name}.`, "success");
+  } catch (error) {
+    console.error("Stock update error:", error);
+    showPageMessage("Could not update the medicine quantity. Please try again.");
+  }
+}
+
+/* -------------------------------------------------------
+   RECORD MEDICINE INTAKE
+------------------------------------------------------- */
 
 async function recordIntake(medicineId, reminderId = null) {
   const medicine = medicines[medicineId];
@@ -788,8 +980,8 @@ async function recordIntake(medicineId, reminderId = null) {
 
   let completedReminder = reminderId;
 
-  // If the intake was recorded from a medicine card, match the earliest
-  // overdue reminder for the same medicine, if one exists.
+  // If intake was recorded from a medicine card, match the earliest
+  // overdue reminder for the same medicine, when one exists.
   if (!completedReminder) {
     const overdue = Object.entries(reminders)
       .map(([id, reminder]) => ({ id, ...reminder }))
@@ -800,7 +992,9 @@ async function recordIntake(medicineId, reminderId = null) {
         getReminderTimestamp(reminder) !== null &&
         getReminderTimestamp(reminder) <= now
       )
-      .sort((a, b) => getReminderTimestamp(a) - getReminderTimestamp(b));
+      .sort((a, b) =>
+        getReminderTimestamp(a) - getReminderTimestamp(b)
+      );
 
     if (overdue.length) completedReminder = overdue[0].id;
   }
@@ -808,7 +1002,10 @@ async function recordIntake(medicineId, reminderId = null) {
   if (completedReminder && reminders[completedReminder]) {
     await update(
       ref(db, `${userPath("reminders")}/${completedReminder}`),
-      { completed: true, takenAt: now }
+      {
+        completed: true,
+        takenAt: now
+      }
     );
   }
 
@@ -825,8 +1022,14 @@ async function recordIntake(medicineId, reminderId = null) {
   );
 }
 
+/* -------------------------------------------------------
+   REMINDERS
+------------------------------------------------------- */
+
 function renderReminders() {
   const container = $("reminderList");
+  if (!container) return;
+
   container.replaceChildren();
 
   const entries = Object.entries(reminders || {}).sort((a, b) =>
@@ -837,7 +1040,9 @@ function renderReminders() {
 
   if (!entries.length) {
     container.appendChild(makeElement(
-      "div", "empty-state", "No reminders yet. Open “New reminder” to choose a date and time."
+      "div",
+      "empty-state",
+      "No reminders yet. Open “New reminder” to choose a date and time."
     ));
   }
 
@@ -845,18 +1050,25 @@ function renderReminders() {
     const record = makeElement("article", "record");
     const main = makeElement("div", "record-main");
     const title = makeElement(
-      "div", "record-title", reminder.medicineName || "Medication reminder"
+      "div",
+      "record-title",
+      reminder.medicineName || "Medication reminder"
     );
 
     const timestamp = getReminderTimestamp(reminder);
-    const isOverdue = timestamp !== null && timestamp < Date.now() &&
-      !reminder.takenAt && !reminder.completed;
+    const isCompleted = Boolean(reminder.takenAt || reminder.completed);
+    const isOverdue = timestamp !== null &&
+      timestamp < Date.now() &&
+      !isCompleted;
 
     const lines = [
       `📅 ${formatDate(reminder.startDate)}`,
       `🕒 ${formatTime(reminder.time)}`,
-      reminder.takenAt || reminder.completed ? "Status: Intake recorded" :
-        isOverdue ? "Status: Overdue — intake not recorded" : "Status: Upcoming"
+      isCompleted
+        ? "Status: Intake recorded"
+        : isOverdue
+          ? "Status: Overdue — intake not recorded"
+          : "Status: Upcoming"
     ];
 
     if (reminder.notes) lines.push(`Notes: ${reminder.notes}`);
@@ -864,11 +1076,18 @@ function renderReminders() {
     const detail = makeElement("div", "record-detail", lines.join("\n"));
     const actions = makeElement("div", "record-actions");
 
-    if (!reminder.takenAt && !reminder.completed &&
-        timestamp !== null && timestamp <= Date.now() &&
-        medicines[reminder.medicineId] &&
-        getQuantity(medicines[reminder.medicineId]) > 0) {
-      const takenButton = makeElement("button", "btn btn-primary btn-small", "✓ Mark as taken");
+    if (
+      !isCompleted &&
+      timestamp !== null &&
+      timestamp <= Date.now() &&
+      medicines[reminder.medicineId] &&
+      getQuantity(medicines[reminder.medicineId]) > 0
+    ) {
+      const takenButton = makeElement(
+        "button",
+        "btn btn-primary btn-small",
+        "✓ Mark as taken"
+      );
       takenButton.type = "button";
 
       takenButton.addEventListener("click", async () => {
@@ -891,20 +1110,26 @@ function renderReminders() {
       actions.appendChild(takenButton);
     }
 
-    const deleteButton = makeElement("button", "btn btn-danger btn-small", "Remove reminder");
+    const deleteButton = makeElement(
+      "button",
+      "btn btn-danger btn-small",
+      "Remove reminder"
+    );
     deleteButton.type = "button";
 
     deleteButton.addEventListener("click", async () => {
-      if (!confirm(`Remove the reminder for ${reminder.medicineName || "this medicine"}?`)) {
-        return;
-      }
+      if (!confirm(
+        `Remove the reminder for ${reminder.medicineName || "this medicine"}?`
+      )) return;
 
       try {
         await remove(ref(db, `${userPath("reminders")}/${id}`));
+
         await saveHistory(
           "Reminder removed",
           `${reminder.medicineName || "Medicine"} · ${formatDate(reminder.startDate)} · ${formatTime(reminder.time)}`
         );
+
         await refreshData();
         showPageMessage("Reminder removed successfully.", "success");
       } catch (error) {
@@ -922,17 +1147,26 @@ function renderReminders() {
   renderSummary();
 }
 
+/* -------------------------------------------------------
+   NOTIFICATIONS
+------------------------------------------------------- */
+
 function buildNotifications() {
   const items = [];
   const now = Date.now();
-  const upcomingWindow = 24 * 60 * 60 * 1000;
 
   for (const [id, reminder] of Object.entries(reminders || {})) {
     const timestamp = getReminderTimestamp(reminder);
-    if (timestamp === null || reminder.takenAt || reminder.completed) continue;
 
-    const name = reminder.medicineName || getMedicineName(reminder.medicineId);
-    const detail = `${formatDate(reminder.startDate)} at ${formatTime(reminder.time)}`;
+    if (timestamp === null || reminder.takenAt || reminder.completed) {
+      continue;
+    }
+
+    const name =
+      reminder.medicineName || getMedicineName(reminder.medicineId);
+
+    const detail =
+      `${formatDate(reminder.startDate)} at ${formatTime(reminder.time)}`;
 
     if (timestamp < now) {
       items.push({
@@ -944,7 +1178,7 @@ function buildNotifications() {
         reminderId: id,
         medicineId: reminder.medicineId
       });
-    } else if (timestamp - now <= upcomingWindow) {
+    } else if (timestamp - now <= UPCOMING_WINDOW) {
       items.push({
         id: `upcoming-${id}`,
         type: "upcoming",
@@ -963,7 +1197,7 @@ function buildNotifications() {
 
     if (initial <= 0) continue;
 
-    if (remaining === 0) {
+    if (remaining <= 0) {
       items.push({
         id: `empty-${id}`,
         type: "empty-stock",
@@ -991,16 +1225,17 @@ function renderNotifications() {
   const container = $("notificationList");
   if (!container) return;
 
-  notificationItems = buildNotifications();
+  const items = buildNotifications();
   container.replaceChildren();
 
-  const count = notificationItems.length;
+  const count = items.length;
   const countLabel = $("notificationCount");
 
   if (countLabel) {
     countLabel.textContent = `${count} alert${count === 1 ? "" : "s"}`;
   }
 
+  // Keep the notification badge visible in the navigation.
   const navButton = document.querySelector(
     '.nav-btn[data-target="notificationsSection"]'
   );
@@ -1014,35 +1249,42 @@ function renderNotifications() {
     const labelRow = makeElement("span");
     labelRow.style.display = "flex";
     labelRow.style.alignItems = "center";
+    labelRow.style.justifyContent = "center";
+    labelRow.style.flexWrap = "wrap";
     labelRow.style.gap = "4px";
     labelRow.style.fontSize = "11px";
     labelRow.style.fontWeight = "700";
 
-    labelRow.append(
-      document.createTextNode("Notifications"),
-      ...(count ? [makeElement("span", "notification-count", String(count))] : [])
-    );
+    labelRow.appendChild(document.createTextNode("Notifications"));
+
+    if (count > 0) {
+      labelRow.appendChild(
+        makeElement("span", "notification-count", String(count))
+      );
+    }
 
     navButton.append(icon, labelRow);
   }
 
   if (!count) {
     container.appendChild(makeElement(
-      "div", "empty-state",
-      "You're all caught up. No upcoming reminders in the next 24 hours, missed reminders, or stock warnings."
+      "div",
+      "empty-state",
+      "You're all caught up. There are no upcoming reminders in the next 24 hours, missed reminders, or stock warnings."
     ));
     return;
   }
 
-  for (const item of notificationItems) {
-    const card = makeElement("article", `notice-card ${
-      item.type === "overdue" || item.type === "empty-stock"
-        ? "notice-danger"
-        : item.type === "low-stock"
-          ? "notice-warning"
-          : "notice-info"
-    }`);
+  for (const item of items) {
+    let cardClass = "notice-info";
 
+    if (item.type === "overdue" || item.type === "empty-stock") {
+      cardClass = "notice-danger";
+    } else if (item.type === "low-stock") {
+      cardClass = "notice-warning";
+    }
+
+    const card = makeElement("article", `notice-card ${cardClass}`);
     const main = makeElement("div");
     const title = makeElement("div", "notice-title", item.title);
     const detail = makeElement("div", "notice-detail", item.detail);
@@ -1051,17 +1293,23 @@ function renderNotifications() {
 
     const actions = makeElement("div", "record-actions");
 
-    if (item.type === "overdue" &&
-        item.medicineId &&
-        medicines[item.medicineId] &&
-        getQuantity(medicines[item.medicineId]) > 0) {
-      const takenButton = makeElement("button", "btn btn-primary btn-small", "Mark as taken");
+    if (
+      item.type === "overdue" &&
+      item.medicineId &&
+      medicines[item.medicineId] &&
+      getQuantity(medicines[item.medicineId]) > 0
+    ) {
+      const takenButton = makeElement(
+        "button",
+        "btn btn-primary btn-small",
+        "Mark as taken"
+      );
       takenButton.type = "button";
 
       takenButton.addEventListener("click", async () => {
-        if (!confirm(`Record the intake for ${item.title.replace("Missed reminder: ", "")}?`)) {
-          return;
-        }
+        if (!confirm(
+          `Record the intake for ${item.title.replace("Missed reminder: ", "")}?`
+        )) return;
 
         takenButton.disabled = true;
 
@@ -1079,16 +1327,22 @@ function renderNotifications() {
     }
 
     if (item.type === "low-stock" || item.type === "empty-stock") {
-      const stockButton = makeElement("button", "btn btn-secondary btn-small", "Update stock");
+      const stockButton = makeElement(
+        "button",
+        "btn btn-secondary btn-small",
+        "Update stock"
+      );
       stockButton.type = "button";
 
-      stockButton.addEventListener("click", () => {
-        showSection("medicinesSection");
-
+      stockButton.addEventListener("click", async () => {
         const medicine = medicines[item.medicineId];
         if (!medicine) return;
 
-        const input = prompt(`How many additional units of ${medicine.name} are you adding?`, "30");
+        const input = prompt(
+          `How many additional units of ${medicine.name} are you adding?`,
+          "30"
+        );
+
         if (input === null) return;
 
         const amount = Number(input);
@@ -1098,53 +1352,36 @@ function renderNotifications() {
           return;
         }
 
-        addStock(item.medicineId, amount);
+        stockButton.disabled = true;
+
+        try {
+          await addStock(item.medicineId, amount);
+        } finally {
+          stockButton.disabled = false;
+        }
       });
 
       actions.appendChild(stockButton);
     }
 
-    card.append(main);
+    card.appendChild(main);
 
-    if (actions.childElementCount) card.appendChild(actions);
+    if (actions.childElementCount > 0) {
+      card.appendChild(actions);
+    }
 
     container.appendChild(card);
   }
 }
 
-async function addStock(medicineId, amount) {
-  const medicine = medicines[medicineId];
-  if (!medicine) return;
-
-  try {
-    const medicineRef = ref(db, `${userPath("medicines")}/${medicineId}`);
-
-    const result = await runTransaction(medicineRef, current => {
-      if (!current) return;
-
-      current.initialQuantity = getInitialQuantity(current) + amount;
-      current.quantityRemaining = getQuantity(current) + amount;
-      current.stockUpdatedAt = Date.now();
-
-      return current;
-    });
-
-    if (!result.committed) {
-      showPageMessage("Could not update the medicine quantity.");
-      return;
-    }
-
-    await saveHistory("Medicine stock added", `${medicine.name} · ${amount} units added`);
-    await refreshData();
-    showPageMessage(`Added ${amount} units to ${medicine.name}.`, "success");
-  } catch (error) {
-    console.error(error);
-    showPageMessage("Could not update the medicine quantity. Please try again.");
-  }
-}
+/* -------------------------------------------------------
+   ACTIVITY HISTORY
+------------------------------------------------------- */
 
 function renderHistory() {
   const container = $("historyList");
+  if (!container) return;
+
   container.replaceChildren();
 
   const entries = Object.entries(historyRecords || {}).sort(
@@ -1153,7 +1390,9 @@ function renderHistory() {
 
   if (!entries.length) {
     container.appendChild(makeElement(
-      "div", "empty-state", "No activity has been recorded yet."
+      "div",
+      "empty-state",
+      "No activity has been recorded yet."
     ));
     return;
   }
@@ -1161,7 +1400,11 @@ function renderHistory() {
   for (const [, item] of entries) {
     const record = makeElement("article", "record");
     const main = makeElement("div", "record-main");
-    const title = makeElement("div", "record-title", item.action || "Activity");
+    const title = makeElement(
+      "div",
+      "record-title",
+      item.action || "Activity"
+    );
     const detail = makeElement("div", "record-detail", item.detail || "");
     const date = makeElement(
       "div",
@@ -1175,13 +1418,19 @@ function renderHistory() {
   }
 }
 
+/* -------------------------------------------------------
+   PROFILE
+------------------------------------------------------- */
+
 function populateProfile() {
-  if (!currentUser) return;
+  if (!currentUser || !$("profileForm")) return;
 
   const profile = userData.profile || {};
   const firstName = profile.firstName || profile.first_name || "";
   const lastName = profile.lastName || profile.last_name || "";
-  const displayName = [firstName, lastName].filter(Boolean).join(" ") ||
+
+  const displayName =
+    [firstName, lastName].filter(Boolean).join(" ") ||
     currentUser.displayName ||
     currentUser.email?.split("@")[0] ||
     "Medminder user";
@@ -1192,18 +1441,21 @@ function populateProfile() {
 
   $("profileDisplayName").textContent = displayName;
   $("profileEmailLabel").textContent = currentUser.email || "";
-  $("profileAvatar").textContent = (firstName || displayName).charAt(0).toUpperCase();
+  $("profileAvatar").textContent =
+    (firstName || displayName).charAt(0).toUpperCase();
 }
 
 async function saveProfile(event) {
   event.preventDefault();
 
+  if (!currentUser) return;
+
+  clearMessage("profileMessage");
+
   const firstName = $("profileFirstName").value.trim();
   const lastName = $("profileLastName").value.trim();
   const newEmail = $("profileEmail").value.trim();
   const oldEmail = currentUser.email || "";
-
-  clearMessage("profileMessage");
 
   if (!firstName) {
     showMessage("profileMessage", "Please enter your first name.");
@@ -1221,22 +1473,28 @@ async function saveProfile(event) {
   try {
     if (newEmail !== oldEmail) {
       const currentPassword = prompt(
-        "For security, enter your current password to change your email address."
+        "Enter your current password to change your email address."
       );
 
       if (currentPassword === null) return;
 
-      const credential = EmailAuthProvider.credential(oldEmail, currentPassword);
+      const credential = EmailAuthProvider.credential(
+        oldEmail,
+        currentPassword
+      );
 
       await reauthenticateWithCredential(currentUser, credential);
       await updateEmail(currentUser, newEmail);
     }
 
-    const displayName = [firstName, lastName].filter(Boolean).join(" ");
+    const displayName = [firstName, lastName]
+      .filter(Boolean)
+      .join(" ");
 
     await updateProfile(currentUser, { displayName });
 
     const existingProfile = userData.profile || {};
+
     const updatedProfile = {
       ...existingProfile,
       firstName,
@@ -1252,14 +1510,26 @@ async function saveProfile(event) {
 
     userData.profile = updatedProfile;
 
-    $("userLabel").textContent = newEmail;
-    $("welcomeTitle").textContent = `Welcome, ${firstName}!`;
+    if ($("userLabel")) {
+      $("userLabel").textContent = newEmail;
+    }
+
+    if ($("welcomeTitle")) {
+      $("welcomeTitle").textContent = `Welcome, ${firstName}!`;
+    }
 
     populateProfile();
 
-    await saveHistory("Profile updated", `Profile information updated for ${displayName}.`);
+    await saveHistory(
+      "Profile updated",
+      `Profile information updated for ${displayName}.`
+    );
 
-    showMessage("profileMessage", "Your profile has been updated.", "success");
+    showMessage(
+      "profileMessage",
+      "Your profile has been updated successfully.",
+      "success"
+    );
   } catch (error) {
     console.error("Profile update error:", error);
 
@@ -1269,13 +1539,14 @@ async function saveProfile(event) {
       "auth/requires-recent-login": "Please sign in again before changing your email.",
       "auth/email-already-in-use": "That email address is already in use.",
       "auth/invalid-email": "Please enter a valid email address.",
-      "auth/weak-password": "Please choose a stronger password."
+      "auth/weak-password": "Please choose a stronger password.",
+      "auth/operation-not-allowed": "This operation is not enabled for your Firebase account."
     };
 
     showMessage(
       "profileMessage",
       messages[error.code] ||
-        "Could not update your profile. Check your connection and Firebase Authentication settings."
+        "Could not update your profile. Check your connection and try again."
     );
   } finally {
     button.disabled = false;
@@ -1285,6 +1556,8 @@ async function saveProfile(event) {
 async function changePassword(event) {
   event.preventDefault();
 
+  if (!currentUser) return;
+
   clearMessage("passwordMessage");
 
   const currentPassword = $("currentPassword").value;
@@ -1292,7 +1565,10 @@ async function changePassword(event) {
   const confirmPassword = $("confirmNewPassword").value;
 
   if (newPassword.length < 8) {
-    showMessage("passwordMessage", "Your new password must contain at least 8 characters.");
+    showMessage(
+      "passwordMessage",
+      "Your new password must contain at least 8 characters."
+    );
     return;
   }
 
@@ -1302,12 +1578,18 @@ async function changePassword(event) {
   }
 
   if (newPassword === currentPassword) {
-    showMessage("passwordMessage", "Your new password must be different from your current password.");
+    showMessage(
+      "passwordMessage",
+      "Your new password must be different from your current password."
+    );
     return;
   }
 
   if (!currentUser.email) {
-    showMessage("passwordMessage", "This account does not have an email/password sign-in.");
+    showMessage(
+      "passwordMessage",
+      "This account does not have an email/password sign-in."
+    );
     return;
   }
 
@@ -1325,9 +1607,16 @@ async function changePassword(event) {
 
     $("passwordForm").reset();
 
-    await saveHistory("Password changed", "The account password was updated.");
+    await saveHistory(
+      "Password changed",
+      "The account password was updated."
+    );
 
-    showMessage("passwordMessage", "Your password has been changed successfully.", "success");
+    showMessage(
+      "passwordMessage",
+      "Your password has been changed successfully.",
+      "success"
+    );
   } catch (error) {
     console.error("Password update error:", error);
 
@@ -1341,24 +1630,36 @@ async function changePassword(event) {
 
     showMessage(
       "passwordMessage",
-      messages[error.code] || "Could not change the password. Please try again."
+      messages[error.code] ||
+        "Could not change the password. Please try again."
     );
   } finally {
     button.disabled = false;
   }
 }
 
+/* -------------------------------------------------------
+   LOAD ACCOUNT AND CHECK ROLE
+------------------------------------------------------- */
+
 async function loadUserData(user) {
   currentUser = user;
-  $("userLabel").textContent = user.email || "Your account";
+
+  if ($("userLabel")) {
+    $("userLabel").textContent = user.email || "Your account";
+  }
 
   try {
     const snapshot = await get(ref(db, `users/${user.uid}`));
     userData = snapshot.exists() ? snapshot.val() : {};
 
     const profile = userData.profile || {};
+
     const role = normalizeRole(
-      userData.role || profile.role || userData.accountType || profile.accountType
+      userData.role ||
+      profile.role ||
+      userData.accountType ||
+      profile.accountType
     );
 
     if (["patient", "medicine_taker"].includes(role)) {
@@ -1366,180 +1667,269 @@ async function loadUserData(user) {
       return;
     }
 
-    const firstName = profile.firstName || profile.first_name ||
-      user.displayName || user.email?.split("@")[0] || "there";
+    const firstName =
+      profile.firstName ||
+      profile.first_name ||
+      user.displayName ||
+      user.email?.split("@")[0] ||
+      "there";
 
-    $("welcomeTitle").textContent = `Welcome, ${firstName}!`;
+    if ($("welcomeTitle")) {
+      $("welcomeTitle").textContent = `Welcome, ${firstName}!`;
+    }
 
     injectFeatureStyles();
     injectProfileAndNotifications();
     setupQuantityInput();
     setupIntakeSummary();
 
-    $("loading").style.display = "none";
-    $("app").style.display = "block";
+    if ($("loading")) $("loading").style.display = "none";
+    if ($("app")) $("app").style.display = "block";
 
     populateProfile();
     await refreshData();
+
+    // Open the default page after data and sections are ready.
+    showSection("medicinesSection");
   } catch (error) {
     console.error("Dashboard loading error:", error);
 
-    $("loading").textContent =
-      "Unable to load your dashboard. Check your Firebase database rules and connection, then reload the page.";
+    if ($("loading")) {
+      $("loading").textContent =
+        "Unable to load your dashboard. Check your Firebase database rules and connection, then reload the page.";
+    }
   }
 }
 
-$("addMedicineForm").addEventListener("submit", async event => {
-  event.preventDefault();
-  if (!currentUser || isSavingMedicine) return;
+/* -------------------------------------------------------
+   ADD MEDICINE FORM
+------------------------------------------------------- */
 
-  const name = $("medicineName").value.trim();
-  const dosage = $("medicineDosage").value.trim();
-  const frequency = $("medicineFrequency").value.trim();
-  const notes = $("medicineNotes").value.trim();
-  const quantity = Number($("medicineQuantity")?.value);
+if ($("addMedicineForm")) {
+  $("addMedicineForm").addEventListener("submit", async event => {
+    event.preventDefault();
 
-  if (!name) {
-    showPageMessage("Please enter a medicine name.");
-    return;
-  }
+    if (!currentUser || isSavingMedicine) return;
 
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100000) {
-    showPageMessage("Please enter a valid initial quantity.");
-    return;
-  }
+    const name = $("medicineName").value.trim();
+    const dosage = $("medicineDosage").value.trim();
+    const frequency = $("medicineFrequency").value.trim();
+    const notes = $("medicineNotes").value.trim();
+    const quantity = Number($("medicineQuantity")?.value);
 
-  isSavingMedicine = true;
-  $("saveMedicineButton").disabled = true;
-  clearMessage("pageMessage");
+    if (!name) {
+      showPageMessage("Please enter a medicine name.");
+      return;
+    }
 
-  try {
-    const medicineRef = push(ref(db, userPath("medicines")));
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100000) {
+      showPageMessage("Please enter a valid initial quantity.");
+      return;
+    }
 
-    await set(medicineRef, {
-      name,
-      dosage,
-      frequency,
-      notes,
-      initialQuantity: quantity,
-      quantityRemaining: quantity,
-      dosesTaken: 0,
-      createdAt: Date.now()
-    });
+    isSavingMedicine = true;
 
-    await saveHistory("Medicine added", `${name} · Initial quantity: ${quantity}`);
+    if ($("saveMedicineButton")) {
+      $("saveMedicineButton").disabled = true;
+    }
 
-    $("addMedicineForm").reset();
-    $("medicineForm").classList.remove("open");
+    clearMessage("pageMessage");
 
-    await refreshData();
-    showPageMessage(`${name} saved with ${quantity} units available.`, "success");
-  } catch (error) {
-    console.error("Medicine save error:", error);
-    showPageMessage("Could not save the medicine. Check your Firebase database rules and try again.");
-  } finally {
-    isSavingMedicine = false;
-    $("saveMedicineButton").disabled = false;
-  }
-});
+    try {
+      const medicineRef = push(ref(db, userPath("medicines")));
 
-$("addReminderForm").addEventListener("submit", async event => {
-  event.preventDefault();
-  if (!currentUser || isSavingReminder) return;
+      await set(medicineRef, {
+        name,
+        dosage,
+        frequency,
+        notes,
+        initialQuantity: quantity,
+        quantityRemaining: quantity,
+        dosesTaken: 0,
+        createdAt: Date.now()
+      });
 
-  const medicineId = $("reminderMedicine").value;
-  const medicine = medicines[medicineId];
-  const startDate = $("reminderStartDate").value;
-  const time = $("reminderTime").value;
-  const notes = $("reminderNotes").value.trim();
+      await saveHistory(
+        "Medicine added",
+        `${name} · Initial quantity: ${quantity}`
+      );
 
-  clearMessage("reminderFormMessage");
+      $("addMedicineForm").reset();
 
-  if (!medicineId || !medicine) {
-    showMessage("reminderFormMessage", "Please add and select a medicine first.");
-    return;
-  }
+      if ($("medicineForm")) {
+        $("medicineForm").classList.remove("open");
+      }
 
-  if (!startDate) {
-    showMessage("reminderFormMessage", "Please click a date on the calendar.");
-    return;
-  }
+      await refreshData();
 
-  if (!time || !/^\d{2}:\d{2}$/.test(time)) {
-    showMessage("reminderFormMessage", "Please select a valid reminder time.");
-    return;
-  }
+      showPageMessage(
+        `${name} saved with ${quantity} units available.`,
+        "success"
+      );
+    } catch (error) {
+      console.error("Medicine save error:", error);
+      showPageMessage(
+        "Could not save the medicine. Check your Firebase database rules and try again."
+      );
+    } finally {
+      isSavingMedicine = false;
 
-  const [year, month, day] = startDate.split("-").map(Number);
-  const selectedDate = new Date(year, month - 1, day);
-  selectedDate.setHours(0, 0, 0, 0);
+      if ($("saveMedicineButton")) {
+        $("saveMedicineButton").disabled = false;
+      }
+    }
+  });
+}
 
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+/* -------------------------------------------------------
+   ADD REMINDER FORM
+------------------------------------------------------- */
 
-  if (selectedDate < today) {
-    showMessage("reminderFormMessage", "Please select today or a future date.");
-    return;
-  }
+if ($("addReminderForm")) {
+  $("addReminderForm").addEventListener("submit", async event => {
+    event.preventDefault();
 
-  const timestamp = getReminderTimestamp({ startDate, time });
+    if (!currentUser || isSavingReminder) return;
 
-  if (timestamp !== null && timestamp < Date.now()) {
-    showMessage("reminderFormMessage", "That time has already passed. Please choose a later time.");
-    return;
-  }
+    const medicineId = $("reminderMedicine").value;
+    const medicine = medicines[medicineId];
+    const startDate = $("reminderStartDate").value;
+    const time = $("reminderTime").value;
+    const notes = $("reminderNotes").value.trim();
 
-  isSavingReminder = true;
-  $("saveReminderButton").disabled = true;
+    clearMessage("reminderFormMessage");
 
-  try {
-    const reminderRef = push(ref(db, userPath("reminders")));
+    if (!medicineId || !medicine) {
+      showMessage(
+        "reminderFormMessage",
+        "Please add and select a medicine first."
+      );
+      return;
+    }
 
-    const reminderData = {
-      medicineId,
-      medicineName: medicine.name || "Medicine",
-      time,
-      startDate,
-      notes,
-      completed: false,
-      createdAt: Date.now()
-    };
+    if (!startDate) {
+      showMessage(
+        "reminderFormMessage",
+        "Please click a date on the calendar."
+      );
+      return;
+    }
 
-    await set(reminderRef, reminderData);
+    if (!time || !/^\d{2}:\d{2}$/.test(time)) {
+      showMessage(
+        "reminderFormMessage",
+        "Please select a valid reminder time."
+      );
+      return;
+    }
 
-    await saveHistory(
-      "Reminder added",
-      `${reminderData.medicineName} · ${formatDate(startDate)} · ${formatTime(time)}${notes ? ` · ${notes}` : ""}`
+    const [year, month, day] = startDate.split("-").map(Number);
+    const selectedDate = new Date(year, month - 1, day);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    const now = new Date();
+    const today = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
     );
 
-    $("addReminderForm").reset();
-    $("reminderForm").classList.remove("open");
-    document.dispatchEvent(new CustomEvent("medminder:resetReminderPicker"));
+    if (selectedDate < today) {
+      showMessage(
+        "reminderFormMessage",
+        "Please select today or a future date."
+      );
+      return;
+    }
 
-    await refreshData();
+    const timestamp = getReminderTimestamp({ startDate, time });
 
-    showPageMessage(
-      `Reminder saved for ${reminderData.medicineName} on ${formatDate(startDate)} at ${formatTime(time)}.`,
-      "success"
-    );
-  } catch (error) {
-    console.error("Reminder save error:", error);
-    showMessage("reminderFormMessage", "Could not save the reminder. Check your Firebase database rules and try again.");
-  } finally {
-    isSavingReminder = false;
-    $("saveReminderButton").disabled = false;
-  }
-});
+    if (timestamp !== null && timestamp < Date.now()) {
+      showMessage(
+        "reminderFormMessage",
+        "That time has already passed. Please choose a later time."
+      );
+      return;
+    }
 
-$("logoutButton").addEventListener("click", async () => {
-  try {
-    await signOut(auth);
-    window.location.replace("login.html");
-  } catch (error) {
-    console.error("Logout error:", error);
-    showPageMessage("Unable to log out. Please try again.");
-  }
-});
+    isSavingReminder = true;
+
+    if ($("saveReminderButton")) {
+      $("saveReminderButton").disabled = true;
+    }
+
+    try {
+      const reminderRef = push(ref(db, userPath("reminders")));
+
+      const reminderData = {
+        medicineId,
+        medicineName: medicine.name || "Medicine",
+        time,
+        startDate,
+        notes,
+        completed: false,
+        createdAt: Date.now()
+      };
+
+      await set(reminderRef, reminderData);
+
+      await saveHistory(
+        "Reminder added",
+        `${reminderData.medicineName} · ${formatDate(startDate)} · ${formatTime(time)}${notes ? ` · ${notes}` : ""}`
+      );
+
+      $("addReminderForm").reset();
+
+      if ($("reminderForm")) {
+        $("reminderForm").classList.remove("open");
+      }
+
+      document.dispatchEvent(
+        new CustomEvent("medminder:resetReminderPicker")
+      );
+
+      await refreshData();
+
+      showPageMessage(
+        `Reminder saved for ${reminderData.medicineName} on ${formatDate(startDate)} at ${formatTime(time)}.`,
+        "success"
+      );
+    } catch (error) {
+      console.error("Reminder save error:", error);
+
+      showMessage(
+        "reminderFormMessage",
+        "Could not save the reminder. Check your Firebase database rules and try again."
+      );
+    } finally {
+      isSavingReminder = false;
+
+      if ($("saveReminderButton")) {
+        $("saveReminderButton").disabled = false;
+      }
+    }
+  });
+}
+
+/* -------------------------------------------------------
+   LOG OUT
+------------------------------------------------------- */
+
+if ($("logoutButton")) {
+  $("logoutButton").addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+      window.location.replace("login.html");
+    } catch (error) {
+      console.error("Logout error:", error);
+      showPageMessage("Unable to log out. Please try again.");
+    }
+  });
+}
+
+/* -------------------------------------------------------
+   AUTHENTICATION STATE
+------------------------------------------------------- */
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
