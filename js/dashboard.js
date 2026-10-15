@@ -151,27 +151,6 @@ async function saveHistory(action, detail) {
   }
 }
 
-
-function organizeMedicinePage() {
-  const medicineSection = document.getElementById("medicinesSection");
-  const stats = document.querySelector(".stats");
-  const intakeSummary = document.getElementById("intakeSummary");
-
-  if (!medicineSection) return;
-
-  // Keep the dashboard overview only inside Medicines.
-  if (stats && !medicineSection.contains(stats)) {
-    medicineSection.prepend(stats);
-  }
-
-  if (intakeSummary && !medicineSection.contains(intakeSummary)) {
-    medicineSection.appendChild(intakeSummary);
-  }
-
-  // Open Medicines as the default page.
-  showSection("medicinesSection");
-}
-
 /* -------------------------------------------------------
    STYLES FOR PROFILE AND NOTIFICATIONS
 ------------------------------------------------------- */
@@ -324,16 +303,18 @@ function injectFeatureStyles() {
 ------------------------------------------------------- */
 
 function injectProfileAndNotifications() {
+  if ($("profileSection") && $("notificationsSection")) {
+    return;
+  }
+
   const main = document.querySelector("main.container");
   const nav = document.querySelector(".nav-inner");
 
   if (!main || !nav) {
-    throw new Error(
-      "Dashboard layout error: main.container or .nav-inner was not found in dashboard.html."
-    );
+    console.error("Could not find main.container or .nav-inner in dashboard.html.");
+    return;
   }
 
-  // Create the Notifications section if it does not exist.
   if (!$("notificationsSection")) {
     const notificationsSection = makeElement("section", "section");
     notificationsSection.id = "notificationsSection";
@@ -356,19 +337,17 @@ function injectProfileAndNotifications() {
         </div>
 
         <p class="security-note">
-          Notifications are based on your saved reminder times and recorded
-          activity. Medminder cannot confirm that you took a medicine unless
-          you record the intake.
+          Notifications are based on your saved reminder times and the intake
+          records you enter. Medminder cannot confirm that you took a medicine
+          unless you record the intake.
         </p>
       </div>
     `;
 
-    // FIX: Append directly to main. Do not use insertBefore with a
-    // historySection that may not be a direct child of main.
-    main.appendChild(notificationsSection);
+    const historySection = $("historySection");
+    main.insertBefore(notificationsSection, historySection || null);
   }
 
-  // Create the Profile section if it does not exist.
   if (!$("profileSection")) {
     const profileSection = makeElement("section", "section");
     profileSection.id = "profileSection";
@@ -387,13 +366,12 @@ function injectProfileAndNotifications() {
           <div id="profileAvatar" class="profile-avatar">M</div>
           <div>
             <h3 id="profileDisplayName">Your profile</h3>
-            <p id="profileEmailLabel" class="muted small"
-               style="margin:5px 0 0"></p>
+            <p id="profileEmailLabel" class="muted small" style="margin:5px 0 0"></p>
           </div>
         </div>
 
         <div id="profileMessage" class="message"
-             role="status" aria-live="polite"></div>
+          role="status" aria-live="polite"></div>
 
         <form id="profileForm">
           <div class="form-grid">
@@ -409,14 +387,12 @@ function injectProfileAndNotifications() {
 
             <div class="field full">
               <label for="profileEmail">Email address *</label>
-              <input id="profileEmail" type="email"
-                     maxlength="254" required>
+              <input id="profileEmail" type="email" maxlength="254" required>
             </div>
           </div>
 
           <div class="form-actions">
-            <button id="saveProfileButton"
-                    class="btn btn-primary" type="submit">
+            <button id="saveProfileButton" class="btn btn-primary" type="submit">
               Save profile
             </button>
           </div>
@@ -427,44 +403,37 @@ function injectProfileAndNotifications() {
         <div class="panel-heading">
           <div>
             <h2>Change Password</h2>
-            <p class="muted small">
-              Update the password for your account.
-            </p>
+            <p class="muted small">Update the password for your account.</p>
           </div>
         </div>
 
         <div id="passwordMessage" class="message"
-             role="status" aria-live="polite"></div>
+          role="status" aria-live="polite"></div>
 
         <form id="passwordForm">
           <div class="form-grid">
             <div class="field full">
               <label for="currentPassword">Current password *</label>
               <input id="currentPassword" type="password"
-                     autocomplete="current-password" required>
+                autocomplete="current-password" required>
             </div>
 
             <div class="field">
               <label for="newPassword">New password *</label>
               <input id="newPassword" type="password" minlength="8"
-                     autocomplete="new-password" required>
-              <span class="muted small">
-                Use at least 8 characters.
-              </span>
+                autocomplete="new-password" required>
+              <span class="muted small">Use at least 8 characters.</span>
             </div>
 
             <div class="field">
-              <label for="confirmNewPassword">
-                Confirm new password *
-              </label>
-              <input id="confirmNewPassword" type="password"
-                     minlength="8" autocomplete="new-password" required>
+              <label for="confirmNewPassword">Confirm new password *</label>
+              <input id="confirmNewPassword" type="password" minlength="8"
+                autocomplete="new-password" required>
             </div>
           </div>
 
           <div class="form-actions">
-            <button id="changePasswordButton"
-                    class="btn btn-primary" type="submit">
+            <button id="changePasswordButton" class="btn btn-primary" type="submit">
               Update password
             </button>
           </div>
@@ -477,11 +446,10 @@ function injectProfileAndNotifications() {
       </div>
     `;
 
-    // FIX: Append directly to main instead of inserting before historySection.
-    main.appendChild(profileSection);
+    const historySection = $("historySection");
+    main.insertBefore(profileSection, historySection || null);
   }
 
-  // Add the two navigation buttons without creating duplicates.
   const navigationItems = [
     {
       target: "notificationsSection",
@@ -529,7 +497,6 @@ function injectProfileAndNotifications() {
     $("passwordForm").onsubmit = changePassword;
   }
 }
-
 
 /* -------------------------------------------------------
    PAGE NAVIGATION
@@ -1682,28 +1649,9 @@ async function loadUserData(user) {
     $("userLabel").textContent = user.email || "Your account";
   }
 
-  const loading = $("loading");
-  const app = $("app");
-
   try {
-    if (!user || !user.uid) {
-      throw new Error("No authenticated user was found.");
-    }
-
-    console.log("Medminder: authenticated user:", user.uid);
-    console.log("Medminder: checking database:", `users/${user.uid}`);
-
-    // Load the signed-in user's account data.
-    const userRef = ref(db, `users/${user.uid}`);
-    const snapshot = await get(userRef);
-
+    const snapshot = await get(ref(db, `users/${user.uid}`));
     userData = snapshot.exists() ? snapshot.val() : {};
-
-    if (!userData || typeof userData !== "object") {
-      userData = {};
-    }
-
-    console.log("Medminder: account data loaded successfully.");
 
     const profile = userData.profile || {};
 
@@ -1714,7 +1662,6 @@ async function loadUserData(user) {
       profile.accountType
     );
 
-    // Patient accounts should use the patient dashboard.
     if (["patient", "medicine_taker"].includes(role)) {
       window.location.replace("patient-dashboard.html");
       return;
@@ -1731,44 +1678,28 @@ async function loadUserData(user) {
       $("welcomeTitle").textContent = `Welcome, ${firstName}!`;
     }
 
-    // Set up the dashboard interface.
     injectFeatureStyles();
     injectProfileAndNotifications();
     setupQuantityInput();
     setupIntakeSummary();
-    organizeMedicinePage();
-    organizeSectionContent();
 
-    // Display the dashboard before refreshing its data.
-    if (loading) loading.style.display = "none";
-    if (app) app.style.display = "block";
+    if ($("loading")) $("loading").style.display = "none";
+    if ($("app")) $("app").style.display = "block";
 
     populateProfile();
-
-    // Load medicines, reminders, and history.
     await refreshData();
 
-    // Open the Medicines page by default.
+    // Open the default page after data and sections are ready.
     showSection("medicinesSection");
-
-    console.log("Medminder: dashboard loaded successfully.");
   } catch (error) {
-    console.error("Medminder dashboard loading error:", error);
-    console.error("Firebase error code:", error?.code || "No Firebase error code");
-    console.error("Firebase error message:", error?.message || String(error));
+    console.error("Dashboard loading error:", error);
 
-    // Show the actual error on the page while troubleshooting.
-    if (loading) {
-      loading.style.display = "block";
-      loading.textContent =
-        `Dashboard error: ${error?.code || "UNKNOWN"} — ` +
-        `${error?.message || String(error)}`;
+    if ($("loading")) {
+      $("loading").textContent =
+        "Unable to load your dashboard. Check your Firebase database rules and connection, then reload the page.";
     }
-
-    if (app) app.style.display = "none";
   }
 }
-
 
 /* -------------------------------------------------------
    ADD MEDICINE FORM
