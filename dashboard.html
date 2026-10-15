@@ -1,0 +1,69 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#175638">
+  <title>Medminder | Dashboard</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f7f3;
+      color: #203b2d;
+      margin: 0;
+      padding: 40px 20px;
+    }
+
+    main {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 25px rgba(23, 86, 56, 0.08);
+    }
+
+    h1 {
+      color: #175638;
+    }
+
+    #userEmail {
+      overflow-wrap: anywhere;
+    }
+
+    button {
+      background: #175638;
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 18px;
+      cursor: pointer;
+    }
+
+    #status {
+      color: #78867d;
+    }
+  </style>
+
+  <script type="module" src="js/dashboard.js"></script>
+</head>
+
+<body>
+  <main>
+    <h1>Welcome to Medinder!</h1>
+    <p id="status">Checking your login...</p>
+
+    <section id="dashboardContent" hidden>
+      <p>You are logged in as:</p>
+      <p id="userEmail"></p>
+
+      <h2>Medication Dashboard</h2>
+      <p>Your medication schedule will appear here.</p>
+
+      <button id="logoutButton">Log Out</button>
+    </section>
+  </main>
+</body>
+</html>
