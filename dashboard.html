@@ -3,52 +3,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#175638">
-  <title>Caregiver Dashboard | Medminder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medminder | Caregiver Dashboard</title>
 
   <style>
     :root {
       --green: #175638;
-      --dark: #10442b;
-      --light: #e7f4eb;
-      --page: #f4f8f5;
-      --text: #203b2d;
-      --muted: #78867d;
-      --border: #e1eae3;
-      --white: #fff;
+      --green-dark: #10442b;
+      --mint: #e7f4eb;
+      --background: #f4f8f5;
+      --white: #ffffff;
+      --text: #203329;
+      --muted: #748278;
+      --border: #e1e9e3;
+      --red: #c94c4c;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      margin: 0;
-      font-family: Inter, Arial, sans-serif;
-      background: var(--page);
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--background);
       color: var(--text);
-      min-height: 100vh;
-      padding-bottom: 90px;
+      line-height: 1.5;
     }
 
-    button, input, select, textarea { font: inherit; }
-    button { cursor: pointer; }
-    [hidden] { display: none !important; }
+    button, input, textarea, select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
 
     .topbar {
-      background: white;
+      background: var(--white);
       border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 5;
+      padding: 17px 20px;
     }
 
     .topbar-inner {
-      max-width: 1050px;
+      max-width: 960px;
       margin: auto;
-      padding: 15px 22px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
     }
 
@@ -57,18 +60,17 @@
       align-items: center;
       gap: 10px;
       color: var(--green);
-      font-size: 23px;
+      font-size: 21px;
       font-weight: 800;
     }
 
-    .logo {
+    .brand-icon {
       width: 40px;
       height: 40px;
-      border-radius: 13px;
-      background: var(--green);
-      color: white;
       display: grid;
       place-items: center;
+      background: var(--mint);
+      border-radius: 12px;
       font-size: 22px;
     }
 
@@ -76,359 +78,573 @@
       border: 1px solid var(--border);
       background: white;
       color: var(--green);
-      padding: 10px 14px;
+      padding: 9px 14px;
       border-radius: 10px;
-      font-weight: 650;
+      font-weight: 600;
     }
-
-    .logout:hover { background: var(--light); }
 
     .container {
-      max-width: 1050px;
-      margin: 0 auto;
-      padding: 28px 22px;
+      width: min(100% - 32px, 900px);
+      margin: 28px auto 105px;
     }
 
-    .welcome { margin-bottom: 25px; }
-
-    .eyebrow {
-      color: var(--green);
-      font-size: 13px;
-      font-weight: 700;
-      margin-bottom: 8px;
+    .welcome {
+      margin-bottom: 23px;
     }
 
-    h1 {
-      font-size: clamp(25px, 4vw, 34px);
-      letter-spacing: -1px;
-      margin: 0 0 9px;
-    }
-
-    .muted {
-      color: var(--muted);
-      line-height: 1.6;
-      font-size: 14px;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 15px;
-      margin-bottom: 25px;
-    }
-
-    .stat, .panel {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 17px;
-      padding: 21px;
-    }
-
-    .stat-icon {
-      width: 43px;
-      height: 43px;
-      border-radius: 13px;
-      background: var(--light);
-      display: grid;
-      place-items: center;
-      font-size: 22px;
-      margin-bottom: 15px;
-    }
-
-    .stat-number {
-      color: var(--green);
-      font-size: 29px;
-      font-weight: 800;
+    .welcome h1 {
+      font-size: clamp(24px, 5vw, 31px);
+      color: var(--green-dark);
       margin-bottom: 5px;
     }
 
-    .panel { margin-bottom: 18px; }
-
-    .panel h2 {
-      margin: 0 0 8px;
-      font-size: 18px;
+    .welcome p {
+      color: var(--muted);
+      font-size: 14px;
     }
 
-    .panel-header {
+    .patient-banner {
+      background: var(--mint);
+      border: 1px solid #d5e9da;
+      border-radius: 16px;
+      padding: 17px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      margin-bottom: 22px;
+    }
+
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: white;
+      color: var(--green);
+      font-size: 23px;
+      flex-shrink: 0;
+    }
+
+    .patient-banner h2 {
+      font-size: 16px;
+      color: var(--green-dark);
+    }
+
+    .patient-banner p {
+      font-size: 13px;
+      color: #567261;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 13px;
+      margin-bottom: 27px;
+    }
+
+    .summary-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 17px;
+      min-width: 0;
+    }
+
+    .summary-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      background: var(--mint);
+      font-size: 19px;
+      margin-bottom: 12px;
+    }
+
+    .summary-number {
+      font-size: 27px;
+      font-weight: 800;
+      color: var(--green);
+    }
+
+    .summary-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .section-heading {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 17px;
+      margin: 23px 0 14px;
     }
 
-    .section { display: none; }
-    .section.active { display: block; }
+    .section-heading h2 {
+      font-size: 19px;
+      color: var(--green-dark);
+    }
 
-    .primary {
-      border: 0;
-      border-radius: 10px;
-      padding: 12px 16px;
-      color: white;
+    .primary-btn {
       background: var(--green);
+      color: white;
+      border: none;
+      border-radius: 11px;
+      padding: 11px 16px;
       font-weight: 700;
     }
 
-    .primary:hover { background: var(--dark); }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 13px;
+    .primary-btn:hover {
+      background: var(--green-dark);
     }
 
-    .field { margin-bottom: 15px; }
+    .secondary-btn {
+      background: white;
+      color: var(--green);
+      border: 1px solid var(--green);
+      border-radius: 11px;
+      padding: 10px 15px;
+      font-weight: 700;
+    }
 
-    .field label {
+    .panel {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 19px;
+      margin-bottom: 18px;
+    }
+
+    .form-panel {
+      display: none;
+    }
+
+    .form-panel.open {
+      display: block;
+    }
+
+    .form-panel h3 {
+      color: var(--green-dark);
+      margin-bottom: 15px;
+      font-size: 17px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
       display: block;
       font-size: 13px;
-      font-weight: 650;
-      margin-bottom: 7px;
+      font-weight: 700;
+      margin-bottom: 6px;
     }
 
-    .field input, .field select, .field textarea {
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
       width: 100%;
-      padding: 12px;
-      border: 1px solid var(--border);
+      border: 1px solid #d7e1d9;
       border-radius: 10px;
-      outline: none;
+      padding: 12px;
       background: white;
+      color: var(--text);
+      outline: none;
     }
 
-    .field input:focus, .field select:focus, .field textarea:focus {
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
       border-color: var(--green);
       box-shadow: 0 0 0 3px #17563815;
     }
 
-    .record {
+    .form-actions {
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 14px 0;
-      border-bottom: 1px solid var(--border);
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .item-list {
+      display: grid;
+      gap: 11px;
+    }
+
+    .item {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 15px;
+    }
+
+    .item h3 {
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .item p {
+      font-size: 13px;
+      color: var(--muted);
       overflow-wrap: anywhere;
     }
 
-    .record:last-child { border-bottom: 0; }
-    .record p { margin: 5px 0 0; }
-
-    .pill {
-      background: var(--light);
-      color: var(--green);
-      border-radius: 20px;
-      padding: 5px 9px;
-      font-size: 12px;
-      height: fit-content;
-      white-space: nowrap;
-    }
-
-    .danger {
-      border: 1px solid #ffd4d0;
-      border-radius: 8px;
-      background: #fff1f0;
-      color: #a5221b;
-      padding: 8px 10px;
-    }
-
-    .empty {
-      color: var(--muted);
+    .empty-state {
       text-align: center;
-      padding: 24px 12px;
+      padding: 26px 16px;
+      color: var(--muted);
+      background: white;
+      border: 1px dashed #ccd9ce;
+      border-radius: 14px;
       font-size: 14px;
     }
 
-    .error {
-      margin-bottom: 18px;
+    .error-message {
+      display: none;
       padding: 13px;
+      margin-bottom: 18px;
       border-radius: 10px;
-      background: #fff0ee;
-      color: #a5221b;
-      overflow-wrap: anywhere;
+      background: #fff0f0;
+      color: var(--red);
+      font-size: 14px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 35px 10px;
+      color: var(--muted);
     }
 
     .bottom-nav {
       position: fixed;
       bottom: 0;
       left: 0;
-      right: 0;
+      width: 100%;
       z-index: 10;
-      background: #ffffff;
+      background: white;
       border-top: 1px solid var(--border);
-      padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
+      padding: 9px 10px calc(9px + env(safe-area-inset-bottom));
     }
 
     .nav-inner {
-      max-width: 570px;
+      max-width: 540px;
       margin: auto;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 7px;
+      gap: 8px;
     }
 
-    .nav-button {
-      border: 0;
-      border-radius: 12px;
-      padding: 9px 5px;
+    .nav-btn {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 11px;
+      padding: 8px 4px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 5px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 12px;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: 600;
     }
 
-    .nav-button .nav-icon { font-size: 21px; }
+    .nav-btn .nav-icon {
+      font-size: 21px;
+    }
 
-    .nav-button.active {
-      background: var(--light);
+    .nav-btn.active {
       color: var(--green);
-      font-weight: 750;
+      background: var(--mint);
     }
 
-    @media (max-width: 600px) {
-      .container { padding: 22px 15px; }
-      .topbar-inner { padding: 12px 15px; }
-      .brand { font-size: 21px; }
-      .stat, .panel { padding: 17px; }
-      .stats { gap: 11px; }
-      .form-row { grid-template-columns: 1fr; gap: 0; }
-      .logout { padding: 9px 11px; }
-      .record { flex-wrap: wrap; }
-      .panel-header { align-items: flex-start; }
+    @media (max-width: 560px) {
+      .container {
+        width: calc(100% - 24px);
+        margin-top: 21px;
+      }
+
+      .topbar {
+        padding: 13px 12px;
+      }
+
+      .brand {
+        font-size: 19px;
+      }
+
+      .summary-grid {
+        gap: 8px;
+      }
+
+      .summary-card {
+        padding: 12px 10px;
+        border-radius: 12px;
+      }
+
+      .summary-number {
+        font-size: 23px;
+      }
+
+      .summary-label {
+        font-size: 11px;
+      }
+
+      .panel {
+        padding: 15px;
+      }
+
+      .section-heading {
+        align-items: flex-start;
+      }
+
+      .section-heading h2 {
+        font-size: 17px;
+      }
+
+      .primary-btn {
+        padding: 10px 12px;
+        font-size: 13px;
+      }
     }
   </style>
 </head>
 
-<body data-role="caregiver">
+<body>
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <div class="logo" aria-hidden="true">✚</div>
+        <div class="brand-icon">💊</div>
         <span>Medminder</span>
       </div>
-      <button class="logout" id="logoutButton" type="button">Log out</button>
+      <button id="logoutButton" class="logout" type="button">
+        Log out
+      </button>
     </div>
   </header>
 
-  <main class="container" id="loading">
-    <p class="muted">Loading your account...</p>
-  </main>
+  <main class="container">
+    <div id="loading" class="loading">Loading your dashboard...</div>
 
-  <main class="container" id="app" hidden>
-    <div id="error" class="error" role="alert" hidden></div>
+    <div id="error" class="error-message" role="alert"></div>
 
-    <header class="welcome">
-      <div class="eyebrow" id="accountRole">CAREGIVER DASHBOARD</div>
-      <h1 id="welcomeTitle">Welcome back!</h1>
-      <p class="muted">Keep track of your medication routine in one place.</p>
-    </header>
+    <div id="app" style="display:none">
+      <section class="welcome">
+        <h1 id="welcomeTitle">Hello!</h1>
+        <p>Your family's medication plan, all in one place.</p>
+      </section>
 
-    <section class="section active" id="medicinesSection">
-      <div class="stats">
-        <article class="stat">
-          <div class="stat-icon">💊</div>
-          <div class="stat-number" id="medicineCount">0</div>
-          <div class="muted">My medicines</div>
-        </article>
-        <article class="stat">
-          <div class="stat-icon">⏰</div>
-          <div class="stat-number" id="reminderCount">0</div>
-          <div class="muted">My reminders</div>
-        </article>
+      <div class="patient-banner">
+        <div class="avatar">👩</div>
+        <div>
+          <h2>Mom's medication plan</h2>
+          <p id="accountRole">Caregiver account</p>
+        </div>
       </div>
 
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <h2>Medicines</h2>
-            <p class="muted">Your saved medication list.</p>
+      <!-- MEDICINES: summary and medicine list -->
+      <section id="medicinesSection" class="section active"
+        data-section="medicines">
+
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-icon">💊</div>
+            <div id="medicineCount" class="summary-number">0</div>
+            <div class="summary-label">Medicines</div>
           </div>
-          <button class="primary" id="addMedicineButton" type="button">+ Add</button>
+
+          <div class="summary-card">
+            <div class="summary-icon">🔔</div>
+            <div id="reminderCount" class="summary-number">0</div>
+            <div class="summary-label">Reminders</div>
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-icon">📅</div>
+            <div class="summary-number">Today</div>
+            <div class="summary-label">Medication plan</div>
+          </div>
         </div>
 
-        <form id="medicineForm" hidden>
-          <div class="field">
-            <label for="medicineName">Medicine name</label>
-            <input id="medicineName" maxlength="100" required placeholder="Enter medicine name">
-          </div>
-          <div class="form-row">
-            <div class="field">
-              <label for="medicineDose">Dose / instructions</label>
-              <input id="medicineDose" maxlength="100" placeholder="e.g. 1 tablet">
-            </div>
-            <div class="field">
-              <label for="medicineNotes">Notes</label>
-              <input id="medicineNotes" maxlength="200" placeholder="Optional notes">
-            </div>
-          </div>
-          <button class="primary" type="submit">Save medicine</button>
-          <button class="logout" id="cancelMedicineButton" type="button">Cancel</button>
-        </form>
+        <div class="section-heading">
+          <h2>Mom's medicines</h2>
+          <button id="addMedicineButton" class="primary-btn" type="button">
+            + Add
+          </button>
+        </div>
 
-        <div id="medicineList"><p class="empty">Loading medicines...</p></div>
+        <div id="medicineForm" class="panel form-panel">
+          <h3>Add a medicine</h3>
+
+          <form id="addMedicineForm">
+            <div class="form-group">
+              <label for="medicineName">Medicine name</label>
+              <input id="medicineName" type="text"
+                placeholder="e.g. Vitamin D" required>
+            </div>
+
+            <div class="form-group">
+              <label for="medicineDose">Dosage</label>
+              <input id="medicineDose" type="text"
+                placeholder="e.g. 1 tablet" required>
+            </div>
+
+            <div class="form-group">
+              <label for="medicineNotes">Notes (optional)</label>
+              <textarea id="medicineNotes" rows="2"
+                placeholder="Additional instructions"></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button class="primary-btn" type="submit">Save medicine</button>
+              <button id="cancelMedicineButton" class="secondary-btn"
+                type="button">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="medicineList" class="item-list">
+          <div class="empty-state">Your medicine list will appear here.</div>
+        </div>
       </section>
-    </section>
 
-    <section class="section" id="remindersSection">
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <h2>Medication reminders</h2>
-            <p class="muted">Review your medication schedule.</p>
-          </div>
-          <button class="primary" id="addReminderButton" type="button">+ Add</button>
+      <!-- REMINDERS -->
+      <section id="remindersSection" class="section"
+        data-section="reminders">
+
+        <div class="section-heading">
+          <h2>Medicine reminders</h2>
+          <button id="addReminderButton" class="primary-btn" type="button">
+            + Set reminder
+          </button>
         </div>
 
-        <form id="reminderForm" hidden>
-          <div class="field">
-            <label for="reminderMedicine">Medicine</label>
-            <select id="reminderMedicine" required>
-              <option value="">Select a saved medicine</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="field">
-              <label for="reminderTime">Time</label>
+        <div id="reminderForm" class="panel form-panel">
+          <h3>Set a reminder</h3>
+
+          <form id="addReminderForm">
+            <div class="form-group">
+              <label for="reminderMedicine">Medicine</label>
+              <select id="reminderMedicine" required>
+                <option value="">Select a medicine</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="reminderTime">Reminder time</label>
               <input id="reminderTime" type="time" required>
             </div>
-            <div class="field">
+
+            <div class="form-group">
               <label for="reminderStartDate">Start date</label>
               <input id="reminderStartDate" type="date" required>
             </div>
-          </div>
-          <button class="primary" type="submit">Save reminder</button>
-          <button class="logout" id="cancelReminderButton" type="button">Cancel</button>
-        </form>
 
-        <div id="reminderList"><p class="empty">Loading reminders...</p></div>
-      </section>
-    </section>
+            <div class="form-actions">
+              <button class="primary-btn" type="submit">Save reminder</button>
+              <button id="cancelReminderButton" class="secondary-btn"
+                type="button">Cancel</button>
+            </div>
+          </form>
+        </div>
 
-    <section class="section" id="historySection">
-      <section class="panel">
-        <h2>Medication history</h2>
-        <p class="muted">See the medication actions recorded in your account.</p>
-        <div id="historyList"><p class="empty">No history yet.</p></div>
+        <div id="reminderList" class="item-list">
+          <div class="empty-state">Your reminders will appear here.</div>
+        </div>
       </section>
-    </section>
+
+      <!-- MEDICATION HISTORY -->
+      <section id="historySection" class="section"
+        data-section="history">
+
+        <div class="section-heading">
+          <h2>Medication history</h2>
+        </div>
+
+        <div class="panel">
+          <p style="font-size:14px;color:var(--muted)">
+            Check recorded medication activity here. Keep the medicine
+            schedule updated so your family can follow it easily.
+          </p>
+        </div>
+
+        <div id="historyList" class="item-list">
+          <div class="empty-state">Medication history will appear here.</div>
+        </div>
+      </section>
+    </div>
   </main>
 
-  <nav class="bottom-nav" aria-label="Caregiver dashboard navigation">
+  <nav class="bottom-nav" aria-label="Main navigation">
     <div class="nav-inner">
-      <button class="nav-button active" data-section="medicinesSection" type="button" aria-current="page">
-        <span class="nav-icon">💊</span><span>Medicines</span>
+      <button class="nav-btn active" type="button"
+        data-target="medicinesSection">
+        <span class="nav-icon">🏠</span>
+        <span>Home</span>
       </button>
-      <button class="nav-button" data-section="remindersSection" type="button">
-        <span class="nav-icon">🔔</span><span>Reminders</span>
+
+      <button class="nav-btn" type="button"
+        data-target="remindersSection">
+        <span class="nav-icon">🔔</span>
+        <span>Reminders</span>
       </button>
-      <button class="nav-button" data-section="historySection" type="button">
-        <span class="nav-icon">📋</span><span>History</span>
+
+      <button class="nav-btn" type="button"
+        data-target="historySection">
+        <span class="nav-icon">📋</span>
+        <span>History</span>
       </button>
     </div>
   </nav>
+
+  <script>
+    // Bottom navigation
+    document.querySelectorAll(".nav-btn").forEach(function(button) {
+      button.addEventListener("click", function() {
+        const targetId = button.dataset.target;
+
+        document.querySelectorAll(".section").forEach(function(section) {
+          section.classList.toggle("active", section.id === targetId);
+        });
+
+        document.querySelectorAll(".nav-btn").forEach(function(navButton) {
+          navButton.classList.toggle("active", navButton === button);
+        });
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+
+    // Open and close the medicine form
+    document.getElementById("addMedicineButton").addEventListener("click",
+      function() {
+        document.getElementById("medicineForm").classList.add("open");
+      });
+
+    document.getElementById("cancelMedicineButton").addEventListener("click",
+      function() {
+        document.getElementById("medicineForm").classList.remove("open");
+      });
+
+    // Open and close the reminder form
+    document.getElementById("addReminderButton").addEventListener("click",
+      function() {
+        document.getElementById("reminderForm").classList.add("open");
+      });
+
+    document.getElementById("cancelReminderButton").addEventListener("click",
+      function() {
+        document.getElementById("reminderForm").classList.remove("open");
+      });
+  </script>
 
   <script type="module" src="js/dashboard.js"></script>
 </body>
