@@ -3,746 +3,825 @@ import { auth, db } from "./firebaseConfig.js";
 
 import {
   onAuthStateChanged,
-  signOut
+  signOut,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 import {
   ref,
-  get,
+  onValue,
   push,
   set,
   update,
-  remove,
-  runTransaction
+  remove
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
 let currentUser = null;
 let medicines = {};
 let reminders = {};
-let historyRecords = {};
-let isSavingMedicine = false;
-let isSavingReminder = false;
+let activities = {};
+let readNotifications = {};
+let unsubscribeFunctions = [];
+let busy = false;
 
-function showMessage(id, message, type = "error") {
+const pageInfo = {
+  medicinesPage: ["My Medicines", "Manage your medicine information."],
+  remindersPage: ["My Reminders", "Schedule and manage medicine reminders."],
+  historyPage: ["Activity History", "Review recent changes to your account."]
+};
+
+function escapeHTML(value = "") {
+  return String(value).replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
+
+function pathFor(path = "") {
+  return `users/${currentUser.uid}/${path}`;
+}
+
+function showMessage(id, message, type = "success") {
   const element = $(id);
   if (!element) return;
+
   element.textContent = message;
   element.className = `message show ${type}`;
 }
 
-function clearMessage(id) {
+function hideMessage(id) {
   const element = $(id);
-  if (!element) return;
-  element.textContent = "";
-  element.className = "message";
+  if (element) element.className = "message";
 }
 
-function userPath(section) {
-  return `users/${currentUser.uid}/${section}`;
+function localDate() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-function normalizeRole(value) {
-  return String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
-}
+function formatDate(value) {
+  if (!value) return "Date not set";
 
-function formatDate(dateString) {
-  if (!dateString) return "No date selected";
-  const parts = String(dateString).split("-").map(Number);
-  if (parts.length !== 3 || parts.some(Number.isNaN)) return String(dateString);
+  const [year, month, day] = value.split("-").map(Number);
 
-  return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString("en-PH", {
+  return new Date(year, month - 1, day).toLocaleDateString("en-PH", {
     month: "long",
     day: "numeric",
     year: "numeric"
   });
 }
 
-function formatTime(timeString) {
-  if (!timeString || !/^\d{2}:\d{2}$/.test(timeString)) {
-    return timeString || "No time selected";
-  }
+function formatTime(value) {
+  if (!value) return "";
 
-  const [hours, minutes] = timeString.split(":").map(Number);
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
+  const [hours, minutes] = value.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  return `${String(hours % 12 || 12).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${period}`;
+}
 
-  return date.toLocaleTimeString("en-PH", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true
+function formatTimestamp(value) {
+  return new Date(value || Date.now()).toLocaleString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
   });
 }
 
-function makeElement(tag, className, text) {
-  const element = document.createElement(tag);
-  if (className) element.className = className;
-  if (text !== undefined) element.textContent = text;
-  return element;
-}
+function setBusy(button, value, text = "Please wait...") {
+  if (!button) return;
 
-function showEmpty(containerId, message) {
-  $(containerId).replaceChildren(makeElement("div", "empty-state", message));
-}
-
-/* Add the quantity input to the existing medicine form. */
-function setupQuantityInput() {
-  const grid = document.querySelector("#addMedicineForm .form-grid");
-  if (!grid || $("medicineQuantity")) return;
-
-  const field = makeElement("div", "field");
-  const label = makeElement("label", "", "Initial quantity *");
-  label.htmlFor = "medicineQuantity";
-
-  const input = document.createElement("input");
-  input.id = "medicineQuantity";
-  input.name = "medicineQuantity";
-  input.type = "number";
-  input.min = "1";
-  input.max = "100000";
-  input.step = "1";
-  input.required = true;
-  input.placeholder = "e.g. 30 tablets";
-  input.inputMode = "numeric";
-
-  const help = makeElement("div", "muted small", "Enter the number of tablets, capsules, or doses you have.");
-
-  field.append(label, input, help);
-  grid.appendChild(field);
-}
-
-/* Add a separate intake summary to the dashboard. */
-function setupIntakeSummary() {
-  if ($("intakeSummary")) return;
-
-  const stats = document.querySelector(".stats");
-  if (!stats) return;
-
-  const panel = makeElement("section", "panel");
-  panel.id = "intakeSummary";
-  panel.style.marginTop = "0";
-  panel.innerHTML = `
-    <div class="panel-heading">
-      <div>
-        <h2>Medicine intake tracker</h2>
-        <p class="muted small">Record each dose taken and track your remaining quantity.</p>
-      </div>
-      <span aria-hidden="true" style="font-size:28px">💊</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
-      <div style="background:#f2f7f3;padding:15px;border-radius:12px">
-        <div class="muted small">Total added</div>
-        <div id="totalQuantity" style="font-size:24px;font-weight:800;color:#175638">0</div>
-      </div>
-      <div style="background:#f2f7f3;padding:15px;border-radius:12px">
-        <div class="muted small">Intakes recorded</div>
-        <div id="totalTaken" style="font-size:24px;font-weight:800;color:#175638">0</div>
-      </div>
-      <div style="background:#f2f7f3;padding:15px;border-radius:12px">
-        <div class="muted small">Remaining</div>
-        <div id="totalRemaining" style="font-size:24px;font-weight:800;color:#175638">0</div>
-      </div>
-    </div>
-    <p class="muted small" style="margin-bottom:0">
-      Counts are based on your saved quantities and the doses you record in Medminder.
-    </p>
-  `;
-
-  stats.insertAdjacentElement("afterend", panel);
-
-  const responsiveStyle = document.createElement("style");
-  responsiveStyle.textContent = `
-    @media(max-width:420px) {
-      #intakeSummary > div:nth-child(2) { gap:6px !important; }
-      #intakeSummary > div:nth-child(2) > div { padding:10px !important; }
-      #intakeSummary > div:nth-child(2) .muted { font-size:11px; }
-      #intakeSummary > div:nth-child(2) div[style*="font-size:24px"] { font-size:20px !important; }
-    }
-  `;
-  document.head.appendChild(responsiveStyle);
-}
-
-async function saveHistory(action, detail) {
-  try {
-    const historyRef = push(ref(db, userPath("history")));
-    await set(historyRef, {
-      action,
-      detail,
-      createdAt: Date.now()
-    });
-  } catch (error) {
-    console.error("Could not save activity history:", error);
+  if (value) {
+    button.dataset.originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = text;
+  } else {
+    button.disabled = false;
+    button.textContent = button.dataset.originalText || button.textContent;
   }
 }
 
-async function refreshData() {
+function showPage(pageId) {
+  document.querySelectorAll(".page").forEach(page => {
+    page.classList.toggle("active", page.id === pageId);
+  });
+
+  document.querySelectorAll(".nav-btn[data-page]").forEach(button => {
+    button.classList.toggle("active", button.dataset.page === pageId);
+  });
+
+  const info = pageInfo[pageId];
+  if (info) {
+    $("pageTitle").textContent = info[0];
+    $("pageSubtitle").textContent = info[1];
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function openOverlay(id) {
+  $(id)?.classList.add("open");
+}
+
+function closeOverlay(id) {
+  $(id)?.classList.remove("open");
+}
+
+async function logActivity(action, detail) {
   if (!currentUser) return;
 
-  const [medicineSnapshot, reminderSnapshot, historySnapshot] = await Promise.all([
-    get(ref(db, userPath("medicines"))),
-    get(ref(db, userPath("reminders"))),
-    get(ref(db, userPath("history")))
-  ]);
-
-  medicines = medicineSnapshot.exists() ? medicineSnapshot.val() : {};
-  reminders = reminderSnapshot.exists() ? reminderSnapshot.val() : {};
-  historyRecords = historySnapshot.exists() ? historySnapshot.val() : {};
-
-  renderMedicines();
-  renderReminders();
-  renderHistory();
-  renderSummary();
-  renderIntakeSummary();
-}
-
-function getQuantity(medicine) {
-  return Math.max(0, Number(medicine.quantityRemaining ?? 0) || 0);
-}
-
-function getInitialQuantity(medicine) {
-  return Math.max(0, Number(medicine.initialQuantity ?? 0) || 0);
-}
-
-function getTakenCount(medicine) {
-  return Math.max(0, Number(medicine.dosesTaken ?? 0) || 0);
-}
-
-function renderIntakeSummary() {
-  let totalQuantity = 0;
-  let totalTaken = 0;
-  let totalRemaining = 0;
-
-  Object.values(medicines || {}).forEach(medicine => {
-    totalQuantity += getInitialQuantity(medicine);
-    totalTaken += getTakenCount(medicine);
-    totalRemaining += getQuantity(medicine);
+  await set(push(ref(db, pathFor("activity"))), {
+    action,
+    detail,
+    timestamp: Date.now()
   });
-
-  if ($("totalQuantity")) $("totalQuantity").textContent = totalQuantity;
-  if ($("totalTaken")) $("totalTaken").textContent = totalTaken;
-  if ($("totalRemaining")) $("totalRemaining").textContent = totalRemaining;
 }
 
-function renderSummary() {
-  const medicineEntries = Object.entries(medicines || {});
-  const reminderEntries = Object.entries(reminders || {});
-
-  $("medicineCount").textContent = medicineEntries.length;
-  $("reminderCount").textContent = reminderEntries.length;
-
-  const now = new Date();
-  const today = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0")
-  ].join("-");
-  const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-
-  const upcoming = reminderEntries
-    .map(([id, reminder]) => ({ id, ...reminder }))
-    .filter(reminder => reminder.startDate && reminder.time)
-    .filter(reminder =>
-      reminder.startDate > today ||
-      (reminder.startDate === today && reminder.time >= currentTime)
-    )
-    .sort((a, b) =>
-      `${a.startDate}T${a.time}`.localeCompare(`${b.startDate}T${b.time}`)
-    );
-
-  if (!upcoming.length) {
-    $("nextReminder").textContent = "None yet";
-    $("nextReminderDetail").textContent = "No upcoming reminders";
-    return;
-  }
-
-  $("nextReminder").textContent = formatTime(upcoming[0].time);
-  $("nextReminderDetail").textContent =
-    `${upcoming[0].medicineName || "Medicine"} · ${formatDate(upcoming[0].startDate)}`;
+function getActivities() {
+  return Object.entries(activities)
+    .map(([id, item]) => ({ id, ...item }))
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 }
 
-function renderMedicines() {
-  const container = $("medicineList");
-  container.replaceChildren();
-
-  const entries = Object.entries(medicines || {}).sort((a, b) =>
-    String(a[1].name || "").localeCompare(String(b[1].name || ""))
-  );
-
-  if (!entries.length) {
-    showEmpty("medicineList", "No medicines added yet. Select “Add medicine” to get started.");
-  }
-
-  for (const [id, medicine] of entries) {
-    const record = makeElement("article", "record");
-    const main = makeElement("div", "record-main");
-    const title = makeElement("div", "record-title", medicine.name || "Unnamed medicine");
-
-    const initial = getInitialQuantity(medicine);
-    const remaining = getQuantity(medicine);
-    const taken = getTakenCount(medicine);
-
-    const quantityText = initial > 0
-      ? `Initial quantity: ${initial}\nIntakes recorded: ${taken}\nRemaining: ${remaining}`
-      : "Quantity not set yet. Set your starting quantity to track intake.";
-
-    const detailLines = [
-      medicine.dosage ? `Dosage: ${medicine.dosage}` : "",
-      medicine.frequency ? `Instructions: ${medicine.frequency}` : "",
-      quantityText,
-      medicine.notes ? `Notes: ${medicine.notes}` : ""
-    ].filter(Boolean);
-
-    const detail = makeElement("div", "record-detail", detailLines.join("\n"));
-    const actions = makeElement("div", "record-actions");
-
-    if (initial > 0 && remaining > 0) {
-      const takenButton = makeElement("button", "btn btn-primary btn-small", "✓ Mark as taken");
-      takenButton.type = "button";
-
-      takenButton.addEventListener("click", async () => {
-        if (!confirm(`Record one intake of ${medicine.name || "this medicine"}? This will subtract 1 from the remaining quantity.`)) {
-          return;
-        }
-
-        takenButton.disabled = true;
-
-        try {
-          const medicineRef = ref(db, `${userPath("medicines")}/${id}`);
-          const result = await runTransaction(medicineRef, current => {
-            if (!current) return;
-            const currentRemaining = Math.max(0, Number(current.quantityRemaining ?? 0) || 0);
-
-            if (currentRemaining < 1) return;
-
-            current.quantityRemaining = currentRemaining - 1;
-            current.dosesTaken = Math.max(0, Number(current.dosesTaken ?? 0) || 0) + 1;
-            current.lastTakenAt = Date.now();
-
-            return current;
-          });
-
-          if (!result.committed) {
-            showPageMessage("No remaining quantity was available to deduct.");
-          } else {
-            await saveHistory(
-              "Medicine intake recorded",
-              `${medicine.name || "Medicine"} · 1 unit recorded · ${formatTime(new Date().toTimeString().slice(0, 5))}`
-            );
-
-            await refreshData();
-            showPageMessage(
-              `Intake recorded for ${medicine.name}. Remaining quantity: ${getQuantity(result.snapshot.val())}.`,
-              "success"
-            );
-          }
-        } catch (error) {
-          console.error("Could not record medicine intake:", error);
-          showPageMessage("Could not record this intake. Please check your connection and try again.");
-        } finally {
-          takenButton.disabled = false;
-        }
-      });
-
-      actions.appendChild(takenButton);
-    }
-
-    const stockButton = makeElement(
-      "button",
-      "btn btn-secondary btn-small",
-      initial > 0 ? "＋ Add stock" : "Set quantity"
-    );
-    stockButton.type = "button";
-
-    stockButton.addEventListener("click", async () => {
-      const input = prompt(
-        initial > 0
-          ? `How many additional units of ${medicine.name} are you adding?`
-          : `What is the starting quantity for ${medicine.name}?`,
-        "30"
-      );
-
-      if (input === null) return;
-
-      const amount = Number(input);
-      if (!Number.isInteger(amount) || amount < 1 || amount > 100000) {
-        showPageMessage("Enter a whole number between 1 and 100,000.");
-        return;
-      }
-
-      stockButton.disabled = true;
-
-      try {
-        const medicineRef = ref(db, `${userPath("medicines")}/${id}`);
-
-        const result = await runTransaction(medicineRef, current => {
-          if (!current) return;
-
-          const oldInitial = Math.max(0, Number(current.initialQuantity ?? 0) || 0);
-          const oldRemaining = Math.max(0, Number(current.quantityRemaining ?? 0) || 0);
-
-          current.initialQuantity = oldInitial + amount;
-          current.quantityRemaining = oldRemaining + amount;
-          current.stockUpdatedAt = Date.now();
-
-          return current;
-        });
-
-        if (!result.committed) {
-          showPageMessage("Could not update the medicine quantity.");
-          return;
-        }
-
-        await saveHistory(
-          "Medicine stock added",
-          `${medicine.name || "Medicine"} · ${amount} units added`
-        );
-
-        await refreshData();
-        showPageMessage(`Added ${amount} units to ${medicine.name}.`, "success");
-      } catch (error) {
-        console.error("Stock update error:", error);
-        showPageMessage("Could not update the quantity. Please try again.");
-      } finally {
-        stockButton.disabled = false;
-      }
-    });
-
-    const removeButton = makeElement("button", "btn btn-danger btn-small", "Remove");
-    removeButton.type = "button";
-
-    removeButton.addEventListener("click", async () => {
-      if (!confirm(`Remove ${medicine.name || "this medicine"}? Its associated reminders will not be deleted automatically.`)) {
-        return;
-      }
-
-      try {
-        await remove(ref(db, `${userPath("medicines")}/${id}`));
-        await saveHistory("Medicine removed", medicine.name || "Medicine");
-        await refreshData();
-        showPageMessage("Medicine removed successfully.", "success");
-      } catch (error) {
-        console.error(error);
-        showPageMessage("Could not remove the medicine. Please try again.");
-      }
-    });
-
-    actions.append(stockButton, removeButton);
-    main.append(title, detail);
-    record.append(main, actions);
-    container.appendChild(record);
-  }
-
-  // Refresh the reminder medicine dropdown while retaining a valid selection.
-  const selector = $("reminderMedicine");
-  const previousValue = selector.value;
-  selector.replaceChildren();
-
-  const placeholder = makeElement("option", "", "Choose a medicine");
-  placeholder.value = "";
-  selector.appendChild(placeholder);
-
-  for (const [id, medicine] of Object.entries(medicines || {})) {
-    const option = makeElement("option", "", medicine.name || "Unnamed medicine");
-    option.value = id;
-    selector.appendChild(option);
-  }
-
-  if (medicines && medicines[previousValue]) {
-    selector.value = previousValue;
-  }
+function medicineName(id) {
+  return medicines[id]?.name || "Medicine unavailable";
 }
 
-function renderReminders() {
-  const container = $("reminderList");
-  container.replaceChildren();
+function renderNotificationIndicators() {
+  const unread = getActivities().filter(item => !readNotifications[item.id]).length;
 
-  const entries = Object.entries(reminders || {}).sort((a, b) =>
-    `${a[1].startDate || ""}T${a[1].time || ""}`.localeCompare(
-      `${b[1].startDate || ""}T${b[1].time || ""}`
-    )
-  );
-
-  if (!entries.length) {
-    showEmpty("reminderList", "No reminders yet. Open “New reminder” to choose a date and time.");
-  }
-
-  for (const [id, reminder] of entries) {
-    const record = makeElement("article", "record");
-    const main = makeElement("div", "record-main");
-    const title = makeElement("div", "record-title", reminder.medicineName || "Medication reminder");
-
-    const lines = [
-      `📅 ${formatDate(reminder.startDate)}`,
-      `🕒 ${formatTime(reminder.time)}`
-    ];
-    if (reminder.notes) lines.push(`Notes: ${reminder.notes}`);
-
-    const detail = makeElement("div", "record-detail", lines.join("\n"));
-    const actions = makeElement("div", "record-actions");
-    const deleteButton = makeElement("button", "btn btn-danger btn-small", "Remove reminder");
-    deleteButton.type = "button";
-
-    deleteButton.addEventListener("click", async () => {
-      if (!confirm(`Remove the reminder for ${reminder.medicineName || "this medicine"}?`)) return;
-
-      try {
-        await remove(ref(db, `${userPath("reminders")}/${id}`));
-        await saveHistory(
-          "Reminder removed",
-          `${reminder.medicineName || "Medicine"} · ${formatDate(reminder.startDate)} · ${formatTime(reminder.time)}`
-        );
-        await refreshData();
-        showPageMessage("Reminder removed successfully.", "success");
-      } catch (error) {
-        console.error(error);
-        showPageMessage("Could not remove the reminder. Please try again.");
-      }
-    });
-
-    actions.appendChild(deleteButton);
-    main.append(title, detail);
-    record.append(main, actions);
-    container.appendChild(record);
-  }
-
-  renderSummary();
+  $("notificationDot").hidden = unread === 0;
+  $("navNotificationDot").hidden = unread === 0;
 }
 
 function renderHistory() {
-  const container = $("historyList");
-  container.replaceChildren();
+  const items = getActivities();
 
-  const entries = Object.entries(historyRecords || {}).sort(
-    (a, b) => Number(b[1].createdAt || 0) - Number(a[1].createdAt || 0)
-  );
+  $("historyList").innerHTML = items.length
+    ? items.slice(0, 100).map(item => `
+        <article class="record">
+          <div class="record-main">
+            <div class="record-title">${escapeHTML(item.action || "Activity")}</div>
+            <div class="record-detail">
+              ${escapeHTML(item.detail || "")}<br>
+              ${escapeHTML(formatTimestamp(item.timestamp))}
+            </div>
+          </div>
+        </article>
+      `).join("")
+    : `<div class="empty-state">No activities yet. Add a medicine or reminder to get started.</div>`;
 
-  if (!entries.length) {
-    showEmpty("historyList", "No activity has been recorded yet.");
-    return;
-  }
+  $("notificationList").innerHTML = items.length
+    ? items.slice(0, 30).map(item => `
+        <article class="record" style="${readNotifications[item.id] ? "" : "background:#f2f9f4;padding-left:10px;padding-right:10px;border-radius:8px"}">
+          <div class="record-main">
+            <div class="record-title">
+              ${escapeHTML(item.action || "Activity")}
+              ${readNotifications[item.id] ? "" : " · New"}
+            </div>
+            <div class="record-detail">
+              ${escapeHTML(item.detail || "")}<br>
+              ${escapeHTML(formatTimestamp(item.timestamp))}
+            </div>
+          </div>
+        </article>
+      `).join("")
+    : `<div class="empty-state">No notifications yet.</div>`;
 
-  for (const [, item] of entries) {
-    const record = makeElement("article", "record");
-    const main = makeElement("div", "record-main");
-    const title = makeElement("div", "record-title", item.action || "Activity");
-    const detail = makeElement("div", "record-detail", item.detail || "");
-
-    const timestamp = item.createdAt
-      ? new Date(item.createdAt).toLocaleString("en-PH", {
-          dateStyle: "medium",
-          timeStyle: "short"
-        })
-      : "";
-
-    const date = makeElement("div", "record-detail", timestamp);
-    main.append(title, detail, date);
-    record.appendChild(main);
-    container.appendChild(record);
-  }
+  renderNotificationIndicators();
 }
 
-async function loadUserData(user) {
-  currentUser = user;
-  $("userLabel").textContent = user.email || "Your account";
+function renderMedicineSelect() {
+  const select = $("reminderMedicine");
+  const previous = select.value;
 
-  try {
-    const snapshot = await get(ref(db, `users/${user.uid}`));
-    const userData = snapshot.exists() ? snapshot.val() : {};
-    const profile = userData.profile || {};
+  select.innerHTML = '<option value="">Choose a medicine</option>' +
+    Object.entries(medicines).map(([id, medicine]) => `
+      <option value="${escapeHTML(id)}">${escapeHTML(medicine.name || "Unnamed medicine")}</option>
+    `).join("");
 
-    const role = normalizeRole(
-      userData.role || profile.role || userData.accountType || profile.accountType
-    );
+  if (medicines[previous]) select.value = previous;
+}
 
-    if (["patient", "medicine_taker"].includes(role)) {
-      window.location.replace("patient-dashboard.html");
-      return;
+function renderMedicines() {
+  const entries = Object.entries(medicines);
+  $("medicineCount").textContent = entries.length;
+
+  $("medicineList").innerHTML = entries.length
+    ? entries.map(([id, medicine]) => `
+        <article class="record">
+          <div class="record-main">
+            <div class="record-title">💊 ${escapeHTML(medicine.name || "Unnamed medicine")}</div>
+            <div class="record-detail">
+              ${medicine.dosage ? `Dosage: ${escapeHTML(medicine.dosage)}<br>` : ""}
+              ${medicine.frequency ? `Instructions: ${escapeHTML(medicine.frequency)}<br>` : ""}
+              ${medicine.notes ? `Notes: ${escapeHTML(medicine.notes)}` : ""}
+            </div>
+          </div>
+          <div class="record-actions">
+            <button class="btn secondary small-btn" data-edit-medicine="${escapeHTML(id)}">Edit</button>
+            <button class="btn danger small-btn" data-delete-medicine="${escapeHTML(id)}">Delete</button>
+          </div>
+        </article>
+      `).join("")
+    : `<div class="empty-state">No medicines saved yet. Select Add medicine to get started.</div>`;
+
+  renderMedicineSelect();
+  renderReminders();
+}
+
+let calendarYear = new Date().getFullYear();
+let calendarMonth = new Date().getMonth();
+let selectedDate = "";
+
+function renderCalendar() {
+  const grid = $("calendarGrid");
+  const first = new Date(calendarYear, calendarMonth, 1);
+  const numberOfDays = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+  $("calendarMonth").textContent = first.toLocaleDateString("en-PH", {
+    month: "long",
+    year: "numeric"
+  });
+
+  grid.replaceChildren();
+
+  ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach(day => {
+    const label = document.createElement("div");
+    label.className = "weekday";
+    label.textContent = day;
+    grid.appendChild(label);
+  });
+
+  for (let blank = 0; blank < first.getDay(); blank++) {
+    grid.appendChild(document.createElement("div"));
+  }
+
+  for (let day = 1; day <= numberOfDays; day++) {
+    const date = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "calendar-day";
+    button.textContent = day;
+
+    if (date === localDate()) button.classList.add("today");
+    if (date === selectedDate) button.classList.add("selected");
+
+    if (Object.values(reminders).some(reminder => reminder.date === date)) {
+      button.classList.add("has-reminder");
     }
 
-    const displayName =
-      profile.firstName ||
-      profile.first_name ||
-      user.displayName ||
-      user.email?.split("@")[0] ||
-      "there";
+    if (date < localDate()) button.disabled = true;
 
-    $("welcomeTitle").textContent = `Welcome, ${displayName}!`;
-    $("loading").style.display = "none";
-    $("app").style.display = "block";
-
-    setupQuantityInput();
-    setupIntakeSummary();
-
-    await refreshData();
-  } catch (error) {
-    console.error("Dashboard loading error:", error);
-    $("loading").textContent =
-      "Unable to load your dashboard. Check your Firebase database rules and connection, then reload the page.";
-  }
-}
-
-$("addMedicineForm").addEventListener("submit", async event => {
-  event.preventDefault();
-  if (!currentUser || isSavingMedicine) return;
-
-  const name = $("medicineName").value.trim();
-  const dosage = $("medicineDosage").value.trim();
-  const frequency = $("medicineFrequency").value.trim();
-  const notes = $("medicineNotes").value.trim();
-  const quantity = Number($("medicineQuantity")?.value);
-
-  if (!name) {
-    showPageMessage("Please enter a medicine name.");
-    return;
-  }
-
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100000) {
-    showPageMessage("Please enter a valid initial quantity.");
-    return;
-  }
-
-  isSavingMedicine = true;
-  $("saveMedicineButton").disabled = true;
-  clearMessage("pageMessage");
-
-  try {
-    const medicineRef = push(ref(db, userPath("medicines")));
-
-    await set(medicineRef, {
-      name,
-      dosage,
-      frequency,
-      notes,
-      initialQuantity: quantity,
-      quantityRemaining: quantity,
-      dosesTaken: 0,
-      createdAt: Date.now()
+    button.addEventListener("click", () => {
+      selectedDate = date;
+      $("reminderStartDate").value = date;
+      $("selectedDateLabel").textContent = formatDate(date);
+      renderCalendar();
     });
 
-    await saveHistory("Medicine added", `${name} · Initial quantity: ${quantity}`);
-
-    $("addMedicineForm").reset();
-    $("medicineForm").classList.remove("open");
-
-    await refreshData();
-    showPageMessage(`${name} saved with ${quantity} units available.`, "success");
-  } catch (error) {
-    console.error("Medicine save error:", error);
-    showPageMessage("Could not save the medicine. Check your Firebase database rules and try again.");
-  } finally {
-    isSavingMedicine = false;
-    $("saveMedicineButton").disabled = false;
+    grid.appendChild(button);
   }
+
+  const current = new Date();
+  $("calendarPrev").disabled =
+    calendarYear === current.getFullYear() &&
+    calendarMonth <= current.getMonth();
+}
+
+function renderReminders() {
+  const entries = Object.entries(reminders).sort((a, b) =>
+    `${a[1].date || "9999"} ${a[1].time || "99:99"}`.localeCompare(
+      `${b[1].date || "9999"} ${b[1].time || "99:99"}`
+    )
+  );
+
+  const now = Date.now();
+  const upcoming = entries.filter(([, reminder]) =>
+    reminder.date && reminder.time &&
+    new Date(`${reminder.date}T${reminder.time}:00`).getTime() >= now
+  );
+
+  $("reminderCount").textContent = entries.length;
+
+  if (upcoming.length) {
+    $("nextReminder").textContent = formatTime(upcoming[0][1].time);
+    $("nextReminderDetail").textContent =
+      `${formatDate(upcoming[0][1].date)} · ${medicineName(upcoming[0][1].medicineId)}`;
+  } else {
+    $("nextReminder").textContent = "None yet";
+    $("nextReminderDetail").textContent = "No upcoming reminders";
+  }
+
+  $("reminderList").innerHTML = entries.length
+    ? entries.map(([id, reminder]) => `
+        <article class="record">
+          <div class="record-main">
+            <div class="record-title">🔔 ${escapeHTML(medicineName(reminder.medicineId))}</div>
+            <div class="record-detail">
+              ${escapeHTML(formatDate(reminder.date))} · ${escapeHTML(formatTime(reminder.time))}
+              ${reminder.notes ? `<br>${escapeHTML(reminder.notes)}` : ""}
+            </div>
+          </div>
+          <div class="record-actions">
+            <button class="btn secondary small-btn" data-edit-reminder="${escapeHTML(id)}">Edit</button>
+            <button class="btn danger small-btn" data-delete-reminder="${escapeHTML(id)}">Delete</button>
+          </div>
+        </article>
+      `).join("")
+    : `<div class="empty-state">No reminders scheduled yet.</div>`;
+
+  renderCalendar();
+}
+
+function updateTime() {
+  const hour = Number($("timeHour").value || "08");
+  const minute = $("timeMinute").value || "00";
+  const period = $("timePeriod").value || "AM";
+
+  $("timeDisplay").textContent =
+    `${String(hour).padStart(2, "0")}:${minute} ${period}`;
+
+  let hour24 = hour % 12;
+  if (period === "PM") hour24 += 12;
+
+  $("reminderTime").value =
+    `${String(hour24).padStart(2, "0")}:${minute}`;
+}
+
+// Build time choices.
+for (let hour = 1; hour <= 12; hour++) {
+  const value = String(hour).padStart(2, "0");
+  $("timeHour").add(new Option(value, value));
+}
+
+for (let minute = 0; minute < 60; minute += 5) {
+  const value = String(minute).padStart(2, "0");
+  $("timeMinute").add(new Option(value, value));
+}
+
+$("timeHour").value = "08";
+$("timeMinute").value = "00";
+
+["timeHour", "timeMinute", "timePeriod"].forEach(id => {
+  $(id).addEventListener("change", updateTime);
 });
 
-$("addReminderForm").addEventListener("submit", async event => {
+updateTime();
+
+// Page navigation.
+document.querySelectorAll(".nav-btn[data-page]").forEach(button => {
+  button.addEventListener("click", () => showPage(button.dataset.page));
+});
+
+$("toggleMedicineForm").addEventListener("click", () => {
+  $("medicineForm").classList.toggle("open");
+});
+
+$("cancelMedicineForm").addEventListener("click", () => {
+  $("addMedicineForm").reset();
+  $("medicineEditId").value = "";
+  $("medicineForm").classList.remove("open");
+  $("medicineFormTitle").textContent = "Add a medicine";
+  $("saveMedicineButton").textContent = "Save medicine";
+  hideMessage("pageMessage");
+});
+
+$("quickAddReminder").addEventListener("click", () => {
+  if (!Object.keys(medicines).length) {
+    showPage("medicinesPage");
+    $("medicineForm").classList.add("open");
+    showMessage("pageMessage", "Please add a medicine before creating a reminder.", "error");
+    return;
+  }
+
+  showPage("remindersPage");
+  $("reminderForm").classList.add("open");
+});
+
+$("toggleReminderForm").addEventListener("click", () => {
+  if (!Object.keys(medicines).length) {
+    showMessage("reminderFormMessage", "Please add a medicine first.", "error");
+    return;
+  }
+
+  $("reminderForm").classList.toggle("open");
+});
+
+$("cancelReminderForm").addEventListener("click", () => {
+  resetReminderForm();
+  $("reminderForm").classList.remove("open");
+});
+
+function resetReminderForm() {
+  $("addReminderForm").reset();
+  $("reminderEditId").value = "";
+  $("saveReminderButton").textContent = "Save reminder";
+  selectedDate = "";
+  $("reminderStartDate").value = "";
+  $("selectedDateLabel").textContent = "Select a date on the calendar";
+  $("timeHour").value = "08";
+  $("timeMinute").value = "00";
+  $("timePeriod").value = "AM";
+  updateTime();
+  hideMessage("reminderFormMessage");
+  renderCalendar();
+}
+
+// Calendar navigation.
+$("calendarPrev").addEventListener("click", () => {
+  if ($("calendarPrev").disabled) return;
+
+  calendarMonth--;
+  if (calendarMonth < 0) {
+    calendarMonth = 11;
+    calendarYear--;
+  }
+  renderCalendar();
+});
+
+$("calendarNext").addEventListener("click", () => {
+  calendarMonth++;
+  if (calendarMonth > 11) {
+    calendarMonth = 0;
+    calendarYear++;
+  }
+  renderCalendar();
+});
+
+// Add and update medicine.
+$("addMedicineForm").addEventListener("submit", async event => {
   event.preventDefault();
-  if (!currentUser || isSavingReminder) return;
+  if (busy) return;
 
-  const medicineId = $("reminderMedicine").value;
-  const medicine = medicines[medicineId];
-  const startDate = $("reminderStartDate").value;
-  const time = $("reminderTime").value;
-  const notes = $("reminderNotes").value.trim();
+  const name = $("medicineName").value.trim();
+  if (!name) return;
 
-  clearMessage("reminderFormMessage");
+  const id = $("medicineEditId").value;
+  const button = $("saveMedicineButton");
 
-  if (!medicineId || !medicine) {
-    showMessage("reminderFormMessage", "Please add and select a medicine first.");
-    return;
-  }
-
-  if (!startDate) {
-    showMessage("reminderFormMessage", "Please click a date on the calendar.");
-    return;
-  }
-
-  if (!time || !/^\d{2}:\d{2}$/.test(time)) {
-    showMessage("reminderFormMessage", "Please select a valid reminder time.");
-    return;
-  }
-
-  const parts = startDate.split("-").map(Number);
-  const selectedDate = new Date(parts[0], parts[1] - 1, parts[2]);
-  selectedDate.setHours(0, 0, 0, 0);
-
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  if (selectedDate < today) {
-    showMessage("reminderFormMessage", "Please select today or a future date.");
-    return;
-  }
-
-  const todayString = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0")
-  ].join("-");
-
-  if (startDate === todayString) {
-    const [hours, minutes] = time.split(":").map(Number);
-    if (hours * 60 + minutes < now.getHours() * 60 + now.getMinutes()) {
-      showMessage("reminderFormMessage", "That time has already passed today. Please choose a later time.");
-      return;
-    }
-  }
-
-  isSavingReminder = true;
-  $("saveReminderButton").disabled = true;
+  busy = true;
+  setBusy(button, true, "Saving...");
 
   try {
-    const reminderRef = push(ref(db, userPath("reminders")));
-    const reminderData = {
-      medicineId,
-      medicineName: medicine.name || "Medicine",
-      time,
-      startDate,
-      notes,
-      createdAt: Date.now()
+    const data = {
+      name,
+      dosage: $("medicineDosage").value.trim(),
+      frequency: $("medicineFrequency").value.trim(),
+      notes: $("medicineNotes").value.trim(),
+      updatedAt: Date.now()
     };
 
-    await set(reminderRef, reminderData);
-    await saveHistory(
-      "Reminder added",
-      `${reminderData.medicineName} · ${formatDate(startDate)} · ${formatTime(time)}${notes ? ` · ${notes}` : ""}`
-    );
+    if (id) {
+      await update(ref(db, pathFor(`medicines/${id}`)), data);
+      await logActivity("Medicine updated", `Updated ${name}.`);
+    } else {
+      data.createdAt = Date.now();
+      await set(push(ref(db, pathFor("medicines"))), data);
+      await logActivity("Medicine added", `Added ${name}.`);
+    }
 
-    $("addReminderForm").reset();
-    $("reminderForm").classList.remove("open");
-    document.dispatchEvent(new CustomEvent("medminder:resetReminderPicker"));
-
-    await refreshData();
-
-    showPageMessage(
-      `Reminder saved for ${reminderData.medicineName} on ${formatDate(startDate)} at ${formatTime(time)}.`,
-      "success"
-    );
+    $("addMedicineForm").reset();
+    $("medicineEditId").value = "";
+    $("medicineForm").classList.remove("open");
+    $("medicineFormTitle").textContent = "Add a medicine";
+    showMessage("pageMessage", id ? "Medicine updated successfully." : "Medicine added successfully.");
   } catch (error) {
-    console.error("Reminder save error:", error);
-    showMessage("reminderFormMessage", "Could not save the reminder. Check your Firebase database rules and try again.");
+    showMessage("pageMessage", error.message, "error");
   } finally {
-    isSavingReminder = false;
-    $("saveReminderButton").disabled = false;
+    busy = false;
+    setBusy(button, false);
   }
 });
 
+// Edit or delete a medicine.
+$("medicineList").addEventListener("click", async event => {
+  const editButton = event.target.closest("[data-edit-medicine]");
+  const deleteButton = event.target.closest("[data-delete-medicine]");
+
+  if (editButton) {
+    const id = editButton.dataset.editMedicine;
+    const medicine = medicines[id];
+    if (!medicine) return;
+
+    $("medicineEditId").value = id;
+    $("medicineName").value = medicine.name || "";
+    $("medicineDosage").value = medicine.dosage || "";
+    $("medicineFrequency").value = medicine.frequency || "";
+    $("medicineNotes").value = medicine.notes || "";
+    $("medicineFormTitle").textContent = "Edit medicine";
+    $("saveMedicineButton").textContent = "Update medicine";
+    $("medicineForm").classList.add("open");
+    return;
+  }
+
+  if (deleteButton) {
+    const id = deleteButton.dataset.deleteMedicine;
+    const medicine = medicines[id];
+    if (!medicine || !confirm(`Delete ${medicine.name} and its associated reminders?`)) return;
+
+    try {
+      const changes = {
+        [pathFor(`medicines/${id}`)]: null
+      };
+
+      for (const [reminderId, reminder] of Object.entries(reminders)) {
+        if (reminder.medicineId === id) {
+          changes[pathFor(`reminders/${reminderId}`)] = null;
+        }
+      }
+
+      await update(ref(db), changes);
+      await logActivity("Medicine deleted", `Deleted ${medicine.name} and its associated reminders.`);
+    } catch (error) {
+      alert("Unable to delete medicine: " + error.message);
+    }
+  }
+});
+
+// Add or update a reminder.
+$("addReminderForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (busy) return;
+
+  const medicineId = $("reminderMedicine").value;
+  const date = $("reminderStartDate").value;
+  const time = $("reminderTime").value;
+  const id = $("reminderEditId").value;
+
+  if (!medicines[medicineId]) {
+    showMessage("reminderFormMessage", "Please select a medicine.", "error");
+    return;
+  }
+
+  if (!date || date < localDate()) {
+    showMessage("reminderFormMessage", "Choose today or a future date.", "error");
+    return;
+  }
+
+  const button = $("saveReminderButton");
+  busy = true;
+  setBusy(button, true, "Saving...");
+
+  try {
+    const data = {
+      medicineId,
+      date,
+      time,
+      notes: $("reminderNotes").value.trim(),
+      updatedAt: Date.now()
+    };
+
+    if (id) {
+      await update(ref(db, pathFor(`reminders/${id}`)), data);
+      await logActivity("Reminder updated", `Updated ${medicineName(medicineId)} for ${formatDate(date)} at ${formatTime(time)}.`);
+    } else {
+      data.createdAt = Date.now();
+      await set(push(ref(db, pathFor("reminders"))), data);
+      await logActivity("Reminder added", `Scheduled ${medicineName(medicineId)} for ${formatDate(date)} at ${formatTime(time)}.`);
+    }
+
+    resetReminderForm();
+    $("reminderForm").classList.remove("open");
+    showMessage("pageMessage", id ? "Reminder updated successfully." : "Reminder saved successfully.");
+  } catch (error) {
+    showMessage("reminderFormMessage", error.message, "error");
+  } finally {
+    busy = false;
+    setBusy(button, false);
+  }
+});
+
+// Edit or delete a reminder.
+$("reminderList").addEventListener("click", async event => {
+  const editButton = event.target.closest("[data-edit-reminder]");
+  const deleteButton = event.target.closest("[data-delete-reminder]");
+
+  if (editButton) {
+    const id = editButton.dataset.editReminder;
+    const reminder = reminders[id];
+    if (!reminder) return;
+
+    showPage("remindersPage");
+    $("reminderForm").classList.add("open");
+    $("reminderEditId").value = id;
+    $("reminderMedicine").value = reminder.medicineId || "";
+
+    selectedDate = reminder.date || "";
+    $("reminderStartDate").value = selectedDate;
+    $("selectedDateLabel").textContent =
+      selectedDate ? formatDate(selectedDate) : "Select a date on the calendar";
+
+    if (selectedDate) {
+      const date = new Date(`${selectedDate}T12:00:00`);
+      calendarYear = date.getFullYear();
+      calendarMonth = date.getMonth();
+    }
+
+    const [hours, minutes] = (reminder.time || "08:00").split(":").map(Number);
+    $("timeHour").value = String(hours % 12 || 12).padStart(2, "0");
+    $("timeMinute").value = String(minutes).padStart(2, "0");
+    $("timePeriod").value = hours >= 12 ? "PM" : "AM";
+    $("reminderNotes").value = reminder.notes || "";
+    $("saveReminderButton").textContent = "Update reminder";
+
+    updateTime();
+    renderCalendar();
+    return;
+  }
+
+  if (deleteButton) {
+    const id = deleteButton.dataset.deleteReminder;
+    const reminder = reminders[id];
+    if (!reminder || !confirm("Delete this reminder?")) return;
+
+    try {
+      await remove(ref(db, pathFor(`reminders/${id}`)));
+      await logActivity("Reminder deleted", `Deleted the reminder for ${medicineName(reminder.medicineId)}.`);
+    } catch (error) {
+      alert("Unable to delete reminder: " + error.message);
+    }
+  }
+});
+
+// Notifications and profile.
+$("notificationButton").addEventListener("click", () => openOverlay("notificationsOverlay"));
+$("navNotifications").addEventListener("click", () => openOverlay("notificationsOverlay"));
+$("profileButton").addEventListener("click", () => openOverlay("profileOverlay"));
+$("navProfile").addEventListener("click", () => openOverlay("profileOverlay"));
+
+document.querySelectorAll("[data-close]").forEach(button => {
+  button.addEventListener("click", () => closeOverlay(button.dataset.close));
+});
+
+document.querySelectorAll(".overlay").forEach(overlay => {
+  overlay.addEventListener("click", event => {
+    if (event.target === overlay) closeOverlay(overlay.id);
+  });
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    document.querySelectorAll(".overlay.open").forEach(close => close.classList.remove("open"));
+  }
+});
+
+$("viewHistoryButton").addEventListener("click", () => {
+  closeOverlay("notificationsOverlay");
+  showPage("historyPage");
+});
+
+$("refreshHistory").addEventListener("click", renderHistory);
+
+$("markReadButton").addEventListener("click", async () => {
+  try {
+    const changes = {};
+
+    getActivities().forEach(item => {
+      changes[item.id] = true;
+    });
+
+    if (Object.keys(changes).length) {
+      await update(ref(db, pathFor("readNotifications")), changes);
+    }
+  } catch (error) {
+    alert("Unable to update notifications: " + error.message);
+  }
+});
+
+// Change account password.
+$("passwordForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!currentUser) return;
+
+  const currentPassword = $("currentPassword").value;
+  const newPassword = $("newPassword").value;
+  const confirmPassword = $("confirmNewPassword").value;
+
+  if (newPassword.length < 8) {
+    showMessage("passwordMessage", "Your new password must contain at least 8 characters.", "error");
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    showMessage("passwordMessage", "The new passwords do not match.", "error");
+    return;
+  }
+
+  if (newPassword === currentPassword) {
+    showMessage("passwordMessage", "Choose a password different from your current password.", "error");
+    return;
+  }
+
+  const button = $("changePasswordButton");
+  setBusy(button, true, "Updating...");
+
+  try {
+    const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+    await reauthenticateWithCredential(currentUser, credential);
+    await updatePassword(currentUser, newPassword);
+
+    $("passwordForm").reset();
+    showMessage("passwordMessage", "Your password has been updated successfully.");
+
+    await logActivity("Password changed", "Your account password was changed.");
+  } catch (error) {
+    let message = error.message;
+
+    if ([
+      "auth/invalid-credential",
+      "auth/wrong-password",
+      "auth/invalid-login-credentials"
+    ].includes(error.code)) {
+      message = "Your current password is incorrect.";
+    } else if (error.code === "auth/weak-password") {
+      message = "Choose a stronger password.";
+    } else if (error.code === "auth/requires-recent-login") {
+      message = "Please log in again before changing your password.";
+    }
+
+    showMessage("passwordMessage", message, "error");
+  } finally {
+    setBusy(button, false);
+  }
+});
+
+// Log out.
 $("logoutButton").addEventListener("click", async () => {
+  if (!confirm("Are you sure you want to log out?")) return;
+
   try {
     await signOut(auth);
     window.location.replace("login.html");
   } catch (error) {
-    console.error("Logout error:", error);
-    showPageMessage("Unable to log out. Please try again.");
+    alert("Unable to log out: " + error.message);
   }
 });
 
-onAuthStateChanged(auth, async user => {
+// Firebase data subscriptions.
+function stopSubscriptions() {
+  unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
+  unsubscribeFunctions = [];
+}
+
+function subscribe(path, callback) {
+  const unsubscribe = onValue(
+    ref(db, pathFor(path)),
+    snapshot => callback(snapshot.val() || {}),
+    error => {
+      console.error(`Firebase error (${path}):`, error);
+      showMessage(
+        "pageMessage",
+        "Unable to load data. Check your internet connection and Firebase Database Rules.",
+        "error"
+      );
+    }
+  );
+
+  unsubscribeFunctions.push(unsubscribe);
+}
+
+onAuthStateChanged(auth, user => {
   if (!user) {
+    stopSubscriptions();
     window.location.replace("login.html");
     return;
   }
 
-  await loadUserData(user);
+  stopSubscriptions();
+  currentUser = user;
+
+  $("profileName").textContent = user.displayName || "My account";
+  $("profileModalName").textContent = user.displayName || "My account";
+  $("profileEmail").textContent = user.email || "";
+  $("welcomeTitle").textContent = `Welcome, ${(user.displayName || "there").split(" ")[0]}! 👋`;
+  $("profileAvatar").textContent = (user.displayName || user.email || "U").charAt(0).toUpperCase();
+
+  subscribe("medicines", value => {
+    medicines = value;
+    renderMedicines();
+  });
+
+  subscribe("reminders", value => {
+    reminders = value;
+    renderReminders();
+  });
+
+  subscribe("activity", value => {
+    activities = value;
+    renderHistory();
+  });
+
+  subscribe("readNotifications", value => {
+    readNotifications = value;
+    renderHistory();
+  });
 });

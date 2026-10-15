@@ -12,915 +12,652 @@
       --green: #175638;
       --green-dark: #10442b;
       --green-light: #e7f4eb;
-      --page: #f2f7f3;
+      --page: #f4f8f5;
       --white: #ffffff;
-      --text: #1d3327;
-      --muted: #718077;
-      --border: #e0e9e2;
-      --danger: #b42318;
-      --shadow: 0 8px 30px rgba(24, 65, 42, .06);
+      --text: #24372c;
+      --muted: #758379;
+      --border: #e1eae3;
+      --danger: #c53d3d;
+      --shadow: 0 8px 28px rgba(23, 86, 56, .07);
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system,
-        BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--page);
       color: var(--text);
+      font-family: Inter, Arial, sans-serif;
+      font-size: 14px;
     }
 
     button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
 
-    button:focus-visible, input:focus-visible,
-    select:focus-visible, textarea:focus-visible {
-      outline: 3px solid #a9d8b8;
-      outline-offset: 2px;
+    .app {
+      display: grid;
+      grid-template-columns: 235px minmax(0, 1fr);
+      min-height: 100vh;
     }
 
-    .topbar {
-      background: var(--white);
-      border-bottom: 1px solid var(--border);
+    .sidebar {
       position: sticky;
       top: 0;
-      z-index: 10;
-    }
-
-    .topbar-inner {
-      max-width: 1180px;
-      margin: auto;
-      padding: 15px 24px;
+      height: 100vh;
+      padding: 28px 17px;
+      background: var(--white);
+      border-right: 1px solid var(--border);
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 15px;
+      flex-direction: column;
+      gap: 28px;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 11px;
+      padding: 0 9px;
       color: var(--green);
-      font-size: 21px;
+      font-size: 22px;
       font-weight: 800;
       letter-spacing: -.7px;
     }
 
     .brand-icon {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
-      background: var(--green);
       display: grid;
       place-items: center;
+      width: 39px;
+      height: 39px;
+      border-radius: 12px;
       color: white;
-      font-size: 21px;
+      background: var(--green);
+      font-size: 22px;
     }
 
-    .topbar-right {
+    .nav-label {
+      padding: 0 12px;
+      margin-bottom: 9px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.3px;
+    }
+
+    .nav-btn {
       display: flex;
       align-items: center;
+      width: 100%;
       gap: 12px;
-    }
-
-    .user-label {
-      color: var(--muted);
-      font-size: 13px;
-      max-width: 210px;
-      overflow-wrap: anywhere;
-    }
-
-    .btn {
+      padding: 12px;
+      margin: 4px 0;
       border: 0;
-      border-radius: 11px;
-      padding: 11px 16px;
+      border-radius: 10px;
+      background: transparent;
+      color: #647369;
+      text-align: left;
+      transition: .2s;
+    }
+
+    .nav-btn:hover, .nav-btn.active {
+      background: var(--green-light);
+      color: var(--green);
       font-weight: 700;
-      font-size: 14px;
-      display: inline-flex;
-      justify-content: center;
+    }
+
+    .nav-icon { width: 21px; text-align: center; font-size: 17px; }
+
+    .sidebar-bottom { margin-top: auto; }
+
+    .sidebar-note {
+      padding: 15px;
+      border-radius: 14px;
+      background: var(--green-light);
+      color: var(--green);
+      line-height: 1.6;
+    }
+
+    .sidebar-note strong { display: block; margin-bottom: 4px; }
+
+    .main { min-width: 0; padding: 25px 30px 40px; }
+
+    .topbar {
+      display: flex;
       align-items: center;
-      gap: 8px;
-      transition: background .2s, transform .2s;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 28px;
     }
 
-    .btn-primary { background: var(--green); color: white; }
-    .btn-primary:hover { background: var(--green-dark); }
-    .btn-secondary { background: var(--green-light); color: var(--green); }
-    .btn-secondary:hover { background: #d8eddf; }
-    .btn-outline { background: white; color: var(--green); border: 1px solid var(--border); }
-    .btn-danger { background: #fff0ef; color: var(--danger); }
-    .btn-small { padding: 8px 11px; font-size: 12px; }
-    .btn:disabled { opacity: .6; cursor: wait; }
+    .topbar h1 { margin: 0 0 5px; font-size: 25px; letter-spacing: -.6px; }
+    .muted { color: var(--muted); line-height: 1.6; }
 
-    .container {
-      width: min(1180px, 100%);
-      margin: 0 auto;
-      padding: 28px 24px 110px;
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+
+    .icon-btn {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 43px;
+      height: 43px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--white);
+      color: var(--green);
+      font-size: 18px;
     }
+
+    .dot {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #df5353;
+      border: 1px solid white;
+    }
+
+    .profile-shortcut {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: white;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .avatar {
+      display: grid;
+      place-items: center;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      background: var(--green-light);
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .profile-shortcut strong { display: block; font-size: 12px; }
+    .profile-shortcut small { color: var(--muted); }
+
+    .page { display: none; }
+    .page.active { display: block; }
 
     .welcome {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 24px;
-    }
-
-    .eyebrow {
-      color: var(--green);
-      text-transform: uppercase;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 1.5px;
-    }
-
-    h1 {
-      font-size: clamp(25px, 4vw, 34px);
-      letter-spacing: -1px;
-      margin: 7px 0;
-    }
-
-    h2 { font-size: 19px; margin: 0; letter-spacing: -.3px; }
-    h3 { font-size: 15px; margin: 0; }
-    p { line-height: 1.6; }
-    .muted { color: var(--muted); }
-    .small { font-size: 13px; }
-
-    .hero {
-      background: linear-gradient(120deg, #175638, #24754a);
-      border-radius: 22px;
-      color: white;
-      padding: 26px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 22px;
-      margin-bottom: 24px;
+      position: relative;
       overflow: hidden;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      padding: 29px 30px;
+      margin-bottom: 22px;
+      border-radius: 19px;
+      background: linear-gradient(115deg, #175638, #287b50);
+      color: white;
+      box-shadow: var(--shadow);
     }
 
-    .hero h2 { font-size: 22px; margin-bottom: 8px; }
-    .hero p { margin: 0; color: #e0f0e5; max-width: 580px; }
-    .hero-icon { font-size: 54px; opacity: .9; }
+    .welcome h2 { margin: 0 0 9px; font-size: 25px; }
+    .welcome p { max-width: 440px; margin: 0; line-height: 1.7; color: #e2f3e8; }
+    .welcome-symbol { font-size: 62px; opacity: .9; }
 
     .stats {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
-      margin-bottom: 28px;
+      margin-bottom: 22px;
     }
 
     .stat, .panel {
-      background: var(--white);
+      min-width: 0;
+      padding: 21px;
       border: 1px solid var(--border);
-      border-radius: 18px;
+      border-radius: 16px;
+      background: var(--white);
       box-shadow: var(--shadow);
     }
 
-    .stat { padding: 19px; }
-    .stat-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .stat-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
+    .stat-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .stat-label { color: var(--muted); font-weight: 600; }
+    .stat-icon { font-size: 22px; }
+    .stat-number { margin: 15px 0 5px; font-size: 29px; font-weight: 800; color: var(--green); }
+    .stat-foot { color: var(--muted); font-size: 12px; }
+
+    .content-grid {
       display: grid;
-      place-items: center;
-      background: var(--green-light);
-      font-size: 20px;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: 18px;
     }
 
-    .stat-number { font-size: 27px; font-weight: 800; margin-top: 13px; }
-    .stat-label { color: var(--muted); font-size: 13px; margin-top: 3px; }
-
-    .section { display: none; }
-    .section.active { display: block; }
-
-    .panel { padding: 23px; margin-bottom: 20px; }
+    .panel { margin-bottom: 18px; }
     .panel-heading {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
       margin-bottom: 18px;
     }
 
+    .panel-heading h2 { margin: 0; font-size: 17px; }
     .panel-heading p { margin: 5px 0 0; }
 
-    .form-panel {
-      display: none;
-      border: 1px solid #cfe4d5;
-      background: #fbfefb;
-      border-radius: 15px;
-      padding: 20px;
-      margin: 16px 0;
-    }
-
-    .form-panel.open { display: block; }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-    .field.full { grid-column: 1 / -1; }
-
-    label { color: #34483b; font-size: 13px; font-weight: 700; }
-
-    input, select, textarea {
-      width: 100%;
-      min-width: 0;
-      padding: 12px 13px;
-      border: 1px solid #d8e4da;
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 41px;
+      padding: 10px 15px;
+      border: 1px solid transparent;
       border-radius: 10px;
-      color: var(--text);
-      background: white;
+      background: var(--green);
+      color: white;
+      font-weight: 700;
+      transition: .2s;
     }
 
-    input:focus, select:focus, textarea:focus {
-      border-color: #5c9a70;
-      outline: 3px solid #e2f2e6;
-    }
+    .btn:hover { background: var(--green-dark); }
+    .btn.secondary { background: white; color: var(--green); border-color: var(--border); }
+    .btn.secondary:hover { background: var(--green-light); }
+    .btn.danger { background: #fff0f0; color: var(--danger); border-color: #f4d9d9; }
+    .small-btn { min-height: 33px; padding: 7px 10px; font-size: 12px; }
 
-    textarea { resize: vertical; min-height: 85px; }
-    .form-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 17px; }
-
-    .message {
-      display: none;
-      border-radius: 10px;
-      padding: 12px 14px;
-      font-size: 13px;
-      margin: 14px 0;
-      overflow-wrap: anywhere;
-    }
-
-    .message.show { display: block; }
-    .message.error { color: #9f1d16; background: #fff0ef; border: 1px solid #ffd5d1; }
-    .message.success { color: #175638; background: #e7f4eb; border: 1px solid #cce6d3; }
-
-    .record-list { display: grid; gap: 12px; }
     .record {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       gap: 15px;
-      background: white;
+      padding: 15px 0;
+      border-bottom: 1px solid var(--border);
     }
 
-    .record-main { min-width: 0; }
-    .record-title { font-weight: 800; overflow-wrap: anywhere; }
-    .record-detail { color: var(--muted); font-size: 13px; margin-top: 5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .record-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+    .record:last-child { border-bottom: 0; padding-bottom: 0; }
+    .record-main { min-width: 0; flex: 1; }
+    .record-title { margin-bottom: 6px; font-weight: 750; overflow-wrap: anywhere; }
+    .record-detail { color: var(--muted); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+    .record-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
     .empty-state {
-      border: 1px dashed #cbdacf;
-      background: #fbfefb;
-      border-radius: 14px;
-      padding: 28px 16px;
-      text-align: center;
+      padding: 25px 12px;
       color: var(--muted);
-      font-size: 14px;
+      text-align: center;
+      line-height: 1.7;
     }
 
-    /* Calendar */
-    .calendar-wrap {
-      border: 1px solid var(--border);
-      border-radius: 15px;
-      padding: 15px;
-      background: white;
-    }
+    .form-panel { display: none; margin-bottom: 18px; }
+    .form-panel.open { display: block; }
 
-    .calendar-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { color: #435449; font-size: 12px; font-weight: 750; }
 
-    .calendar-month { font-size: 15px; font-weight: 800; text-align: center; }
-    .calendar-arrow {
-      width: 36px;
-      height: 36px;
-      border: 1px solid var(--border);
+    .field input, .field select, .field textarea {
+      width: 100%;
+      min-height: 43px;
+      padding: 11px 12px;
+      border: 1px solid #dce6de;
       border-radius: 10px;
       background: white;
-      color: var(--green);
-      font-size: 20px;
-    }
-
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 5px;
-    }
-
-    .weekday {
-      text-align: center;
-      padding: 7px 0;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 800;
-    }
-
-    .calendar-day {
-      min-width: 0;
-      aspect-ratio: 1 / 1;
-      border: 1px solid transparent;
-      border-radius: 10px;
-      background: #f7faf7;
       color: var(--text);
-      font-size: 13px;
-      position: relative;
+      outline: none;
     }
 
-    .calendar-day:hover { background: var(--green-light); }
-    .calendar-day.selected { background: var(--green); color: white; font-weight: 800; }
-    .calendar-day.today:not(.selected) { border-color: #80b68e; font-weight: 800; }
-    .calendar-day:disabled { color: #c0c9c2; background: #fafbfa; cursor: not-allowed; }
-    .calendar-day.has-reminder::after {
-      content: "";
-      width: 5px;
-      height: 5px;
-      background: #55a36e;
-      border-radius: 50%;
-      position: absolute;
-      bottom: 4px;
-      left: calc(50% - 2.5px);
+    .field textarea { min-height: 80px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(23, 86, 56, .08);
     }
+
+    .form-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
+    .message { display: none; margin-top: 12px; font-size: 12px; line-height: 1.6; }
+    .message.show { display: block; }
+    .message.success { color: var(--green); }
+    .message.error { color: var(--danger); }
+
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 15px; }
+    .calendar-header strong { color: var(--green); }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+    .weekday { padding: 7px 0; color: var(--muted); font-size: 10px; text-align: center; }
+    .calendar-day { position: relative; min-width: 0; padding: 10px 0; border: 0; border-radius: 8px; background: transparent; color: var(--text); }
+    .calendar-day:hover { background: var(--green-light); }
+    .calendar-day.today { outline: 1px solid var(--green); color: var(--green); font-weight: 800; }
+    .calendar-day.selected { background: var(--green); color: white; }
+    .calendar-day.has-reminder::after { content: ""; position: absolute; bottom: 3px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: #54a875; }
     .calendar-day.selected.has-reminder::after { background: white; }
 
-    .selected-date {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--green-light);
-      border-radius: 12px;
-      padding: 12px;
-      margin-top: 13px;
-      color: var(--green);
-      font-size: 13px;
-      font-weight: 700;
-    }
+    .time-picker { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .time-display { margin-top: 10px; color: var(--green); font-size: 17px; font-weight: 800; }
 
-    /* Time picker */
-    .time-picker {
-      border: 1px solid var(--border);
-      border-radius: 15px;
-      padding: 16px;
-      background: white;
-    }
-
-    .time-display {
-      background: var(--green-light);
-      color: var(--green);
-      border-radius: 13px;
-      padding: 18px 10px;
-      text-align: center;
-      font-size: clamp(30px, 6vw, 42px);
-      font-weight: 800;
-      letter-spacing: -1px;
-      margin-bottom: 16px;
-    }
-
-    .time-controls {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
-    }
-
-    .time-controls select {
-      font-size: 16px;
-      text-align: center;
-      font-weight: 700;
-      padding: 12px 5px;
-    }
-
-    .time-preview {
-      margin-top: 12px;
-      color: var(--muted);
-      font-size: 12px;
-      text-align: center;
-    }
-
-    .bottom-nav {
+    .overlay {
       position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 20;
-      display: flex;
-      justify-content: center;
-      background: rgba(255,255,255,.96);
-      backdrop-filter: blur(12px);
-      border-top: 1px solid var(--border);
-      padding: 8px 12px max(8px, env(safe-area-inset-bottom));
-    }
-
-    .nav-inner {
-      width: min(560px, 100%);
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-
-    .nav-btn {
-      border: 0;
-      background: transparent;
-      color: var(--muted);
-      border-radius: 12px;
-      padding: 9px 5px;
-      display: flex;
-      flex-direction: column;
+      inset: 0;
+      z-index: 100;
+      display: none;
       align-items: center;
-      gap: 4px;
-      font-size: 11px;
-      font-weight: 700;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(14, 35, 23, .45);
     }
 
-    .nav-btn span { font-size: 20px; }
-    .nav-btn.active { color: var(--green); background: var(--green-light); }
+    .overlay.open { display: flex; }
 
-    #loading {
-      min-height: 70vh;
-      display: grid;
-      place-items: center;
-      color: var(--green);
-      font-weight: 700;
-      padding: 20px;
-      text-align: center;
+    .modal {
+      width: min(100%, 520px);
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      border-radius: 18px;
+      background: white;
+      box-shadow: 0 20px 70px rgba(0,0,0,.2);
     }
 
-    #app { display: none; }
-    .footer-note { text-align: center; color: var(--muted); font-size: 11px; margin: 20px 0 0; }
+    .modal-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .modal-heading h2 { margin: 0; font-size: 20px; }
+    .close-btn { width: 35px; height: 35px; border: 0; border-radius: 9px; background: var(--green-light); color: var(--green); font-size: 19px; }
+    .profile-info { margin-bottom: 18px; padding: 14px; border-radius: 12px; background: var(--page); overflow-wrap: anywhere; }
+    .profile-info strong { display: block; margin-bottom: 5px; }
 
-    @media (max-width: 680px) {
-      .topbar-inner { padding: 12px 16px; }
-      .brand { font-size: 19px; }
-      .brand-icon { width: 35px; height: 35px; }
-      .user-label { display: none; }
-      .container { padding: 22px 15px 105px; }
-      .welcome { flex-direction: column; }
-      .hero { padding: 21px; border-radius: 17px; }
-      .hero-icon { font-size: 38px; }
-      .hero h2 { font-size: 19px; }
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-      .stat { padding: 15px; }
-      .stat:last-child { grid-column: 1 / -1; }
-      .stat-number { font-size: 24px; }
-      .panel { padding: 17px; border-radius: 15px; }
+    @media (max-width: 1000px) {
+      .app { grid-template-columns: 205px minmax(0, 1fr); }
+      .main { padding: 22px; }
+      .content-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 700px) {
+      .app { display: block; padding-bottom: 68px; }
+      .sidebar { position: fixed; top: auto; bottom: 0; left: 0; right: 0; z-index: 50; height: auto; padding: 7px 5px calc(7px + env(safe-area-inset-bottom)); border-right: 0; border-top: 1px solid var(--border); display: block; }
+      .brand, .sidebar-note, .nav-label, .sidebar-bottom { display: none; }
+      .sidebar nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
+      .nav-btn { flex-direction: column; justify-content: center; gap: 3px; margin: 0; padding: 7px 2px; font-size: 10px; text-align: center; }
+      .nav-icon { font-size: 18px; }
+      .main { padding: 19px 14px 28px; }
+      .topbar { align-items: flex-start; margin-bottom: 20px; }
+      .topbar h1 { font-size: 22px; }
+      .profile-shortcut { padding: 4px; border: 0; }
+      .profile-shortcut .profile-text { display: none; }
+      .top-actions { gap: 6px; }
+      .icon-btn { width: 38px; height: 38px; }
+      .welcome { padding: 23px 20px; }
+      .welcome h2 { font-size: 21px; }
+      .welcome-symbol { font-size: 42px; }
+      .stats { grid-template-columns: 1fr; gap: 10px; }
+      .stat { padding: 16px; }
+      .stat-number { margin: 9px 0 4px; }
       .form-grid { grid-template-columns: 1fr; }
       .field.full { grid-column: auto; }
-      .record { flex-direction: column; }
-      .record-actions { width: 100%; }
-      .calendar-wrap { padding: 10px; }
-      .calendar-grid { gap: 3px; }
-      .calendar-day { font-size: 12px; border-radius: 8px; }
-      .weekday { font-size: 10px; }
+      .record { gap: 9px; }
+      .record-actions { flex-direction: column; }
+      .panel { padding: 16px; }
+      .modal { padding: 19px; }
     }
 
-    @media (max-width: 360px) {
-      .btn { padding: 10px 12px; font-size: 12px; }
-      .topbar-right .btn { padding: 9px 10px; }
-      .time-controls { gap: 6px; }
+    @media (max-width: 380px) {
+      .welcome-symbol { display: none; }
+      .topbar h1 { font-size: 19px; }
+      .calendar-grid { gap: 2px; }
+      .calendar-day { padding: 9px 0; }
     }
   </style>
 </head>
 
 <body>
-  <div id="loading">Loading your Medminder dashboard...</div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">✚</span> Medminder</div>
 
-  <div id="app">
+    <div>
+      <div class="nav-label">WORKSPACE</div>
+      <nav>
+        <button class="nav-btn active" data-page="medicinesPage"><span class="nav-icon">💊</span>Medicines</button>
+        <button class="nav-btn" data-page="remindersPage"><span class="nav-icon">🔔</span>Reminders</button>
+        <button class="nav-btn" data-page="historyPage"><span class="nav-icon">📋</span>History</button>
+      </nav>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="nav-label">ACCOUNT</div>
+      <button class="nav-btn" id="navNotifications"><span class="nav-icon">🔔</span>Notifications <span class="dot" id="navNotificationDot" hidden></span></button>
+      <button class="nav-btn" id="navProfile"><span class="nav-icon">👤</span>My profile</button>
+
+      <div class="sidebar-note">
+        <strong>💚 Take care of yourself</strong>
+        Keep your medicine information organized and your reminders up to date.
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
     <header class="topbar">
-      <div class="topbar-inner">
-        <div class="brand">
-          <div class="brand-icon" aria-hidden="true">✓</div>
-          <span>Medminder</span>
-        </div>
-        <div class="topbar-right">
-          <span id="userLabel" class="user-label">Your account</span>
-          <button id="logoutButton" class="btn btn-outline" type="button">Log out</button>
-        </div>
+      <div>
+        <h1 id="pageTitle">My Medicines</h1>
+        <div class="muted" id="pageSubtitle">Manage your medicine information.</div>
+      </div>
+
+      <div class="top-actions">
+        <button class="icon-btn" id="notificationButton" aria-label="Notifications">
+          ♧<span class="dot" id="notificationDot" hidden></span>
+        </button>
+
+        <button class="profile-shortcut" id="profileButton" aria-label="Open profile">
+          <span class="avatar" id="profileAvatar">U</span>
+          <span class="profile-text"><strong id="profileName">My account</strong><small>My profile</small></span>
+        </button>
       </div>
     </header>
 
-    <main class="container">
+    <!-- MEDICINES PAGE: welcome and dashboard stats appear only here -->
+    <section class="page active" id="medicinesPage">
       <div class="welcome">
         <div>
-          <div class="eyebrow" id="todayLabel">YOUR HEALTH, ORGANIZED</div>
-          <h1 id="welcomeTitle">Welcome to Medminder</h1>
-          <p class="muted" style="margin:0">Manage medicines and schedule reminders in one place.</p>
+          <h2 id="welcomeTitle">Welcome to Medminder! 👋</h2>
+          <p>Your personal space for organizing medicines and keeping track of your medication schedule.</p>
         </div>
-        <button class="btn btn-primary" id="quickAddReminder" type="button">＋ Add reminder</button>
+        <div class="welcome-symbol">💊</div>
       </div>
-
-      <div id="pageMessage" class="message" role="status" aria-live="polite"></div>
-
-      <section class="hero">
-        <div>
-          <h2>Small reminders. Better routines.</h2>
-          <p>Keep track of your medicines and choose the date and time that work for your routine.</p>
-        </div>
-        <div class="hero-icon" aria-hidden="true">🌿</div>
-      </section>
 
       <div class="stats">
-        <div class="stat">
-          <div class="stat-top">
-            <span class="muted small">Your medicines</span>
-            <span class="stat-icon" aria-hidden="true">💊</span>
-          </div>
-          <div id="medicineCount" class="stat-number">0</div>
-          <div class="stat-label">Medicines saved</div>
-        </div>
-        <div class="stat">
-          <div class="stat-top">
-            <span class="muted small">Reminders</span>
-            <span class="stat-icon" aria-hidden="true">🔔</span>
-          </div>
-          <div id="reminderCount" class="stat-number">0</div>
-          <div class="stat-label">Scheduled reminders</div>
-        </div>
-        <div class="stat">
-          <div class="stat-top">
-            <span class="muted small">Next reminder</span>
-            <span class="stat-icon" aria-hidden="true">📅</span>
-          </div>
-          <div id="nextReminder" class="stat-number" style="font-size:18px">None yet</div>
-          <div id="nextReminderDetail" class="stat-label">Add a reminder to get started</div>
-        </div>
+        <article class="stat">
+          <div class="stat-top"><span class="stat-label">My medicines</span><span class="stat-icon">💊</span></div>
+          <div class="stat-number" id="medicineCount">0</div>
+          <div class="stat-foot">Saved medicine records</div>
+        </article>
+        <article class="stat">
+          <div class="stat-top"><span class="stat-label">My reminders</span><span class="stat-icon">🔔</span></div>
+          <div class="stat-number" id="reminderCount">0</div>
+          <div class="stat-foot">Scheduled reminders</div>
+        </article>
+        <article class="stat">
+          <div class="stat-top"><span class="stat-label">Next reminder</span><span class="stat-icon">🕒</span></div>
+          <div class="stat-number" style="font-size:20px" id="nextReminder">None yet</div>
+          <div class="stat-foot" id="nextReminderDetail">No upcoming reminders</div>
+        </article>
       </div>
 
-      <!-- MEDICINES -->
-      <section id="medicinesSection" class="section active">
-        <div class="panel">
-          <div class="panel-heading">
-            <div>
-              <h2>My medicines</h2>
-              <p class="muted small">Keep your medicine details organized.</p>
-            </div>
-            <button id="toggleMedicineForm" class="btn btn-primary" type="button">＋ Add medicine</button>
-          </div>
-
-          <div id="medicineForm" class="form-panel">
-            <h3 style="margin-bottom:16px">Add a medicine</h3>
-            <form id="addMedicineForm">
-              <div class="form-grid">
-                <div class="field">
-                  <label for="medicineName">Medicine name *</label>
-                  <input id="medicineName" name="medicineName" maxlength="100" placeholder="e.g. Vitamin C" required>
-                </div>
-                <div class="field">
-                  <label for="medicineDosage">Dosage</label>
-                  <input id="medicineDosage" name="medicineDosage" maxlength="100" placeholder="e.g. 500 mg">
-                </div>
-                <div class="field">
-                  <label for="medicineFrequency">Instructions / frequency</label>
-                  <input id="medicineFrequency" name="medicineFrequency" maxlength="150" placeholder="e.g. Once daily after meals">
-                </div>
-                <div class="field">
-                  <label for="medicineNotes">Notes (optional)</label>
-                  <input id="medicineNotes" name="medicineNotes" maxlength="300" placeholder="Additional details">
-                </div>
-              </div>
-              <div class="form-actions">
-                <button id="saveMedicineButton" class="btn btn-primary" type="submit">Save medicine</button>
-                <button id="cancelMedicineForm" class="btn btn-outline" type="button">Cancel</button>
-              </div>
-            </form>
-          </div>
-
-          <div id="medicineList" class="record-list">
-            <div class="empty-state">Your saved medicines will appear here.</div>
-          </div>
+      <div class="panel">
+        <div class="panel-heading">
+          <div><h2>My medicine list</h2><p class="muted">Keep your medicine details organized.</p></div>
+          <button class="btn" id="toggleMedicineForm">＋ Add medicine</button>
         </div>
-      </section>
 
-      <!-- REMINDERS -->
-      <section id="remindersSection" class="section">
-        <div class="panel">
-          <div class="panel-heading">
-            <div>
-              <h2>Medication reminders</h2>
-              <p class="muted small">Tap a date on the calendar and choose a time.</p>
+        <div class="form-panel" id="medicineForm">
+          <h3 id="medicineFormTitle">Add a medicine</h3>
+          <form id="addMedicineForm">
+            <input type="hidden" id="medicineEditId">
+            <div class="form-grid">
+              <div class="field">
+                <label for="medicineName">Medicine name *</label>
+                <input id="medicineName" maxlength="100" required placeholder="e.g. Paracetamol">
+              </div>
+              <div class="field">
+                <label for="medicineDosage">Dosage</label>
+                <input id="medicineDosage" maxlength="100" placeholder="e.g. 500 mg">
+              </div>
+              <div class="field full">
+                <label for="medicineFrequency">Instructions</label>
+                <input id="medicineFrequency" maxlength="200" placeholder="e.g. Take after meals">
+              </div>
+              <div class="field full">
+                <label for="medicineNotes">Notes</label>
+                <textarea id="medicineNotes" maxlength="500" placeholder="Additional information (optional)"></textarea>
+              </div>
             </div>
-            <button id="toggleReminderForm" class="btn btn-primary" type="button">＋ New reminder</button>
-          </div>
+            <div class="form-actions">
+              <button class="btn" id="saveMedicineButton" type="submit">Save medicine</button>
+              <button class="btn secondary" id="cancelMedicineForm" type="button">Cancel</button>
+            </div>
+          </form>
+        </div>
 
-          <div id="reminderForm" class="form-panel">
-            <h3 style="margin-bottom:7px">Create a reminder</h3>
-            <p class="muted small" style="margin-top:0">Choose the date, time, and medicine you want to remember.</p>
+        <div id="medicineList"><div class="empty-state">Loading medicines...</div></div>
+        <div class="message" id="pageMessage" role="status"></div>
+      </div>
 
-            <form id="addReminderForm">
-              <div class="form-grid">
-                <div class="field full">
-                  <label for="reminderMedicine">Select medicine *</label>
-                  <select id="reminderMedicine" name="reminderMedicine" required>
-                    <option value="">Choose a medicine</option>
+      <div class="panel">
+        <div class="panel-heading">
+          <div><h2>Quick action</h2><p class="muted">Create a schedule for your medicines.</p></div>
+          <button class="btn secondary" id="quickAddReminder">＋ Add reminder</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- REMINDERS PAGE: no welcome banner or dashboard stats -->
+    <section class="page" id="remindersPage">
+      <div class="panel">
+        <div class="panel-heading">
+          <div><h2>My reminders</h2><p class="muted">Schedule and manage your medicine reminders.</p></div>
+          <button class="btn" id="toggleReminderForm">＋ Add reminder</button>
+        </div>
+
+        <div class="form-panel" id="reminderForm">
+          <h3 id="reminderFormTitle">Create a reminder</h3>
+          <form id="addReminderForm">
+            <input type="hidden" id="reminderEditId">
+
+            <div class="form-grid">
+              <div class="field full">
+                <label for="reminderMedicine">Medicine *</label>
+                <select id="reminderMedicine" required><option value="">Choose a medicine</option></select>
+              </div>
+
+              <div class="field full">
+                <label>Select a date *</label>
+                <div class="calendar-header">
+                  <button class="btn secondary small-btn" type="button" id="calendarPrev" aria-label="Previous month">‹</button>
+                  <strong id="calendarMonth"></strong>
+                  <button class="btn secondary small-btn" type="button" id="calendarNext" aria-label="Next month">›</button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+                <div class="muted" id="selectedDateLabel" style="margin-top:10px">Select a date on the calendar</div>
+                <input type="hidden" id="reminderStartDate" required>
+              </div>
+
+              <div class="field full">
+                <label>Reminder time *</label>
+                <div class="time-picker">
+                  <select id="timeHour" aria-label="Hour"></select>
+                  <select id="timeMinute" aria-label="Minute"></select>
+                  <select id="timePeriod" aria-label="AM or PM">
+                    <option>AM</option><option>PM</option>
                   </select>
                 </div>
-
-                <div class="field full">
-                  <label>Choose a date *</label>
-                  <div class="calendar-wrap">
-                    <div class="calendar-header">
-                      <button type="button" id="calendarPrev" class="calendar-arrow" aria-label="Previous month">‹</button>
-                      <div id="calendarMonth" class="calendar-month">Month Year</div>
-                      <button type="button" id="calendarNext" class="calendar-arrow" aria-label="Next month">›</button>
-                    </div>
-                    <div id="calendarGrid" class="calendar-grid" aria-label="Choose a reminder date"></div>
-                    <div class="selected-date">
-                      <span aria-hidden="true">📅</span>
-                      <span id="selectedDateLabel">Select a date on the calendar</span>
-                    </div>
-                  </div>
-                  <input id="reminderStartDate" name="reminderStartDate" type="hidden" required>
-                </div>
-
-                <div class="field full">
-                  <label>Choose a time *</label>
-                  <div class="time-picker">
-                    <div id="timeDisplay" class="time-display">08:00 AM</div>
-                    <div class="time-controls">
-                      <div class="field">
-                        <label for="timeHour">Hour</label>
-                        <select id="timeHour" aria-label="Reminder hour"></select>
-                      </div>
-                      <div class="field">
-                        <label for="timeMinute">Minute</label>
-                        <select id="timeMinute" aria-label="Reminder minutes"></select>
-                      </div>
-                      <div class="field">
-                        <label for="timePeriod">AM / PM</label>
-                        <select id="timePeriod" aria-label="AM or PM">
-                          <option value="AM">AM</option>
-                          <option value="PM">PM</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="time-preview">Select the hour, minutes, and AM or PM.</div>
-                  </div>
-                  <input id="reminderTime" name="reminderTime" type="hidden" required>
-                </div>
-
-                <div class="field full">
-                  <label for="reminderNotes">Notes (optional)</label>
-                  <textarea id="reminderNotes" name="reminderNotes" maxlength="500" placeholder="e.g. Take after breakfast"></textarea>
-                </div>
+                <div class="time-display" id="timeDisplay">08:00 AM</div>
+                <input type="hidden" id="reminderTime" required>
               </div>
 
-              <div id="reminderFormMessage" class="message" role="status" aria-live="polite"></div>
-
-              <div class="form-actions">
-                <button id="saveReminderButton" class="btn btn-primary" type="submit">Save reminder</button>
-                <button id="cancelReminderForm" class="btn btn-outline" type="button">Cancel</button>
+              <div class="field full">
+                <label for="reminderNotes">Notes</label>
+                <textarea id="reminderNotes" maxlength="300" placeholder="Optional reminder notes"></textarea>
               </div>
-            </form>
-          </div>
-
-          <div id="reminderList" class="record-list">
-            <div class="empty-state">Your saved reminders will appear here.</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- HISTORY -->
-      <section id="historySection" class="section">
-        <div class="panel">
-          <div class="panel-heading">
-            <div>
-              <h2>Activity history</h2>
-              <p class="muted small">A record of medicines and reminders you have added or removed.</p>
             </div>
-          </div>
-          <div id="historyList" class="record-list">
-            <div class="empty-state">Your activity will appear here.</div>
-          </div>
+
+            <div class="form-actions">
+              <button class="btn" id="saveReminderButton" type="submit">Save reminder</button>
+              <button class="btn secondary" id="cancelReminderForm" type="button">Cancel</button>
+            </div>
+            <div class="message" id="reminderFormMessage" role="status"></div>
+          </form>
         </div>
-      </section>
 
-      <p class="footer-note">Medminder helps you organize your routine. Follow your healthcare professional's instructions for taking medicines.</p>
-    </main>
-
-    <nav class="bottom-nav" aria-label="Dashboard navigation">
-      <div class="nav-inner">
-        <button class="nav-btn active" type="button" data-target="medicinesSection">
-          <span aria-hidden="true">💊</span>Medicines
-        </button>
-        <button class="nav-btn" type="button" data-target="remindersSection">
-          <span aria-hidden="true">📅</span>Reminders
-        </button>
-        <button class="nav-btn" type="button" data-target="historySection">
-          <span aria-hidden="true">📋</span>History
-        </button>
+        <div id="reminderList"><div class="empty-state">Loading reminders...</div></div>
       </div>
-    </nav>
-  </div>
+    </section>
 
-  <script>
-    // Dashboard navigation and form visibility.
-    document.querySelectorAll(".nav-btn").forEach(button => {
-      button.addEventListener("click", () => {
-        document.querySelectorAll(".nav-btn").forEach(item => item.classList.remove("active"));
-        document.querySelectorAll(".section").forEach(section => section.classList.remove("active"));
-        button.classList.add("active");
-        document.getElementById(button.dataset.target).classList.add("active");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      });
-    });
+    <!-- HISTORY PAGE: no welcome banner or dashboard stats -->
+    <section class="page" id="historyPage">
+      <div class="panel">
+        <div class="panel-heading">
+          <div><h2>Activity history</h2><p class="muted">Review changes made to your account.</p></div>
+          <button class="btn secondary" id="refreshHistory">↻ Refresh</button>
+        </div>
+        <div id="historyList"><div class="empty-state">Loading activity history...</div></div>
+      </div>
+    </section>
+  </main>
+</div>
 
-    const medicineForm = document.getElementById("medicineForm");
-    const reminderForm = document.getElementById("reminderForm");
+<!-- NOTIFICATIONS MODAL -->
+<div class="overlay" id="notificationsOverlay">
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="notificationsTitle">
+    <div class="modal-heading">
+      <h2 id="notificationsTitle">Notifications</h2>
+      <button class="close-btn" type="button" data-close="notificationsOverlay" aria-label="Close">×</button>
+    </div>
+    <p class="muted">Updates about your medicine records and reminders.</p>
+    <div id="notificationList"><div class="empty-state">No notifications yet.</div></div>
+    <div class="form-actions">
+      <button class="btn" id="markReadButton">Mark all as read</button>
+      <button class="btn secondary" id="viewHistoryButton">View history</button>
+    </div>
+  </section>
+</div>
 
-    document.getElementById("toggleMedicineForm").addEventListener("click", () => {
-      medicineForm.classList.toggle("open");
-      if (medicineForm.classList.contains("open")) {
-        document.getElementById("medicineName").focus();
-      }
-    });
+<!-- PROFILE MODAL -->
+<div class="overlay" id="profileOverlay">
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <div class="modal-heading">
+      <h2 id="profileTitle">My profile</h2>
+      <button class="close-btn" type="button" data-close="profileOverlay" aria-label="Close">×</button>
+    </div>
 
-    document.getElementById("cancelMedicineForm").addEventListener("click", () => {
-      medicineForm.classList.remove("open");
-      document.getElementById("addMedicineForm").reset();
-    });
+    <div class="profile-info">
+      <strong id="profileModalName">My account</strong>
+      <span class="muted" id="profileEmail">Loading account...</span>
+    </div>
 
-    function openReminderForm() {
-      reminderForm.classList.add("open");
-      document.querySelectorAll(".nav-btn").forEach(item => {
-        item.classList.toggle("active", item.dataset.target === "remindersSection");
-      });
-      document.querySelectorAll(".section").forEach(section => {
-        section.classList.toggle("active", section.id === "remindersSection");
-      });
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      document.getElementById("reminderMedicine").focus();
-    }
+    <h3>Change password</h3>
+    <p class="muted">Enter your current password before choosing a new one.</p>
 
-    document.getElementById("toggleReminderForm").addEventListener("click", openReminderForm);
-    document.getElementById("quickAddReminder").addEventListener("click", openReminderForm);
+    <form id="passwordForm">
+      <div class="field">
+        <label for="currentPassword">Current password *</label>
+        <input type="password" id="currentPassword" autocomplete="current-password" required>
+      </div>
+      <div class="field" style="margin-top:13px">
+        <label for="newPassword">New password *</label>
+        <input type="password" id="newPassword" minlength="8" autocomplete="new-password" required>
+      </div>
+      <div class="field" style="margin-top:13px">
+        <label for="confirmNewPassword">Confirm new password *</label>
+        <input type="password" id="confirmNewPassword" minlength="8" autocomplete="new-password" required>
+      </div>
+      <div class="message" id="passwordMessage" role="status"></div>
+      <div class="form-actions">
+        <button class="btn" type="submit" id="changePasswordButton">Update password</button>
+      </div>
+    </form>
 
-    document.getElementById("cancelReminderForm").addEventListener("click", () => {
-      reminderForm.classList.remove("open");
-      document.getElementById("addReminderForm").reset();
-      document.getElementById("reminderFormMessage").className = "message";
-      document.getElementById("reminderFormMessage").textContent = "";
-      document.dispatchEvent(new CustomEvent("medminder:resetReminderPicker"));
-    });
+    <hr style="border:0;border-top:1px solid var(--border);margin:22px 0">
+    <button class="btn danger" id="logoutButton" style="width:100%">↪ Log out</button>
+  </section>
+</div>
 
-    // Fill the hour/minute choices and show the selected time.
-    const hourSelect = document.getElementById("timeHour");
-    const minuteSelect = document.getElementById("timeMinute");
-    const periodSelect = document.getElementById("timePeriod");
-
-    for (let hour = 1; hour <= 12; hour++) {
-      const option = document.createElement("option");
-      option.value = String(hour).padStart(2, "0");
-      option.textContent = String(hour).padStart(2, "0");
-      hourSelect.appendChild(option);
-    }
-
-    for (let minute = 0; minute < 60; minute += 5) {
-      const option = document.createElement("option");
-      option.value = String(minute).padStart(2, "0");
-      option.textContent = String(minute).padStart(2, "0");
-      minuteSelect.appendChild(option);
-    }
-
-    function updateTimeDisplay() {
-      const hour = hourSelect.value || "08";
-      const minute = minuteSelect.value || "00";
-      const period = periodSelect.value || "AM";
-      document.getElementById("timeDisplay").textContent = `${hour}:${minute} ${period}`;
-
-      let hour24 = Number(hour) % 12;
-      if (period === "PM") hour24 += 12;
-      document.getElementById("reminderTime").value =
-        `${String(hour24).padStart(2, "0")}:${minute}`;
-    }
-
-    hourSelect.value = "08";
-    minuteSelect.value = "00";
-    periodSelect.value = "AM";
-
-    [hourSelect, minuteSelect, periodSelect].forEach(control => {
-      control.addEventListener("change", updateTimeDisplay);
-    });
-    updateTimeDisplay();
-
-    // Calendar selection is handled here; Firebase saving is handled in dashboard.js.
-    let calendarYear;
-    let calendarMonth;
-    let chosenDate = "";
-
-    function localDateString(date) {
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    }
-
-    function formatLongDate(dateString) {
-      const parts = dateString.split("-").map(Number);
-      const date = new Date(parts[0], parts[1] - 1, parts[2]);
-      return date.toLocaleDateString("en-PH", {
-        weekday: "long", month: "long", day: "numeric", year: "numeric"
-      });
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    calendarYear = today.getFullYear();
-    calendarMonth = today.getMonth();
-
-    document.getElementById("todayLabel").textContent =
-      today.toLocaleDateString("en-PH", { weekday: "long", month: "long", day: "numeric", year: "numeric" }).toUpperCase();
-
-    function renderCalendar() {
-      const monthStart = new Date(calendarYear, calendarMonth, 1);
-      const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-      const grid = document.getElementById("calendarGrid");
-      const monthLabel = document.getElementById("calendarMonth");
-      const todayString = localDateString(today);
-      const selected = document.getElementById("reminderStartDate").value;
-
-      monthLabel.textContent = monthStart.toLocaleDateString("en-PH", {
-        month: "long", year: "numeric"
-      });
-
-      grid.replaceChildren();
-
-      ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach(day => {
-        const weekday = document.createElement("div");
-        weekday.className = "weekday";
-        weekday.textContent = day;
-        grid.appendChild(weekday);
-      });
-
-      for (let blank = 0; blank < monthStart.getDay(); blank++) {
-        const empty = document.createElement("div");
-        empty.setAttribute("aria-hidden", "true");
-        grid.appendChild(empty);
-      }
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateString = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-        const date = new Date(calendarYear, calendarMonth, day);
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "calendar-day";
-        button.textContent = day;
-        button.setAttribute("aria-label", formatLongDate(dateString));
-
-        if (dateString === todayString) button.classList.add("today");
-        if (dateString === selected) button.classList.add("selected");
-        if (date < today) button.disabled = true;
-
-        button.addEventListener("click", () => {
-          document.getElementById("reminderStartDate").value = dateString;
-          chosenDate = dateString;
-          document.getElementById("selectedDateLabel").textContent = formatLongDate(dateString);
-          renderCalendar();
-        });
-
-        grid.appendChild(button);
-      }
-
-      document.getElementById("calendarPrev").disabled =
-        calendarYear === today.getFullYear() && calendarMonth <= today.getMonth();
-
-      document.getElementById("calendarPrev").style.opacity =
-        document.getElementById("calendarPrev").disabled ? ".4" : "1";
-    }
-
-    document.getElementById("calendarPrev").addEventListener("click", () => {
-      if (calendarYear === today.getFullYear() && calendarMonth <= today.getMonth()) return;
-      calendarMonth--;
-      if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
-      renderCalendar();
-    });
-
-    document.getElementById("calendarNext").addEventListener("click", () => {
-      calendarMonth++;
-      if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
-      renderCalendar();
-    });
-
-    document.addEventListener("medminder:resetReminderPicker", () => {
-      chosenDate = "";
-      document.getElementById("reminderStartDate").value = "";
-      document.getElementById("selectedDateLabel").textContent = "Select a date on the calendar";
-      hourSelect.value = "08";
-      minuteSelect.value = "00";
-      periodSelect.value = "AM";
-      updateTimeDisplay();
-      renderCalendar();
-    });
-
-    renderCalendar();
-  </script>
-
-  <script type="module" src="js/dashboard.js"></script>
+<script type="module" src="js/dashboard.js"></script>
 </body>
 </html>
