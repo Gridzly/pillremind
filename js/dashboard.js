@@ -15,14 +15,10 @@ const loading = document.getElementById("loading");
 const app = document.getElementById("app");
 const welcomeTitle = document.getElementById("welcomeTitle");
 const accountEmail = document.getElementById("accountEmail");
-const authorizedDashboard =
-  document.getElementById("authorizedDashboard");
-const patientDashboard =
-  document.getElementById("patientDashboard");
+const authorizedDashboard = document.getElementById("authorizedDashboard");
+const patientDashboard = document.getElementById("patientDashboard");
 const errorMessage = document.getElementById("error");
 const logoutButton = document.getElementById("logoutButton");
-
-let currentUser = null;
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -30,35 +26,44 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  currentUser = user;
   loading.hidden = false;
   app.hidden = true;
   errorMessage.textContent = "";
 
   try {
-    // Retrieve this account's role from Realtime Database.
-    const userRef = ref(db, `users/${user.uid}`);
-    const snapshot = await get(userRef);
+    const snapshot = await get(ref(db, `users/${user.uid}`));
 
     if (!snapshot.exists()) {
-      throw new Error("Your account role has not been configured.");
+      throw new Error(
+        "No Medminder profile was found for this account. " +
+        "Check your Firebase Realtime Database."
+      );
     }
 
-    const profile = snapshot.val();
+    const account = snapshot.val();
+    const profile = account.profile || {};
 
-    welcomeTitle.textContent =
-      `Welcome, ${profile.name || "User"}!`;
+    const fullName =
+      profile.fullName ||
+      `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
+      user.displayName ||
+      "User";
 
-    accountEmail.textContent = user.email || "";
+    welcomeTitle.textContent = `Welcome, ${fullName}!`;
+    accountEmail.textContent = user.email || profile.email || "";
 
-    if (profile.role === "authorized") {
+    authorizedDashboard.hidden = true;
+    patientDashboard.hidden = true;
+
+    if (account.role === "authorized") {
       authorizedDashboard.hidden = false;
-      patientDashboard.hidden = true;
-    } else if (profile.role === "patient") {
-      authorizedDashboard.hidden = true;
+    } else if (account.role === "patient") {
       patientDashboard.hidden = false;
     } else {
-      throw new Error("Invalid account role.");
+      throw new Error(
+        "Your account has no valid role. " +
+        "Set its role to authorized or patient in Firebase."
+      );
     }
 
     app.hidden = false;
@@ -69,12 +74,11 @@ onAuthStateChanged(auth, async (user) => {
 
     loading.hidden = true;
     app.hidden = false;
-
     authorizedDashboard.hidden = true;
     patientDashboard.hidden = true;
 
     errorMessage.textContent =
-      "Unable to load your dashboard. " + error.message;
+      "Unable to load your dashboard: " + error.message;
   }
 });
 
@@ -85,19 +89,16 @@ logoutButton.addEventListener("click", async () => {
     await signOut(auth);
     window.location.replace("index.html");
   } catch (error) {
-    console.error("Logout failed:", error);
-    errorMessage.textContent = "Unable to log out. Try again.";
+    console.error("Logout error:", error);
+    errorMessage.textContent = "Unable to log out. Please try again.";
     logoutButton.disabled = false;
   }
 });
 
-// Temporary placeholders for the next development step.
-document.getElementById("medicinesButton")
-  .addEventListener("click", () => {
-    alert("Next: build the medicine management page.");
-  });
+document.getElementById("medicinesButton").addEventListener("click", () => {
+  alert("Medicine management will be implemented next.");
+});
 
-document.getElementById("remindersButton")
-  .addEventListener("click", () => {
-    alert("Next: build the reminder scheduling page.");
-  });
+document.getElementById("remindersButton").addEventListener("click", () => {
+  alert("Reminder scheduling will be implemented next.");
+});

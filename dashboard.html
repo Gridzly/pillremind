@@ -4,12 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Medminder Dashboard</title>
+  <title>Medminder | Dashboard</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -30,32 +28,33 @@
 
     .brand {
       color: #175638;
-      font-size: 22px;
+      font-size: 23px;
       font-weight: bold;
     }
 
     button {
-      padding: 10px 16px;
+      padding: 11px 16px;
       border: none;
       border-radius: 8px;
       background: #175638;
       color: white;
       cursor: pointer;
+      font-size: 14px;
     }
 
+    button:hover { background: #10442b; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+
     main {
-      max-width: 1000px;
+      max-width: 1050px;
       margin: 40px auto;
       padding: 0 20px;
     }
 
-    .welcome {
-      margin-bottom: 25px;
-    }
+    .welcome { margin-bottom: 28px; }
+    .welcome h1 { margin-bottom: 8px; }
 
-    .welcome h1 {
-      margin-bottom: 8px;
-    }
+    .muted { color: #65776a; }
 
     .cards {
       display: grid;
@@ -75,22 +74,24 @@
       font-size: 19px;
     }
 
-    .action {
-      display: inline-block;
-      margin-top: 10px;
-    }
-
     #loading {
       text-align: center;
-      padding: 60px 20px;
+      padding: 70px 20px;
     }
 
     #error {
       color: #b42318;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
     }
 
-    [hidden] {
-      display: none !important;
+    [hidden] { display: none !important; }
+
+    @media (max-width: 480px) {
+      header { padding: 16px 5%; }
+      .brand { font-size: 20px; }
+      main { margin: 28px auto; }
+      .card { padding: 20px; }
     }
   </style>
 
@@ -109,49 +110,41 @@
     <main>
       <section class="welcome">
         <h1 id="welcomeTitle">Welcome!</h1>
-        <p id="accountEmail"></p>
+        <p id="accountEmail" class="muted"></p>
       </section>
 
-      <!-- Authorized user dashboard -->
       <section id="authorizedDashboard" hidden>
         <h2>Caregiver Dashboard</h2>
-        <p>Manage medication and reminders for your patient.</p>
+        <p class="muted">Manage medication and reminders for your patient.</p>
 
         <div class="cards">
           <article class="card">
             <h2>My Medicines</h2>
             <p>Add and manage the patient's medicines.</p>
-            <button class="action" id="medicinesButton">
-              Manage Medicines
-            </button>
+            <button id="medicinesButton">Manage Medicines</button>
           </article>
 
           <article class="card">
             <h2>Medication Reminders</h2>
-            <p>Set the times when the patient should take medicine.</p>
-            <button class="action" id="remindersButton">
-              Manage Reminders
-            </button>
+            <p>Set schedules for taking medication.</p>
+            <button id="remindersButton">Manage Reminders</button>
           </article>
 
           <article class="card">
             <h2>Patient</h2>
-            <p>Patient reminder view will be available here.</p>
+            <p>Patient information and reminders will appear here.</p>
           </article>
         </div>
       </section>
 
-      <!-- Patient dashboard -->
       <section id="patientDashboard" hidden>
         <h2>My Medication</h2>
-        <p>Your upcoming medication reminders will appear here.</p>
+        <p class="muted">View your medication and upcoming reminders.</p>
 
         <div class="cards">
           <article class="card">
             <h2>Today's Reminders</h2>
-            <p id="patientReminderMessage">
-              No reminders have been loaded yet.
-            </p>
+            <p id="patientReminderMessage">No reminders have been loaded yet.</p>
           </article>
 
           <article class="card">
