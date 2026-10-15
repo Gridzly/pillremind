@@ -324,18 +324,16 @@ function injectFeatureStyles() {
 ------------------------------------------------------- */
 
 function injectProfileAndNotifications() {
-  if ($("profileSection") && $("notificationsSection")) {
-    return;
-  }
-
   const main = document.querySelector("main.container");
   const nav = document.querySelector(".nav-inner");
 
   if (!main || !nav) {
-    console.error("Could not find main.container or .nav-inner in dashboard.html.");
-    return;
+    throw new Error(
+      "Dashboard layout error: main.container or .nav-inner was not found in dashboard.html."
+    );
   }
 
+  // Create the Notifications section if it does not exist.
   if (!$("notificationsSection")) {
     const notificationsSection = makeElement("section", "section");
     notificationsSection.id = "notificationsSection";
@@ -358,17 +356,19 @@ function injectProfileAndNotifications() {
         </div>
 
         <p class="security-note">
-          Notifications are based on your saved reminder times and the intake
-          records you enter. Medminder cannot confirm that you took a medicine
-          unless you record the intake.
+          Notifications are based on your saved reminder times and recorded
+          activity. Medminder cannot confirm that you took a medicine unless
+          you record the intake.
         </p>
       </div>
     `;
 
-    const historySection = $("historySection");
-    main.insertBefore(notificationsSection, historySection || null);
+    // FIX: Append directly to main. Do not use insertBefore with a
+    // historySection that may not be a direct child of main.
+    main.appendChild(notificationsSection);
   }
 
+  // Create the Profile section if it does not exist.
   if (!$("profileSection")) {
     const profileSection = makeElement("section", "section");
     profileSection.id = "profileSection";
@@ -387,12 +387,13 @@ function injectProfileAndNotifications() {
           <div id="profileAvatar" class="profile-avatar">M</div>
           <div>
             <h3 id="profileDisplayName">Your profile</h3>
-            <p id="profileEmailLabel" class="muted small" style="margin:5px 0 0"></p>
+            <p id="profileEmailLabel" class="muted small"
+               style="margin:5px 0 0"></p>
           </div>
         </div>
 
         <div id="profileMessage" class="message"
-          role="status" aria-live="polite"></div>
+             role="status" aria-live="polite"></div>
 
         <form id="profileForm">
           <div class="form-grid">
@@ -408,12 +409,14 @@ function injectProfileAndNotifications() {
 
             <div class="field full">
               <label for="profileEmail">Email address *</label>
-              <input id="profileEmail" type="email" maxlength="254" required>
+              <input id="profileEmail" type="email"
+                     maxlength="254" required>
             </div>
           </div>
 
           <div class="form-actions">
-            <button id="saveProfileButton" class="btn btn-primary" type="submit">
+            <button id="saveProfileButton"
+                    class="btn btn-primary" type="submit">
               Save profile
             </button>
           </div>
@@ -424,37 +427,44 @@ function injectProfileAndNotifications() {
         <div class="panel-heading">
           <div>
             <h2>Change Password</h2>
-            <p class="muted small">Update the password for your account.</p>
+            <p class="muted small">
+              Update the password for your account.
+            </p>
           </div>
         </div>
 
         <div id="passwordMessage" class="message"
-          role="status" aria-live="polite"></div>
+             role="status" aria-live="polite"></div>
 
         <form id="passwordForm">
           <div class="form-grid">
             <div class="field full">
               <label for="currentPassword">Current password *</label>
               <input id="currentPassword" type="password"
-                autocomplete="current-password" required>
+                     autocomplete="current-password" required>
             </div>
 
             <div class="field">
               <label for="newPassword">New password *</label>
               <input id="newPassword" type="password" minlength="8"
-                autocomplete="new-password" required>
-              <span class="muted small">Use at least 8 characters.</span>
+                     autocomplete="new-password" required>
+              <span class="muted small">
+                Use at least 8 characters.
+              </span>
             </div>
 
             <div class="field">
-              <label for="confirmNewPassword">Confirm new password *</label>
-              <input id="confirmNewPassword" type="password" minlength="8"
-                autocomplete="new-password" required>
+              <label for="confirmNewPassword">
+                Confirm new password *
+              </label>
+              <input id="confirmNewPassword" type="password"
+                     minlength="8" autocomplete="new-password" required>
             </div>
           </div>
 
           <div class="form-actions">
-            <button id="changePasswordButton" class="btn btn-primary" type="submit">
+            <button id="changePasswordButton"
+                    class="btn btn-primary" type="submit">
               Update password
             </button>
           </div>
@@ -467,10 +477,11 @@ function injectProfileAndNotifications() {
       </div>
     `;
 
-    const historySection = $("historySection");
-    main.insertBefore(profileSection, historySection || null);
+    // FIX: Append directly to main instead of inserting before historySection.
+    main.appendChild(profileSection);
   }
 
+  // Add the two navigation buttons without creating duplicates.
   const navigationItems = [
     {
       target: "notificationsSection",
@@ -518,6 +529,7 @@ function injectProfileAndNotifications() {
     $("passwordForm").onsubmit = changePassword;
   }
 }
+
 
 /* -------------------------------------------------------
    PAGE NAVIGATION
