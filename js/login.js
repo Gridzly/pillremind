@@ -2,157 +2,241 @@
 import { auth, db } from "./firebaseConfig.js";
 
 import {
+  onAuthStateChanged,
   signInWithEmailAndPassword,
-  sendPasswordResetEmail
+  createUserWithEmailAndPassword,
+  updateProfile,
+  sendPasswordResetEmail,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 import {
   ref,
-  get
+  get,
+  set
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("loginForm");
-  const emailInput = document.getElementById("email");
-  const passwordInput = document.getElementById("password");
-  const message = document.getElementById("formMessage");
-  const submitButton = document.getElementById("submitButton");
-  const forgotButton = document.getElementById("forgotPassword");
-  const toggleButton = document.querySelector("[data-toggle-password]");
+const loginForm = document.getElementById("loginForm");
+const signupForm = document.getElementById("signupForm");
 
-  // Display a message on the login page.
-  function showMessage(text, type = "error") {
-    message.textContent = text;
-    message.className = `message ${type}`;
+const loginMessage = document.getElementById("loginMessage");
+const signupMessage = document.getElementById("signupMessage");
+
+const loginSubmit = document.getElementById("loginSubmit");
+const signupSubmit = document.getElementById("signupSubmit");
+const forgotButton = document.getElementById("forgotPasswordButton");
+
+const destinations = {
+  authorized: "dashboard.html",
+  patient: "patient-dashboard.html"
+};
+
+function showMessage(element, text, type = "error") {
+  element.textContent = text;
+  element.className = `message ${type}`;
+}
+
+function clearMessages() {
+  showMessage(loginMessage, "");
+  showMessage(signupMessage, "");
+}
+
+function getRole(role) {
+  if (role === "caregiver" || role === "authorized") {
+    return "authorized";
   }
 
-  // Show or hide password.
-  toggleButton?.addEventListener("click", () => {
-    const hidden = passwordInput.type === "password";
+  if (role === "medicine_taker" || role === "patient") {
+    return "patient";
+  }
 
-    passwordInput.type = hidden ? "text" : "password";
-    toggleButton.textContent = hidden ? "Hide" : "Show";
-  });
+  return "";
+}
 
-  // Handle login.
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
+async function redirectByRole(user) {
+  const snapshot = await get(ref(db, `users/${user.uid}`));
 
-    showMessage("");
+  if (!snapshot.exists()) {
+    throw new Error(
+      "Your account profile is missing. Please contact support."
+    );
+  }
 
-    const email = emailInput.value.trim().toLowerCase();
-    const password = passwordInput.value;
+  const profile = snapshot.val();
+  const role = getRole(profile.role);
 
-    if (!email || !password) {
-      showMessage("Please enter your email and password.");
-      return;
-    }
+  if (!role) {
+    throw new Error(
+      "Your account role is missing or invalid. Please contact support."
+    );
+  }
 
-    submitButton.disabled = true;
-    submitButton.textContent = "Logging in...";
+  window.location.replace(destinations[role]);
+}
 
-    try {
-      // Authenticate using Firebase.
-      const credential = await signInWithEmailAndPassword(
-        auth,
+// If the user is already signed in, send them to their dashboard.
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return;
+
+  try {
+    await redirectByRole(user);
+  } catch (error) {
+    console.error("Existing session error:", error);
+    showMessage(loginMessage, error.message);
+  }
+});
+
+// LOGIN
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearMessages();
+
+  const email = document.getElementById("loginEmail")
+    .value.trim().toLowerCase();
+
+  const password = document.getElementById("loginPassword").value;
+
+  if (!email || !password) {
+    showMessage(loginMessage, "Enter your email and password.");
+    return;
+  }
+
+  loginSubmit.disabled = true;
+  loginSubmit.textContent = "Logging in...";
+
+  try {
+    const result = await signInWithEmailAndPassword(
+      auth, email, password
+    );
+
+    await redirectByRole(result.user);
+
+  } catch (error) {
+    console.error("Login error:", error);
+
+    const messages = {
+      "auth/invalid-credential": "Incorrect email or password.",
+      "auth/invalid-email": "Enter a valid email address.",
+      "auth/too-many-requests": "Too many attempts. Please try again later.",
+      "auth/network-request-failed": "Check your internet connection.",
+      "PERMISSION_DENIED":
+        "Firebase denied access to your profile. Check your database rules."
+    };
+
+    showMessage(
+      loginMessage,
+      messages[error.code] || error.message
+    );
+
+    // Do not sign the user out here if their profile read failed.
+    // The message will help diagnose the actual problem.
+  } finally {
+    loginSubmit.disabled = false;
+    loginSubmit.textContent = "Log In";
+  }
+});
+
+// SIGNUP FROM THE COMBINED LOGIN PAGE
+signupForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearMessages();
+
+  const fullName = document.getElementById("signupName")
+    .value.trim();
+
+  const email = document.getElementById("signupEmail")
+    .value.trim().toLowerCase();
+
+  const selectedRole = document.getElementById("signupRole").value;
+  const role = getRole(selectedRole);
+
+  const password = document.getElementById("signupPassword").value;
+  const confirmation = document.getElementById("confirmPassword").value;
+
+  if (!fullName || !email || !role) {
+    showMessage(signupMessage, "Complete all required fields.");
+    return;
+  }
+
+  if (password.length < 8) {
+    showMessage(signupMessage, "Use at least 8 characters for your password.");
+    return;
+  }
+
+  if (password !== confirmation) {
+    showMessage(signupMessage, "Your passwords do not match.");
+    return;
+  }
+
+  signupSubmit.disabled = true;
+  signupSubmit.textContent = "Creating account...";
+
+  try {
+    const result = await createUserWithEmailAndPassword(
+      auth, email, password
+    );
+
+    const user = result.user;
+
+    await updateProfile(user, { displayName: fullName });
+
+    await set(ref(db, `users/${user.uid}`), {
+      role,
+      profile: {
+        fullName,
         email,
-        password
-      );
-
-      const user = credential.user;
-
-      // Retrieve this user's profile from Realtime Database.
-      const profileRef = ref(db, `users/${user.uid}`);
-      const profileSnapshot = await get(profileRef);
-
-      if (!profileSnapshot.exists()) {
-        showMessage(
-          "Your account profile was not found. Please contact your caregiver or administrator."
-        );
-
-        await auth.signOut();
-        return;
+        createdAt: new Date().toISOString()
       }
+    });
 
-      const profile = profileSnapshot.val();
+    showMessage(
+      signupMessage,
+      "Account created! Opening your dashboard...",
+      "success"
+    );
 
-      // Read the role saved in the user's Firebase profile.
-      const role = String(profile.role || "")
-        .trim()
-        .toLowerCase();
+    window.location.replace(destinations[role]);
 
-      // Redirect according to the saved role.
-      if (role === "caregiver" || role === "authorized") {
-        window.location.replace("dashboard.html");
-      } else if (role === "patient") {
-        window.location.replace("patient-dashboard.html");
-      } else {
-        showMessage(
-          "Your account role is not configured. Please contact your administrator."
-        );
+  } catch (error) {
+    console.error("Signup error:", error);
 
-        console.error("Unknown account role:", profile.role);
+    showMessage(
+      signupMessage,
+      error.code === "auth/email-already-in-use"
+        ? "This email already has an account. Please log in."
+        : error.message
+    );
+  } finally {
+    signupSubmit.disabled = false;
+    signupSubmit.textContent = "Create Account";
+  }
+});
 
-        await auth.signOut();
-      }
+// FORGOT PASSWORD
+forgotButton.addEventListener("click", async () => {
+  const email = document.getElementById("loginEmail")
+    .value.trim().toLowerCase();
 
-    } catch (error) {
-      console.error("Login error:", error);
+  if (!email) {
+    showMessage(loginMessage, "Enter your email address first.");
+    document.getElementById("loginEmail").focus();
+    return;
+  }
 
-      const errors = {
-        "auth/invalid-email":
-          "Please enter a valid email address.",
-        "auth/invalid-credential":
-          "Incorrect email or password.",
-        "auth/user-not-found":
-          "Incorrect email or password.",
-        "auth/wrong-password":
-          "Incorrect email or password.",
-        "auth/too-many-requests":
-          "Too many attempts. Please try again later.",
-        "auth/network-request-failed":
-          "Check your internet connection and try again.",
-        "auth/operation-not-allowed":
-          "Email and password login is not enabled in Firebase.",
-        "PERMISSION_DENIED":
-          "Firebase denied access to your profile. Check your database rules."
-      };
+  try {
+    await sendPasswordResetEmail(auth, email);
 
-      showMessage(
-        errors[error.code] ||
-        "Unable to log in or load your profile. Check the browser console."
-      );
+    showMessage(
+      loginMessage,
+      "If the account exists, a password-reset email will be sent.",
+      "success"
+    );
+  } catch (error) {
+    console.error("Password reset error:", error);
 
-    } finally {
-      submitButton.disabled = false;
-      submitButton.textContent = "Log In";
-    }
-  });
-
-  // Password reset.
-  forgotButton?.addEventListener("click", async () => {
-    const email = emailInput.value.trim().toLowerCase();
-
-    if (!email) {
-      showMessage("Enter your email address first.");
-      emailInput.focus();
-      return;
-    }
-
-    try {
-      await sendPasswordResetEmail(auth, email);
-
-      showMessage(
-        "If an account exists for this email, a reset link will be sent.",
-        "success"
-      );
-
-    } catch (error) {
-      console.error("Password reset error:", error);
-
-      showMessage(
-        "Unable to send the reset email. Check the email and try again."
-      );
-    }
-  });
+    showMessage(
+      loginMessage,
+      "Unable to send the reset email. Check the address and try again."
+    );
+  }
 });

@@ -18,6 +18,11 @@ const strengthText = document.getElementById("passwordStrength");
 const message = document.getElementById("formMessage");
 const submitButton = document.getElementById("submitButton");
 
+const destinations = {
+  authorized: "dashboard.html",
+  patient: "patient-dashboard.html"
+};
+
 function showMessage(text, type = "error") {
   message.textContent = text;
   message.className = `message ${type}`;
@@ -25,27 +30,27 @@ function showMessage(text, type = "error") {
 
 passwordInput.addEventListener("input", () => {
   const password = passwordInput.value;
-  let score = 0;
-
-  if (password.length >= 8) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[a-z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
 
   if (!password) {
     strengthText.textContent = "";
     return;
   }
 
-  const strength = score <= 2
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  const result = score <= 2
     ? { label: "Weak", color: "#b42318" }
     : score <= 4
       ? { label: "Medium", color: "#b7791f" }
       : { label: "Strong", color: "#175638" };
 
-  strengthText.textContent = `Password strength: ${strength.label}`;
-  strengthText.style.color = strength.color;
+  strengthText.textContent = `Password strength: ${result.label}`;
+  strengthText.style.color = result.color;
 });
 
 form.addEventListener("submit", async (event) => {
@@ -57,15 +62,10 @@ form.addEventListener("submit", async (event) => {
   const email = document.getElementById("email").value.trim().toLowerCase();
   const role = document.getElementById("role").value;
   const password = passwordInput.value;
-  const confirmPassword = confirmPasswordInput.value;
+  const confirmation = confirmPasswordInput.value;
 
-  if (!firstName || !lastName) {
-    showMessage("Please enter your first and last name.");
-    return;
-  }
-
-  if (!email.endsWith("@gmail.com")) {
-    showMessage("Please use a Gmail address.");
+  if (!firstName || !lastName || !email) {
+    showMessage("Please complete all required fields.");
     return;
   }
 
@@ -79,7 +79,7 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  if (password !== confirmPassword) {
+  if (password !== confirmation) {
     showMessage("Your passwords do not match.");
     return;
   }
@@ -87,58 +87,59 @@ form.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   submitButton.textContent = "Creating account...";
 
-  let createdUser = null;
+  let userCreated = false;
 
   try {
     const credential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
+      auth, email, password
     );
 
     const user = credential.user;
-    createdUser = user;
+    userCreated = true;
 
     const fullName = `${firstName} ${lastName}`;
 
-    await updateProfile(user, {
-      displayName: fullName
-    });
+    await updateProfile(user, { displayName: fullName });
 
     await set(ref(db, `users/${user.uid}`), {
       role: role,
       profile: {
-        firstName: firstName,
-        lastName: lastName,
-        fullName: fullName,
-        email: email,
+        firstName,
+        lastName,
+        fullName,
+        email,
         createdAt: new Date().toISOString()
       }
     });
 
-    showMessage("Account created! Opening your dashboard...", "success");
+    showMessage("Account created successfully!", "success");
 
-    window.location.replace("dashboard.html");
+    window.location.replace(destinations[role]);
 
   } catch (error) {
     console.error("Signup error:", error);
 
-    if (createdUser) {
+    if (userCreated) {
       showMessage(
-        "Your login account was created, but saving your profile failed. " +
-        "Please check your Firebase Database URL and Rules. " +
-        "Do not sign up again with the same email."
+        "Your Firebase account was created, but saving your profile failed. " +
+        "Check your database rules and connection. Do not register again " +
+        "with the same email; sign in after fixing the issue."
       );
     } else {
-      const errors = {
-        "auth/email-already-in-use": "This email already has an account. Please log in.",
-        "auth/invalid-email": "Please enter a valid email address.",
-        "auth/weak-password": "Please choose a stronger password.",
-        "auth/operation-not-allowed": "Enable Email/Password in Firebase Authentication.",
-        "auth/network-request-failed": "Check your internet connection and try again."
+      const messages = {
+        "auth/email-already-in-use":
+          "This email already has an account. Please log in.",
+        "auth/invalid-email":
+          "Please enter a valid email address.",
+        "auth/weak-password":
+          "Please choose a stronger password.",
+        "auth/operation-not-allowed":
+          "Enable Email/Password in Firebase Authentication.",
+        "auth/network-request-failed":
+          "Check your internet connection and try again."
       };
 
-      showMessage(errors[error.code] || error.message);
+      showMessage(messages[error.code] || error.message);
     }
   } finally {
     submitButton.disabled = false;

@@ -1,19 +1,48 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Medminder | Dashboard</title>
+  <meta name="theme-color" content="#175638">
+
+  <title>Medminder | Caregiver Dashboard</title>
 
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --green: #175638;
+      --green-dark: #10442b;
+      --green-light: #e7f4eb;
+      --background: #f4f8f5;
+      --text: #203b2d;
+      --muted: #65776a;
+      --border: #e2ebe4;
+      --white: #ffffff;
+    }
 
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f8f5;
-      color: #203b2d;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--background);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    [hidden] {
+      display: none !important;
     }
 
     header {
@@ -21,141 +50,386 @@
       justify-content: space-between;
       align-items: center;
       gap: 16px;
-      padding: 20px 6%;
-      background: white;
-      border-bottom: 1px solid #e2ebe4;
+      padding: 18px 6%;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
     }
 
     .brand {
-      color: #175638;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--green);
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .brand-icon {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      background: var(--green-light);
+      border-radius: 12px;
       font-size: 23px;
-      font-weight: bold;
     }
 
-    button {
-      padding: 11px 16px;
-      border: none;
-      border-radius: 8px;
-      background: #175638;
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
+    .logout-button {
+      padding: 11px 17px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: white;
+      color: var(--green);
+      font-weight: 600;
     }
 
-    button:hover { background: #10442b; }
-    button:disabled { opacity: 0.6; cursor: wait; }
+    .logout-button:hover {
+      background: var(--green-light);
+    }
 
     main {
-      max-width: 1050px;
-      margin: 40px auto;
-      padding: 0 20px;
+      max-width: 1120px;
+      margin: 38px auto;
+      padding: 0 22px 40px;
     }
 
-    .welcome { margin-bottom: 28px; }
-    .welcome h1 { margin-bottom: 8px; }
+    .welcome {
+      margin-bottom: 30px;
+    }
 
-    .muted { color: #65776a; }
+    .welcome h1 {
+      margin: 0 0 10px;
+      font-size: clamp(26px, 4vw, 34px);
+      line-height: 1.25;
+    }
+
+    .welcome p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .role-label {
+      display: inline-block;
+      margin-bottom: 14px;
+      padding: 7px 12px;
+      border-radius: 20px;
+      background: var(--green-light);
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .section-heading {
+      margin: 0 0 18px;
+      font-size: 21px;
+    }
 
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 20px;
     }
 
     .card {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
       padding: 24px;
-      background: white;
-      border-radius: 14px;
-      box-shadow: 0 4px 16px #173b2910;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 5px 20px rgba(23, 86, 56, 0.045);
+      min-width: 0;
     }
 
-    .card h2 {
-      color: #175638;
+    .card-icon {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 18px;
+      border-radius: 13px;
+      background: var(--green-light);
+      font-size: 25px;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      color: var(--green);
       font-size: 19px;
     }
 
+    .card p {
+      flex: 1;
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .primary-button {
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 9px;
+      background: var(--green);
+      color: white;
+      font-weight: 600;
+      transition: background 0.2s ease;
+    }
+
+    .primary-button:hover {
+      background: var(--green-dark);
+    }
+
+    .notice {
+      margin-top: 24px;
+      padding: 17px 20px;
+      border: 1px solid #d5e9db;
+      border-radius: 12px;
+      background: #edf7ef;
+      color: var(--green);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
     #loading {
+      padding: 90px 20px;
       text-align: center;
-      padding: 70px 20px;
+      color: var(--green);
+      font-size: 16px;
+    }
+
+    .loader {
+      width: 34px;
+      height: 34px;
+      margin: 0 auto 16px;
+      border: 4px solid var(--green-light);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     #error {
+      margin-top: 20px;
       color: #b42318;
-      line-height: 1.6;
+      line-height: 1.7;
       overflow-wrap: anywhere;
     }
 
-    [hidden] { display: none !important; }
+    footer {
+      padding: 24px 20px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+    }
 
-    @media (max-width: 480px) {
-      header { padding: 16px 5%; }
-      .brand { font-size: 20px; }
-      main { margin: 28px auto; }
-      .card { padding: 20px; }
+    @media (max-width: 850px) {
+      .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      header {
+        padding: 15px 5%;
+      }
+
+      .brand {
+        font-size: 21px;
+      }
+
+      .brand-icon {
+        width: 38px;
+        height: 38px;
+      }
+
+      .logout-button {
+        padding: 10px 12px;
+      }
+
+      main {
+        margin: 28px auto;
+        padding: 0 16px 30px;
+      }
+
+      .cards {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+
+      .card {
+        padding: 21px;
+      }
+
+      .welcome {
+        margin-bottom: 25px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 
   <script type="module" src="js/dashboard.js"></script>
 </head>
 
-<body>
-  <div id="loading">Loading your dashboard...</div>
+<body data-required-role="authorized">
+
+  <div id="loading">
+    <div class="loader"></div>
+    Loading your caregiver dashboard...
+  </div>
 
   <div id="app" hidden>
+
     <header>
-      <div class="brand">Medminder</div>
-      <button id="logoutButton">Log out</button>
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">💊</span>
+        <span>Medminder</span>
+      </div>
+
+      <button id="logoutButton" class="logout-button" type="button">
+        Log out
+      </button>
     </header>
 
     <main>
       <section class="welcome">
+        <span class="role-label">CAREGIVER ACCOUNT</span>
+
         <h1 id="welcomeTitle">Welcome!</h1>
-        <p id="accountEmail" class="muted"></p>
+
+        <p>
+          Manage your patient's medicines and medication schedules
+          from one convenient place.
+        </p>
+
+        <p id="accountEmail" style="margin-top: 8px;"></p>
       </section>
 
-      <section id="authorizedDashboard" hidden>
-        <h2>Caregiver Dashboard</h2>
-        <p class="muted">Manage medication and reminders for your patient.</p>
+      <section aria-labelledby="dashboardHeading">
+        <h2 id="dashboardHeading" class="section-heading">
+          Your Dashboard
+        </h2>
 
         <div class="cards">
+
           <article class="card">
-            <h2>My Medicines</h2>
-            <p>Add and manage the patient's medicines.</p>
-            <button id="medicinesButton">Manage Medicines</button>
+            <div class="card-icon" aria-hidden="true">💊</div>
+
+            <h3>My Medicines</h3>
+
+            <p>
+              Add, view, and manage the medicines assigned to your patient.
+            </p>
+
+            <button
+              id="medicinesButton"
+              class="primary-button"
+              type="button"
+            >
+              Manage Medicines
+            </button>
           </article>
 
           <article class="card">
-            <h2>Medication Reminders</h2>
-            <p>Set schedules for taking medication.</p>
-            <button id="remindersButton">Manage Reminders</button>
+            <div class="card-icon" aria-hidden="true">⏰</div>
+
+            <h3>Medication Reminders</h3>
+
+            <p>
+              Create and manage medication times to help your patient
+              follow their schedule.
+            </p>
+
+            <button
+              id="remindersButton"
+              class="primary-button"
+              type="button"
+            >
+              Manage Reminders
+            </button>
           </article>
 
           <article class="card">
-            <h2>Patient</h2>
-            <p>Patient information and reminders will appear here.</p>
+            <div class="card-icon" aria-hidden="true">🧑‍⚕️</div>
+
+            <h3>My Patient</h3>
+
+            <p>
+              View your linked patient's information and medication
+              activity.
+            </p>
+
+            <button
+              id="patientButton"
+              class="primary-button"
+              type="button"
+            >
+              View Patient
+            </button>
           </article>
+
         </div>
       </section>
 
-      <section id="patientDashboard" hidden>
-        <h2>My Medication</h2>
-        <p class="muted">View your medication and upcoming reminders.</p>
+      <div class="notice">
+        <strong>Reminder:</strong>
+        Medication information and schedules should be checked carefully.
+        Always follow the instructions provided by the patient's healthcare
+        professional.
+      </div>
 
-        <div class="cards">
-          <article class="card">
-            <h2>Today's Reminders</h2>
-            <p id="patientReminderMessage">No reminders have been loaded yet.</p>
-          </article>
-
-          <article class="card">
-            <h2>My Medicines</h2>
-            <p>Your prescribed medication list will appear here.</p>
-          </article>
-        </div>
-      </section>
-
-      <p id="error" role="alert"></p>
+      <p id="error" role="alert" aria-live="polite"></p>
     </main>
+
+    <footer>
+      © 2026 Medminder. Medication management made simpler.
+    </footer>
+
   </div>
+
+  <script type="module">
+    // These buttons are placeholders until their feature pages are created.
+    // They do not yet save or manage medication data.
+
+    const medicinesButton = document.getElementById("medicinesButton");
+    const remindersButton = document.getElementById("remindersButton");
+    const patientButton = document.getElementById("patientButton");
+    const error = document.getElementById("error");
+
+    function showComingSoon(feature) {
+      error.textContent =
+        feature + " is not available yet. Its page and Firebase features need to be created first.";
+    }
+
+    medicinesButton.addEventListener("click", () => {
+      showComingSoon("Medicine management");
+    });
+
+    remindersButton.addEventListener("click", () => {
+      showComingSoon("Medication reminders");
+    });
+
+    patientButton.addEventListener("click", () => {
+      showComingSoon("Patient management");
+    });
+  </script>
+
 </body>
 </html>
