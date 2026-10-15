@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#175638">
-  <title>Medminder | Caregiver Dashboard</title>
+  <title>Medminder | Dashboard</title>
 
   <style>
     :root {
@@ -242,6 +242,11 @@
 
     .primary:hover {
       background: var(--dark);
+    }
+
+    .primary:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
     }
 
     .panel {
@@ -586,6 +591,7 @@
         </div>
       </section>
 
+      <!-- HOME / MEDICINES -->
       <section id="medicinesSection" class="section active">
         <div class="summary">
           <article class="summary-card">
@@ -649,6 +655,7 @@
         </div>
       </section>
 
+      <!-- REMINDERS -->
       <section id="remindersSection" class="section">
         <div class="section-heading">
           <h2>Scheduled reminders</h2>
@@ -658,7 +665,10 @@
         </div>
 
         <div id="reminderForm" class="panel form-panel">
-          <h3>Create a reminder</h3>
+          <h3>Set a medication reminder</h3>
+          <p class="muted" style="margin-bottom: 18px;">
+            Choose the medicine, date, and time you need to remember.
+          </p>
 
           <form id="addReminderForm">
             <div class="field">
@@ -669,13 +679,19 @@
             </div>
 
             <div class="field">
+              <label for="reminderStartDate">Reminder date</label>
+              <input id="reminderStartDate" type="date" required>
+            </div>
+
+            <div class="field">
               <label for="reminderTime">Reminder time</label>
               <input id="reminderTime" type="time" required>
             </div>
 
             <div class="field">
-              <label for="reminderStartDate">Start date</label>
-              <input id="reminderStartDate" type="date" required>
+              <label for="reminderNotes">Instructions (optional)</label>
+              <textarea id="reminderNotes" rows="2"
+                        placeholder="e.g. Take after breakfast"></textarea>
             </div>
 
             <div class="actions">
@@ -691,6 +707,7 @@
         </div>
       </section>
 
+      <!-- HISTORY -->
       <section id="historySection" class="section">
         <div class="section-heading">
           <h2>Activity history</h2>
@@ -773,7 +790,24 @@
       document.getElementById("reminderForm").classList.remove("open");
     });
 
-    // Show today's date
+    // Set today's date as the minimum reminder date.
+    const reminderDateInput = document.getElementById("reminderStartDate");
+
+    function setMinimumReminderDate() {
+      const now = new Date();
+
+      const localDate = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0")
+      ].join("-");
+
+      reminderDateInput.min = localDate;
+    }
+
+    setMinimumReminderDate();
+
+    // Show today's date on the dashboard.
     document.getElementById("todayLabel").textContent =
       new Date().toLocaleDateString(undefined, {
         month: "short",

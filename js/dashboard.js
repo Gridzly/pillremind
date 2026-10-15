@@ -148,6 +148,32 @@ function renderMedicines() {
   });
 }
 
+// ADDED: Format stored 24-hour time into a readable local time.
+function formatTime(time) {
+  if (!time) return "Time not set";
+
+  const [hours, minutes] = time.split(":").map(Number);
+
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return time;
+  }
+
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+
+  return date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
 function renderReminders() {
   const container = $("reminderList");
   const select = $("reminderMedicine");
@@ -183,19 +209,30 @@ function renderReminders() {
     const row = makeElement("article", "record");
     const info = makeElement("div", "record-info");
 
+    // ADDED: Display the reminder date, formatted time, and instructions.
     info.append(
-      makeElement("strong", "", reminder.medicineName || "Medicine"),
       makeElement(
-        "p",
+        "strong",
         "",
-        `Time: ${reminder.time || "Not set"}`
+        reminder.medicineName || "Medicine"
       ),
       makeElement(
         "p",
         "",
-        `Start date: ${reminder.startDate || "Not set"}`
+        `📅 Date: ${reminder.startDate || "Not set"}`
+      ),
+      makeElement(
+        "p",
+        "",
+        `🕒 Time: ${formatTime(reminder.time)}`
       )
     );
+
+    if (reminder.notes) {
+      info.append(
+        makeElement("p", "", `Instructions: ${reminder.notes}`)
+      );
+    }
 
     const removeButton = makeElement("button", "remove-button", "Remove");
     removeButton.type = "button";
@@ -328,6 +365,12 @@ $("addReminderForm").addEventListener("submit", async event => {
   const medicineId = $("reminderMedicine").value;
   const time = $("reminderTime").value;
   const startDate = $("reminderStartDate").value;
+
+  // ADDED: Optional instructions. The matching HTML field is needed.
+  const notes = $("reminderNotes")
+    ? $("reminderNotes").value.trim()
+    : "";
+
   const medicine = medicines[medicineId];
 
   if (!medicine) {
@@ -336,7 +379,32 @@ $("addReminderForm").addEventListener("submit", async event => {
   }
 
   if (!time || !startDate) {
-    showError("Choose a reminder time and start date.");
+    showError("Choose a reminder date and time.");
+    return;
+  }
+
+  // ADDED: Prevent dates earlier than today's local date.
+  const now = new Date();
+
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0")
+  ].join("-");
+
+  if (startDate < today) {
+    showError("Please choose today or a future date.");
+    return;
+  }
+
+  // ADDED: If the selected date is today, require a future time.
+  const selectedDateTime = new Date(`${startDate}T${time}`);
+
+  if (
+    startDate === today &&
+    selectedDateTime.getTime() <= Date.now()
+  ) {
+    showError("Please choose a time later than the current time.");
     return;
   }
 
@@ -353,12 +421,13 @@ $("addReminderForm").addEventListener("submit", async event => {
       medicineName: medicine.name,
       time,
       startDate,
+      notes,
       createdAt: new Date().toISOString()
     });
 
     await saveHistory(
       "Reminder created",
-      `${medicine.name} at ${time}, starting ${startDate}`
+      `${medicine.name} at ${formatTime(time)} on ${startDate}`
     );
 
     $("addReminderForm").reset();
