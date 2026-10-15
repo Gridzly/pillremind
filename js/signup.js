@@ -139,8 +139,7 @@ form.addEventListener("submit", async (event) => {
           "Please enter a valid email address.",
         "auth/weak-password":
           "Please choose a stronger password.",
-        "auth/operation-not-allowed":
-          "Enable Email/Password in Firebase Authentication.",
+     
         "auth/network-request-failed":
           "Check your internet connection and try again."
       };
