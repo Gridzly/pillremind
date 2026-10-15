@@ -9,291 +9,118 @@ import {
 import {
   ref,
   get,
+  push,
   set,
-  push
+  remove
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const $ = (id) => document.getElementById(id);
-
-const loading = $("loading");
-const app = $("app");
-const errorBox = $("error");
 
 let currentUser = null;
 let medicines = {};
 let reminders = {};
 let historyRecords = {};
+let isSavingMedicine = false;
+let isSavingReminder = false;
 
-function showError(message) {
-  errorBox.textContent = message;
-  errorBox.style.display = "block";
+function showMessage(id, message, type = "error") {
+  const element = $(id);
+  if (!element) return;
+
+  element.textContent = message;
+  element.className = `message show ${type}`;
 }
 
-function clearError() {
-  errorBox.textContent = "";
-  errorBox.style.display = "none";
+function clearMessage(id) {
+  const element = $(id);
+  if (!element) return;
+
+  element.textContent = "";
+  element.className = "message";
 }
 
-function showDashboard() {
-  loading.style.display = "none";
-  app.style.display = "block";
+function showPageMessage(message, type = "error") {
+  showMessage("pageMessage", message, type);
 }
 
-function normalizeRole(role) {
-  const value = String(role || "").toLowerCase().trim();
+function userPath(section) {
+  return `users/${currentUser.uid}/${section}`;
+}
 
-  if (["authorized", "caregiver"].includes(value)) {
-    return "caregiver";
+function normalizeRole(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+function formatDate(dateString) {
+  if (!dateString) return "No date selected";
+
+  const parts = String(dateString).split("-").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) {
+    return String(dateString);
   }
 
-  if (["patient", "medicine_taker"].includes(value)) {
-    return "patient";
-  }
-
-  return "";
+  return new Date(parts[0], parts[1] - 1, parts[2])
+    .toLocaleDateString("en-PH", {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    });
 }
 
-function userPath(child = "") {
-  return `users/${currentUser.uid}${child ? "/" + child : ""}`;
+function formatTime(timeString) {
+  if (!timeString || !/^\d{2}:\d{2}$/.test(timeString)) {
+    return timeString || "No time selected";
+  }
+
+  const [hours, minutes] = timeString.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+
+  return date.toLocaleTimeString("en-PH", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  });
+}
+
+function escapeText(value) {
+  return String(value ?? "");
 }
 
 function makeElement(tag, className, text) {
   const element = document.createElement(tag);
-
   if (className) element.className = className;
   if (text !== undefined) element.textContent = text;
-
   return element;
 }
 
-function showEmpty(container, icon, title, description) {
-  container.replaceChildren();
-
-  const empty = makeElement("div", "empty");
-  empty.append(
-    makeElement("div", "empty-icon", icon),
-    makeElement("h3", "", title),
-    makeElement("p", "", description)
+function showEmpty(containerId, message) {
+  const container = $(containerId);
+  container.replaceChildren(
+    makeElement("div", "empty-state", message)
   );
-
-  container.append(empty);
 }
 
-async function saveHistory(action, details) {
-  const historyRef = push(ref(db, userPath("history")));
-
-  await set(historyRef, {
-    action,
-    details,
-    timestamp: new Date().toISOString()
-  });
-}
-
-async function removeRecord(path, label, details) {
-  if (!confirm(`Remove ${label}?`)) return;
-
+async function saveHistory(action, detail) {
   try {
-    clearError();
+    const historyRef = push(ref(db, userPath("history")));
 
-    await set(ref(db, userPath(path)), null);
-    await saveHistory(`${label} removed`, details);
-    await loadRecords();
+    await set(historyRef, {
+      action,
+      detail,
+      createdAt: Date.now()
+    });
   } catch (error) {
-    console.error("Remove error:", error);
-    showError(
-      "Unable to remove this record. Please check your Firebase database rules."
-    );
+    console.error("Could not save activity history:", error);
   }
 }
 
-function renderMedicines() {
-  const container = $("medicineList");
-  const entries = Object.entries(medicines);
+async function refreshData() {
+  if (!currentUser) return;
 
-  $("medicineCount").textContent = entries.length;
-  container.replaceChildren();
-
-  if (entries.length === 0) {
-    showEmpty(
-      container,
-      "💊",
-      "No medicines added yet",
-      "Select Add medicine to create your first record."
-    );
-    return;
-  }
-
-  entries.forEach(([id, medicine]) => {
-    const row = makeElement("article", "record");
-    const info = makeElement("div", "record-info");
-
-    info.append(
-      makeElement("strong", "", medicine.name || "Unnamed medicine"),
-      makeElement("p", "", medicine.dose || "Dosage not specified")
-    );
-
-    if (medicine.notes) {
-      info.append(makeElement("p", "", `Notes: ${medicine.notes}`));
-    }
-
-    const removeButton = makeElement("button", "remove-button", "Remove");
-    removeButton.type = "button";
-
-    removeButton.addEventListener("click", () => {
-      removeRecord(`medicines/${id}`, "this medicine", medicine.name || "Medicine");
-    });
-
-    row.append(info, removeButton);
-    container.append(row);
-  });
-}
-
-// ADDED: Format stored 24-hour time into a readable local time.
-function formatTime(time) {
-  if (!time) return "Time not set";
-
-  const [hours, minutes] = time.split(":").map(Number);
-
-  if (
-    !Number.isInteger(hours) ||
-    !Number.isInteger(minutes) ||
-    hours < 0 ||
-    hours > 23 ||
-    minutes < 0 ||
-    minutes > 59
-  ) {
-    return time;
-  }
-
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-
-  return date.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit"
-  });
-}
-
-function renderReminders() {
-  const container = $("reminderList");
-  const select = $("reminderMedicine");
-  const entries = Object.entries(reminders);
-
-  $("reminderCount").textContent = entries.length;
-  container.replaceChildren();
-
-  // Rebuild the medicine dropdown using saved medicines.
-  select.replaceChildren();
-
-  const defaultOption = makeElement("option", "", "Select a medicine");
-  defaultOption.value = "";
-  select.append(defaultOption);
-
-  Object.entries(medicines).forEach(([id, medicine]) => {
-    const option = makeElement("option", "", medicine.name || "Medicine");
-    option.value = id;
-    select.append(option);
-  });
-
-  if (entries.length === 0) {
-    showEmpty(
-      container,
-      "🔔",
-      "No reminders scheduled",
-      "Add a medicine first, then create a reminder."
-    );
-    return;
-  }
-
-  entries.forEach(([id, reminder]) => {
-    const row = makeElement("article", "record");
-    const info = makeElement("div", "record-info");
-
-    // ADDED: Display the reminder date, formatted time, and instructions.
-    info.append(
-      makeElement(
-        "strong",
-        "",
-        reminder.medicineName || "Medicine"
-      ),
-      makeElement(
-        "p",
-        "",
-        `📅 Date: ${reminder.startDate || "Not set"}`
-      ),
-      makeElement(
-        "p",
-        "",
-        `🕒 Time: ${formatTime(reminder.time)}`
-      )
-    );
-
-    if (reminder.notes) {
-      info.append(
-        makeElement("p", "", `Instructions: ${reminder.notes}`)
-      );
-    }
-
-    const removeButton = makeElement("button", "remove-button", "Remove");
-    removeButton.type = "button";
-
-    removeButton.addEventListener("click", () => {
-      removeRecord(
-        `reminders/${id}`,
-        "this reminder",
-        reminder.medicineName || "Medicine"
-      );
-    });
-
-    row.append(info, removeButton);
-    container.append(row);
-  });
-}
-
-function renderHistory() {
-  const container = $("historyList");
-
-  const entries = Object.values(historyRecords).sort((a, b) =>
-    String(b.timestamp || "").localeCompare(String(a.timestamp || ""))
-  );
-
-  container.replaceChildren();
-
-  if (entries.length === 0) {
-    showEmpty(
-      container,
-      "📋",
-      "No activity yet",
-      "Medicine and reminder changes will appear here."
-    );
-    return;
-  }
-
-  entries.forEach(entry => {
-    const row = makeElement("article", "record");
-    const info = makeElement("div", "record-info");
-
-    info.append(
-      makeElement("strong", "", entry.action || "Activity"),
-      makeElement("p", "", entry.details || "")
-    );
-
-    if (entry.timestamp) {
-      const date = new Date(entry.timestamp);
-
-      if (!Number.isNaN(date.getTime())) {
-        info.append(
-          makeElement("span", "record-date", date.toLocaleString())
-        );
-      }
-    }
-
-    row.append(info);
-    container.append(row);
-  });
-}
-
-async function loadRecords() {
   const [medicineSnapshot, reminderSnapshot, historySnapshot] =
     await Promise.all([
       get(ref(db, userPath("medicines"))),
@@ -301,225 +128,425 @@ async function loadRecords() {
       get(ref(db, userPath("history")))
     ]);
 
-  medicines = medicineSnapshot.val() || {};
-  reminders = reminderSnapshot.val() || {};
-  historyRecords = historySnapshot.val() || {};
+  medicines = medicineSnapshot.exists() ? medicineSnapshot.val() : {};
+  reminders = reminderSnapshot.exists() ? reminderSnapshot.val() : {};
+  historyRecords = historySnapshot.exists() ? historySnapshot.val() : {};
 
   renderMedicines();
   renderReminders();
   renderHistory();
+  renderSummary();
 }
 
-// Save a medicine.
-$("addMedicineForm").addEventListener("submit", async event => {
-  event.preventDefault();
+function renderSummary() {
+  const medicineEntries = Object.entries(medicines || {});
+  const reminderEntries = Object.entries(reminders || {});
 
-  if (!currentUser) return;
+  $("medicineCount").textContent = medicineEntries.length;
+  $("reminderCount").textContent = reminderEntries.length;
 
-  const name = $("medicineName").value.trim();
-  const dose = $("medicineDose").value.trim();
-  const notes = $("medicineNotes").value.trim();
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
-  if (!name || !dose) {
-    showError("Enter the medicine name and dosage.");
+  const upcoming = reminderEntries
+    .map(([id, reminder]) => ({ id, ...reminder }))
+    .filter(reminder => reminder.startDate && reminder.time)
+    .filter(reminder => {
+      return reminder.startDate > today ||
+        (reminder.startDate === today && reminder.time >= currentTime);
+    })
+    .sort((a, b) => {
+      const first = `${a.startDate}T${a.time}`;
+      const second = `${b.startDate}T${b.time}`;
+      return first.localeCompare(second);
+    });
+
+  if (!upcoming.length) {
+    $("nextReminder").textContent = "None yet";
+    $("nextReminderDetail").textContent = "No upcoming reminders";
     return;
   }
 
-  const submitButton = event.submitter;
-  if (submitButton) submitButton.disabled = true;
+  const next = upcoming[0];
+  $("nextReminder").textContent = formatTime(next.time);
+  $("nextReminderDetail").textContent =
+    `${next.medicineName || "Medicine"} · ${formatDate(next.startDate)}`;
+}
 
-  try {
-    clearError();
+function renderMedicines() {
+  const container = $("medicineList");
+  container.replaceChildren();
 
-    const newMedicineRef = push(ref(db, userPath("medicines")));
+  const entries = Object.entries(medicines || {});
 
-    await set(newMedicineRef, {
-      name,
-      dose,
-      notes,
-      createdAt: new Date().toISOString()
+  if (!entries.length) {
+    showEmpty("medicineList", "No medicines added yet. Select “Add medicine” to get started.");
+  }
+
+  entries.sort((a, b) =>
+    String(a[1].name || "").localeCompare(String(b[1].name || ""))
+  );
+
+  for (const [id, medicine] of entries) {
+    const record = makeElement("article", "record");
+    const main = makeElement("div", "record-main");
+    const title = makeElement("div", "record-title", medicine.name || "Unnamed medicine");
+    const detail = makeElement(
+      "div",
+      "record-detail",
+      [
+        medicine.dosage ? `Dosage: ${medicine.dosage}` : "",
+        medicine.frequency ? `Instructions: ${medicine.frequency}` : "",
+        medicine.notes ? `Notes: ${medicine.notes}` : ""
+      ].filter(Boolean).join("\n") || "No additional details"
+    );
+
+    const actions = makeElement("div", "record-actions");
+    const deleteButton = makeElement("button", "btn btn-danger btn-small", "Remove");
+    deleteButton.type = "button";
+    deleteButton.addEventListener("click", async () => {
+      if (!confirm(`Remove ${medicine.name || "this medicine"}? Related reminders will not be deleted automatically.`)) {
+        return;
+      }
+
+      try {
+        await remove(ref(db, `${userPath("medicines")}/${id}`));
+        await saveHistory("Medicine removed", medicine.name || "Medicine");
+        await refreshData();
+        showPageMessage("Medicine removed successfully.", "success");
+      } catch (error) {
+        console.error(error);
+        showPageMessage("Could not remove the medicine. Please try again.");
+      }
     });
 
-    await saveHistory("Medicine added", `${name} — ${dose}`);
+    actions.appendChild(deleteButton);
+    main.append(title, detail);
+    record.append(main, actions);
+    container.appendChild(record);
+  }
+
+  // Refresh the medicine selector without losing a still-valid selection.
+  const selector = $("reminderMedicine");
+  const previousValue = selector.value;
+  selector.replaceChildren();
+
+  const placeholder = makeElement("option", "", "Choose a medicine");
+  placeholder.value = "";
+  selector.appendChild(placeholder);
+
+  for (const [id, medicine] of Object.entries(medicines || {})) {
+    const option = makeElement("option", "", medicine.name || "Unnamed medicine");
+    option.value = id;
+    selector.appendChild(option);
+  }
+
+  if (medicines && medicines[previousValue]) {
+    selector.value = previousValue;
+  }
+}
+
+function renderReminders() {
+  const container = $("reminderList");
+  container.replaceChildren();
+
+  const entries = Object.entries(reminders || {});
+
+  if (!entries.length) {
+    showEmpty("reminderList", "No reminders yet. Open “New reminder” to choose a date and time.");
+  }
+
+  entries.sort((a, b) => {
+    const first = `${a[1].startDate || ""}T${a[1].time || ""}`;
+    const second = `${b[1].startDate || ""}T${b[1].time || ""}`;
+    return first.localeCompare(second);
+  });
+
+  for (const [id, reminder] of entries) {
+    const record = makeElement("article", "record");
+    const main = makeElement("div", "record-main");
+    const title = makeElement(
+      "div",
+      "record-title",
+      reminder.medicineName || "Medication reminder"
+    );
+
+    const detailLines = [
+      `📅 ${formatDate(reminder.startDate)}`,
+      `🕒 ${formatTime(reminder.time)}`
+    ];
+
+    if (reminder.notes) {
+      detailLines.push(`Notes: ${reminder.notes}`);
+    }
+
+    const detail = makeElement("div", "record-detail", detailLines.join("\n"));
+    const actions = makeElement("div", "record-actions");
+
+    const deleteButton = makeElement("button", "btn btn-danger btn-small", "Remove reminder");
+    deleteButton.type = "button";
+
+    deleteButton.addEventListener("click", async () => {
+      if (!confirm(`Remove the reminder for ${reminder.medicineName || "this medicine"}?`)) {
+        return;
+      }
+
+      try {
+        await remove(ref(db, `${userPath("reminders")}/${id}`));
+        await saveHistory(
+          "Reminder removed",
+          `${reminder.medicineName || "Medicine"} · ${formatDate(reminder.startDate)} · ${formatTime(reminder.time)}`
+        );
+        await refreshData();
+        showPageMessage("Reminder removed successfully.", "success");
+      } catch (error) {
+        console.error(error);
+        showPageMessage("Could not remove the reminder. Please try again.");
+      }
+    });
+
+    actions.appendChild(deleteButton);
+    main.append(title, detail);
+    record.append(main, actions);
+    container.appendChild(record);
+  }
+
+  renderSummary();
+}
+
+function renderHistory() {
+  const container = $("historyList");
+  container.replaceChildren();
+
+  const entries = Object.entries(historyRecords || {})
+    .sort((a, b) => Number(b[1].createdAt || 0) - Number(a[1].createdAt || 0));
+
+  if (!entries.length) {
+    showEmpty("historyList", "No activity has been recorded yet.");
+    return;
+  }
+
+  for (const [, item] of entries) {
+    const record = makeElement("article", "record");
+    const main = makeElement("div", "record-main");
+    const title = makeElement("div", "record-title", item.action || "Activity");
+    const detail = makeElement("div", "record-detail", item.detail || "");
+
+    const timestamp = item.createdAt
+      ? new Date(item.createdAt).toLocaleString("en-PH", {
+          dateStyle: "medium",
+          timeStyle: "short"
+        })
+      : "";
+
+    const date = makeElement("div", "record-detail", timestamp);
+    main.append(title, detail, date);
+    record.appendChild(main);
+    container.appendChild(record);
+  }
+}
+
+async function loadUserData(user) {
+  currentUser = user;
+
+  $("userLabel").textContent = user.email || "Your account";
+
+  try {
+    const snapshot = await get(ref(db, `users/${user.uid}`));
+    const userData = snapshot.exists() ? snapshot.val() : {};
+
+    const profile = userData.profile || {};
+    const role = normalizeRole(
+      userData.role || profile.role || userData.accountType || profile.accountType
+    );
+
+    // Keep patient accounts on their own patient dashboard.
+    if (["patient", "medicine_taker"].includes(role)) {
+      window.location.replace("patient-dashboard.html");
+      return;
+    }
+
+    const displayName =
+      profile.firstName ||
+      profile.first_name ||
+      user.displayName ||
+      user.email?.split("@")[0] ||
+      "there";
+
+    $("welcomeTitle").textContent = `Welcome, ${displayName}!`;
+    $("loading").style.display = "none";
+    $("app").style.display = "block";
+
+    await refreshData();
+  } catch (error) {
+    console.error("Dashboard loading error:", error);
+    $("loading").textContent =
+      "Unable to load your dashboard. Check your Firebase database rules and connection, then reload the page.";
+  }
+}
+
+$("addMedicineForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!currentUser || isSavingMedicine) return;
+
+  const name = $("medicineName").value.trim();
+  const dosage = $("medicineDosage").value.trim();
+  const frequency = $("medicineFrequency").value.trim();
+  const notes = $("medicineNotes").value.trim();
+
+  if (!name) {
+    showPageMessage("Please enter a medicine name.");
+    return;
+  }
+
+  isSavingMedicine = true;
+  $("saveMedicineButton").disabled = true;
+  clearMessage("pageMessage");
+
+  try {
+    const medicineRef = push(ref(db, userPath("medicines")));
+
+    await set(medicineRef, {
+      name,
+      dosage,
+      frequency,
+      notes,
+      createdAt: Date.now()
+    });
+
+    await saveHistory("Medicine added", name);
 
     $("addMedicineForm").reset();
     $("medicineForm").classList.remove("open");
 
-    await loadRecords();
+    await refreshData();
+    showPageMessage("Medicine saved successfully.", "success");
   } catch (error) {
-    console.error("Save medicine error:", error);
-    showError(
-      "Could not save the medicine. Check your Firebase connection and database rules."
-    );
+    console.error("Medicine save error:", error);
+    showPageMessage("Could not save the medicine. Check your Firebase database rules and try again.");
   } finally {
-    if (submitButton) submitButton.disabled = false;
+    isSavingMedicine = false;
+    $("saveMedicineButton").disabled = false;
   }
 });
 
-// Save a reminder.
-$("addReminderForm").addEventListener("submit", async event => {
+$("addReminderForm").addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  if (!currentUser) return;
+  if (!currentUser || isSavingReminder) return;
 
   const medicineId = $("reminderMedicine").value;
-  const time = $("reminderTime").value;
-  const startDate = $("reminderStartDate").value;
-
-  // ADDED: Optional instructions. The matching HTML field is needed.
-  const notes = $("reminderNotes")
-    ? $("reminderNotes").value.trim()
-    : "";
-
   const medicine = medicines[medicineId];
+  const startDate = $("reminderStartDate").value;
+  const time = $("reminderTime").value;
+  const notes = $("reminderNotes").value.trim();
 
-  if (!medicine) {
-    showError("Please select a saved medicine.");
+  clearMessage("reminderFormMessage");
+
+  if (!medicineId || !medicine) {
+    showMessage("reminderFormMessage", "Please add and select a medicine first.");
     return;
   }
 
-  if (!time || !startDate) {
-    showError("Choose a reminder date and time.");
+  if (!startDate) {
+    showMessage("reminderFormMessage", "Please click a date on the calendar.");
     return;
   }
 
-  // ADDED: Prevent dates earlier than today's local date.
+  if (!time || !/^\d{2}:\d{2}$/.test(time)) {
+    showMessage("reminderFormMessage", "Please select a valid reminder time.");
+    return;
+  }
+
+  // Use local calendar values so the chosen date is not shifted by UTC conversion.
+  const selectedParts = startDate.split("-").map(Number);
+  const selectedDate = new Date(
+    selectedParts[0],
+    selectedParts[1] - 1,
+    selectedParts[2]
+  );
+  selectedDate.setHours(0, 0, 0, 0);
+
   const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const today = [
+  if (selectedDate < today) {
+    showMessage("reminderFormMessage", "Please select today or a future date.");
+    return;
+  }
+
+  if (startDate === [
     now.getFullYear(),
     String(now.getMonth() + 1).padStart(2, "0"),
     String(now.getDate()).padStart(2, "0")
-  ].join("-");
-
-  if (startDate < today) {
-    showError("Please choose today or a future date.");
-    return;
+  ].join("-")) {
+    const [hours, minutes] = time.split(":").map(Number);
+    if (hours * 60 + minutes < now.getHours() * 60 + now.getMinutes()) {
+      showMessage("reminderFormMessage", "That time has already passed today. Please choose a later time.");
+      return;
+    }
   }
 
-  // ADDED: If the selected date is today, require a future time.
-  const selectedDateTime = new Date(`${startDate}T${time}`);
-
-  if (
-    startDate === today &&
-    selectedDateTime.getTime() <= Date.now()
-  ) {
-    showError("Please choose a time later than the current time.");
-    return;
-  }
-
-  const submitButton = event.submitter;
-  if (submitButton) submitButton.disabled = true;
+  isSavingReminder = true;
+  $("saveReminderButton").disabled = true;
 
   try {
-    clearError();
+    const reminderRef = push(ref(db, userPath("reminders")));
 
-    const newReminderRef = push(ref(db, userPath("reminders")));
-
-    await set(newReminderRef, {
+    const reminderData = {
       medicineId,
-      medicineName: medicine.name,
+      medicineName: medicine.name || "Medicine",
       time,
       startDate,
       notes,
-      createdAt: new Date().toISOString()
-    });
+      createdAt: Date.now()
+    };
+
+    await set(reminderRef, reminderData);
 
     await saveHistory(
-      "Reminder created",
-      `${medicine.name} at ${formatTime(time)} on ${startDate}`
+      "Reminder added",
+      `${reminderData.medicineName} · ${formatDate(startDate)} · ${formatTime(time)}${notes ? ` · ${notes}` : ""}`
     );
 
     $("addReminderForm").reset();
     $("reminderForm").classList.remove("open");
+    document.dispatchEvent(new CustomEvent("medminder:resetReminderPicker"));
 
-    await loadRecords();
+    await refreshData();
+
+    showPageMessage(
+      `Reminder saved for ${reminderData.medicineName} on ${formatDate(startDate)} at ${formatTime(time)}.`,
+      "success"
+    );
   } catch (error) {
-    console.error("Save reminder error:", error);
-    showError(
-      "Could not save the reminder. Check your Firebase connection and database rules."
+    console.error("Reminder save error:", error);
+    showMessage(
+      "reminderFormMessage",
+      "Could not save the reminder. Check your Firebase database rules and try again."
     );
   } finally {
-    if (submitButton) submitButton.disabled = false;
+    isSavingReminder = false;
+    $("saveReminderButton").disabled = false;
   }
 });
 
-// Log out only when the caregiver clicks the button.
 $("logoutButton").addEventListener("click", async () => {
   try {
     await signOut(auth);
     window.location.replace("login.html");
   } catch (error) {
     console.error("Logout error:", error);
-    showError("Could not log out. Please try again.");
+    showPageMessage("Unable to log out. Please try again.");
   }
 });
 
-// Wait for Firebase to restore the user's authentication session.
-onAuthStateChanged(auth, async user => {
+onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.replace("login.html");
     return;
   }
 
-  currentUser = user;
-  clearError();
-  loading.style.display = "block";
-  app.style.display = "none";
-
-  try {
-    const profileSnapshot = await get(ref(db, userPath()));
-    const record = profileSnapshot.val();
-
-    if (!record || !record.role) {
-      showDashboard();
-      showError(
-        "Your account role is missing. Check the role field under users/" +
-        user.uid + " in Firebase Realtime Database."
-      );
-      return;
-    }
-
-    const role = normalizeRole(record.role);
-
-    if (!role) {
-      showDashboard();
-      showError(
-        "Your account role is not recognized. Check the role saved in Firebase."
-      );
-      return;
-    }
-
-    // This page is for authorized persons/caregivers only.
-    if (role !== "caregiver") {
-      window.location.replace("patient-dashboard.html");
-      return;
-    }
-
-    const profile = record.profile || {};
-    const fullName =
-      profile.fullName ||
-      [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
-      user.displayName ||
-      "";
-
-    $("welcomeTitle").textContent = fullName
-      ? `Welcome, ${fullName}!`
-      : "Welcome!";
-
-    $("accountRole").textContent = "Caregiver dashboard";
-
-    await loadRecords();
-
-    showDashboard();
-  } catch (error) {
-    console.error("Dashboard loading error:", error);
-
-    showDashboard();
-
-    showError(
-      "Could not load your dashboard. Check your Firebase database URL, " +
-      "connection, and rules. " + (error.code || "")
-    );
-  }
+  await loadUserData(user);
 });
