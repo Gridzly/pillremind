@@ -1670,9 +1670,28 @@ async function loadUserData(user) {
     $("userLabel").textContent = user.email || "Your account";
   }
 
+  const loading = $("loading");
+  const app = $("app");
+
   try {
-    const snapshot = await get(ref(db, `users/${user.uid}`));
+    if (!user || !user.uid) {
+      throw new Error("No authenticated user was found.");
+    }
+
+    console.log("Medminder: authenticated user:", user.uid);
+    console.log("Medminder: checking database:", `users/${user.uid}`);
+
+    // Load the signed-in user's account data.
+    const userRef = ref(db, `users/${user.uid}`);
+    const snapshot = await get(userRef);
+
     userData = snapshot.exists() ? snapshot.val() : {};
+
+    if (!userData || typeof userData !== "object") {
+      userData = {};
+    }
+
+    console.log("Medminder: account data loaded successfully.");
 
     const profile = userData.profile || {};
 
@@ -1683,6 +1702,7 @@ async function loadUserData(user) {
       profile.accountType
     );
 
+    // Patient accounts should use the patient dashboard.
     if (["patient", "medicine_taker"].includes(role)) {
       window.location.replace("patient-dashboard.html");
       return;
@@ -1699,6 +1719,7 @@ async function loadUserData(user) {
       $("welcomeTitle").textContent = `Welcome, ${firstName}!`;
     }
 
+    // Set up the dashboard interface.
     injectFeatureStyles();
     injectProfileAndNotifications();
     setupQuantityInput();
@@ -1706,93 +1727,34 @@ async function loadUserData(user) {
     organizeMedicinePage();
     organizeSectionContent();
 
-    if ($("loading")) $("loading").style.display = "none";
-    if ($("app")) $("app").style.display = "block";
+    // Display the dashboard before refreshing its data.
+    if (loading) loading.style.display = "none";
+    if (app) app.style.display = "block";
 
     populateProfile();
+
+    // Load medicines, reminders, and history.
     await refreshData();
 
-    // Open the default page after data and sections are ready.
+    // Open the Medicines page by default.
     showSection("medicinesSection");
+
+    console.log("Medminder: dashboard loaded successfully.");
   } catch (error) {
-    console.error("Dashboard loading error:", error);
+    console.error("Medminder dashboard loading error:", error);
+    console.error("Firebase error code:", error?.code || "No Firebase error code");
+    console.error("Firebase error message:", error?.message || String(error));
 
-    if ($("loading")) {
-      $("loading").textContent =
-        "Unable to load your dashboard. Check your Firebase database rules and connection, then reload the page.";
+    // Show the actual error on the page while troubleshooting.
+    if (loading) {
+      loading.style.display = "block";
+      loading.textContent =
+        `Dashboard error: ${error?.code || "UNKNOWN"} — ` +
+        `${error?.message || String(error)}`;
     }
+
+    if (app) app.style.display = "none";
   }
-}
-
-
-function organizeSectionContent() {
-  const medicineSection = document.getElementById("medicinesSection");
-  const reminderSection = document.getElementById("remindersSection");
-
-  if (!medicineSection || !reminderSection) return;
-
-  // Move the date and welcome content into Medicines.
-  const welcomeTitle = document.getElementById("welcomeTitle");
-  const todayLabel = document.getElementById("todayLabel");
-
-  if (todayLabel && !medicineSection.contains(todayLabel)) {
-    medicineSection.prepend(todayLabel);
-  }
-
-  if (welcomeTitle && !medicineSection.contains(welcomeTitle)) {
-    medicineSection.prepend(welcomeTitle);
-  }
-
-  // Keep the welcome description only in Medicines.
-  const welcomeDescription = [
-    ...document.querySelectorAll("p")
-  ].find(el =>
-    el.textContent.includes("Manage medicines and schedule reminders in one place")
-  );
-
-  if (welcomeDescription && !medicineSection.contains(welcomeDescription)) {
-    medicineSection.insertBefore(welcomeDescription, medicineSection.firstChild);
-  }
-
-  const routineDescription = [
-    ...document.querySelectorAll("p")
-  ].find(el =>
-    el.textContent.includes("Keep track of your medicines and choose the date and time")
-  );
-
-  if (routineDescription && !medicineSection.contains(routineDescription)) {
-    medicineSection.insertBefore(routineDescription, medicineSection.firstChild);
-  }
-
-  // Move Add Reminder controls into the Reminders section.
-  const quickAddReminder = document.getElementById("quickAddReminder");
-
-  if (quickAddReminder && !reminderSection.contains(quickAddReminder)) {
-    const heading = reminderSection.querySelector(".panel-heading");
-    if (heading) {
-      heading.appendChild(quickAddReminder);
-    } else {
-      reminderSection.prepend(quickAddReminder);
-    }
-  }
-
-  // The welcome content should not appear in other sections.
-  const welcomeElements = [
-    todayLabel,
-    welcomeTitle,
-    welcomeDescription,
-    routineDescription
-  ].filter(Boolean);
-
-  document.querySelectorAll(".section").forEach(section => {
-    if (section.id === "medicinesSection") return;
-
-    welcomeElements.forEach(element => {
-      if (section.contains(element)) {
-        element.remove();
-      }
-    });
-  });
 }
 
 
