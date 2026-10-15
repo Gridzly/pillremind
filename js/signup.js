@@ -69,7 +69,7 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  if (!["authorized", "patient"].includes(role)) {
+  if (!Object.hasOwn(destinations, role)) {
     showMessage("Please select Caregiver or Patient.");
     return;
   }
@@ -87,22 +87,26 @@ form.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   submitButton.textContent = "Creating account...";
 
-  let userCreated = false;
+  let user = null;
 
   try {
+    // Step 1: Create the Firebase Authentication account.
     const credential = await createUserWithEmailAndPassword(
-      auth, email, password
+      auth,
+      email,
+      password
     );
 
-    const user = credential.user;
-    userCreated = true;
+    user = credential.user;
 
     const fullName = `${firstName} ${lastName}`;
 
+    // Step 2: Save the display name.
     await updateProfile(user, { displayName: fullName });
 
+    // Step 3: Save the role and profile under this exact user's UID.
     await set(ref(db, `users/${user.uid}`), {
-      role: role,
+      role,
       profile: {
         firstName,
         lastName,
@@ -112,18 +116,20 @@ form.addEventListener("submit", async (event) => {
       }
     });
 
-    showMessage("Account created successfully!", "success");
+    showMessage("Account created successfully! Redirecting...", "success");
 
     window.location.replace(destinations[role]);
 
   } catch (error) {
     console.error("Signup error:", error);
 
-    if (userCreated) {
+    if (user) {
+      // Authentication succeeded; the failure may be in profile saving.
       showMessage(
-        "Your Firebase account was created, but saving your profile failed. " +
-        "Check your database rules and connection. Do not register again " +
-        "with the same email; sign in after fixing the issue."
+        `Your authentication account exists, but setup did not finish. ` +
+        `Error: ${error.code || error.message}. ` +
+        `Do not sign up again with this email. Check Firebase Database ` +
+        `rules and the database URL, then repair this user's profile.`
       );
     } else {
       const messages = {
