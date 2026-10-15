@@ -1,9 +1,15 @@
-import { auth } from "./firebaseConfig.js";
+
+import { auth, db } from "./firebaseConfig.js";
 
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+import {
+  ref,
+  get
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("loginForm");
@@ -14,35 +20,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const forgotButton = document.getElementById("forgotPassword");
   const toggleButton = document.querySelector("[data-toggle-password]");
 
+  // Display a message on the login page.
   function showMessage(text, type = "error") {
     message.textContent = text;
     message.className = `message ${type}`;
-
-    message.style.background =
-      type === "success" ? "#e7f4eb" : "#fef0f0";
-
-    message.style.color =
-      type === "success" ? "#175638" : "#b42318";
   }
 
-  // Show or hide the password.
-  if (toggleButton) {
-    toggleButton.addEventListener("click", () => {
-      const isHidden = passwordInput.type === "password";
+  // Show or hide password.
+  toggleButton?.addEventListener("click", () => {
+    const hidden = passwordInput.type === "password";
 
-      passwordInput.type = isHidden ? "text" : "password";
-      toggleButton.textContent = isHidden ? "Hide" : "Show";
+    passwordInput.type = hidden ? "text" : "password";
+    toggleButton.textContent = hidden ? "Hide" : "Show";
+  });
 
-      toggleButton.setAttribute(
-        "aria-label",
-        isHidden ? "Hide password" : "Show password"
-      );
-    });
-  }
-
-  // Log in with Firebase Authentication.
+  // Handle login.
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+
     showMessage("");
 
     const email = emailInput.value.trim().toLowerCase();
@@ -57,16 +52,49 @@ document.addEventListener("DOMContentLoaded", () => {
     submitButton.textContent = "Logging in...";
 
     try {
-      await signInWithEmailAndPassword(
+      // Authenticate using Firebase.
+      const credential = await signInWithEmailAndPassword(
         auth,
         email,
         password
       );
 
-      showMessage("Login successful!", "success");
+      const user = credential.user;
 
-      // Change this to your actual dashboard filename.
-      window.location.href = "dashboard.html";
+      // Retrieve this user's profile from Realtime Database.
+      const profileRef = ref(db, `users/${user.uid}`);
+      const profileSnapshot = await get(profileRef);
+
+      if (!profileSnapshot.exists()) {
+        showMessage(
+          "Your account profile was not found. Please contact your caregiver or administrator."
+        );
+
+        await auth.signOut();
+        return;
+      }
+
+      const profile = profileSnapshot.val();
+
+      // Read the role saved in the user's Firebase profile.
+      const role = String(profile.role || "")
+        .trim()
+        .toLowerCase();
+
+      // Redirect according to the saved role.
+      if (role === "caregiver" || role === "authorized") {
+        window.location.replace("dashboard.html");
+      } else if (role === "patient") {
+        window.location.replace("patient-dashboard.html");
+      } else {
+        showMessage(
+          "Your account role is not configured. Please contact your administrator."
+        );
+
+        console.error("Unknown account role:", profile.role);
+
+        await auth.signOut();
+      }
 
     } catch (error) {
       console.error("Login error:", error);
@@ -74,29 +102,25 @@ document.addEventListener("DOMContentLoaded", () => {
       const errors = {
         "auth/invalid-email":
           "Please enter a valid email address.",
-
         "auth/invalid-credential":
           "Incorrect email or password.",
-
         "auth/user-not-found":
           "Incorrect email or password.",
-
         "auth/wrong-password":
           "Incorrect email or password.",
-
         "auth/too-many-requests":
           "Too many attempts. Please try again later.",
-
         "auth/network-request-failed":
           "Check your internet connection and try again.",
-
         "auth/operation-not-allowed":
-          "Email and password login is not enabled in Firebase."
+          "Email and password login is not enabled in Firebase.",
+        "PERMISSION_DENIED":
+          "Firebase denied access to your profile. Check your database rules."
       };
 
       showMessage(
         errors[error.code] ||
-        "Unable to log in. Please try again."
+        "Unable to log in or load your profile. Check the browser console."
       );
 
     } finally {
@@ -105,8 +129,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Send a password reset email.
-  forgotButton.addEventListener("click", async () => {
+  // Password reset.
+  forgotButton?.addEventListener("click", async () => {
     const email = emailInput.value.trim().toLowerCase();
 
     if (!email) {
@@ -115,33 +139,20 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    forgotButton.disabled = true;
-
     try {
       await sendPasswordResetEmail(auth, email);
 
       showMessage(
-        "If an account exists for this email, a password reset link will be sent.",
+        "If an account exists for this email, a reset link will be sent.",
         "success"
       );
 
     } catch (error) {
       console.error("Password reset error:", error);
 
-      if (error.code === "auth/invalid-email") {
-        showMessage("Please enter a valid email address.");
-      } else if (error.code === "auth/operation-not-allowed") {
-        showMessage("Email/password authentication is not enabled.");
-      } else if (error.code === "auth/too-many-requests") {
-        showMessage("Too many attempts. Please try again later.");
-      } else {
-        showMessage(
-          "Unable to send the reset email. Please try again."
-        );
-      }
-
-    } finally {
-      forgotButton.disabled = false;
+      showMessage(
+        "Unable to send the reset email. Check the email and try again."
+      );
     }
   });
 });
