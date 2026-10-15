@@ -1704,6 +1704,7 @@ async function loadUserData(user) {
     setupQuantityInput();
     setupIntakeSummary();
     organizeMedicinePage();
+    organizeSectionContent();
 
     if ($("loading")) $("loading").style.display = "none";
     if ($("app")) $("app").style.display = "block";
@@ -1722,6 +1723,78 @@ async function loadUserData(user) {
     }
   }
 }
+
+
+function organizeSectionContent() {
+  const medicineSection = document.getElementById("medicinesSection");
+  const reminderSection = document.getElementById("remindersSection");
+
+  if (!medicineSection || !reminderSection) return;
+
+  // Move the date and welcome content into Medicines.
+  const welcomeTitle = document.getElementById("welcomeTitle");
+  const todayLabel = document.getElementById("todayLabel");
+
+  if (todayLabel && !medicineSection.contains(todayLabel)) {
+    medicineSection.prepend(todayLabel);
+  }
+
+  if (welcomeTitle && !medicineSection.contains(welcomeTitle)) {
+    medicineSection.prepend(welcomeTitle);
+  }
+
+  // Keep the welcome description only in Medicines.
+  const welcomeDescription = [
+    ...document.querySelectorAll("p")
+  ].find(el =>
+    el.textContent.includes("Manage medicines and schedule reminders in one place")
+  );
+
+  if (welcomeDescription && !medicineSection.contains(welcomeDescription)) {
+    medicineSection.insertBefore(welcomeDescription, medicineSection.firstChild);
+  }
+
+  const routineDescription = [
+    ...document.querySelectorAll("p")
+  ].find(el =>
+    el.textContent.includes("Keep track of your medicines and choose the date and time")
+  );
+
+  if (routineDescription && !medicineSection.contains(routineDescription)) {
+    medicineSection.insertBefore(routineDescription, medicineSection.firstChild);
+  }
+
+  // Move Add Reminder controls into the Reminders section.
+  const quickAddReminder = document.getElementById("quickAddReminder");
+
+  if (quickAddReminder && !reminderSection.contains(quickAddReminder)) {
+    const heading = reminderSection.querySelector(".panel-heading");
+    if (heading) {
+      heading.appendChild(quickAddReminder);
+    } else {
+      reminderSection.prepend(quickAddReminder);
+    }
+  }
+
+  // The welcome content should not appear in other sections.
+  const welcomeElements = [
+    todayLabel,
+    welcomeTitle,
+    welcomeDescription,
+    routineDescription
+  ].filter(Boolean);
+
+  document.querySelectorAll(".section").forEach(section => {
+    if (section.id === "medicinesSection") return;
+
+    welcomeElements.forEach(element => {
+      if (section.contains(element)) {
+        element.remove();
+      }
+    });
+  });
+}
+
 
 /* -------------------------------------------------------
    ADD MEDICINE FORM
