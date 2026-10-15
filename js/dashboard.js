@@ -1701,6 +1701,27 @@ async function loadUserData(user) {
   }
 }
 
+
+function organizeMedicinePage() {
+  const medicineSection = document.getElementById("medicinesSection");
+  const stats = document.querySelector(".stats");
+  const intakeSummary = document.getElementById("intakeSummary");
+
+  if (!medicineSection) return;
+
+  // Keep the dashboard overview only inside Medicines.
+  if (stats && !medicineSection.contains(stats)) {
+    medicineSection.prepend(stats);
+  }
+
+  if (intakeSummary && !medicineSection.contains(intakeSummary)) {
+    medicineSection.appendChild(intakeSummary);
+  }
+
+  // Open Medicines as the default page.
+  showSection("medicinesSection");
+}
+
 /* -------------------------------------------------------
    ADD MEDICINE FORM
 ------------------------------------------------------- */
