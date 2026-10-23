@@ -1,5 +1,5 @@
 
-import { auth, db } from "./firebaseConfig.js";
+import { auth, db, functions } from "./firebaseConfig.js";
 
 import {
   onAuthStateChanged,
@@ -14,7 +14,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 import {
-  getFunctions,
   httpsCallable
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 
@@ -33,8 +32,6 @@ const state = {
   codeTimer: null,
   codeRequestInProgress: false
 };
-
-const functions = getFunctions(auth.app, "us-central1");
 
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -697,26 +694,27 @@ function hideConnectionCode() {
   $("connectionExpiry").textContent = "";
 }
 
+
 async function generateConnectionCode() {
   if (!state.user || state.codeRequestInProgress) return;
 
   state.codeRequestInProgress = true;
+
   const button = $("generateConnectionCode");
   button.disabled = true;
   button.textContent = "Generating...";
 
   try {
-    /*
-      This calls a trusted backend. It will only work after the
-      createConnectionCode Cloud Function has been deployed.
-      No insecure browser-generated fallback is used.
-    */
-    const createCode = httpsCallable(functions, "createConnectionCode");
+    const createCode = httpsCallable(
+      functions,
+      "createConnectionCode"
+    );
+
     const result = await createCode({});
     const data = result.data || {};
 
     if (!data.code || !data.expiresAt) {
-      throw new Error("The connection service returned an incomplete response.");
+      throw new Error("Invalid connection-code response.");
     }
 
     const expiresAt = typeof data.expiresAt === "number"
@@ -724,20 +722,36 @@ async function generateConnectionCode() {
       : new Date(data.expiresAt).getTime();
 
     if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
-      throw new Error("The connection service returned an invalid expiry.");
+      throw new Error("The connection code has expired or is invalid.");
     }
 
     showConnectionCode(String(data.code), expiresAt);
+
     $("connectionStatus").textContent =
-      "Temporary code created. Share it only with your authorized caregiver.";
-    showNotice("success", "Your temporary connection code is ready.");
+      "Share this temporary code with your authorized caregiver.";
+
+    showNotice(
+      "success",
+      "Your connection code has been generated."
+    );
+
   } catch (error) {
     console.error("Connection-code generation failed:", error);
+
     hideConnectionCode();
+
     $("connectionStatus").textContent =
-      "The connection-code service is not available yet.";
-    showNotice("error",
-      "Could not generate a connection code. The createConnectionCode Firebase Cloud Function must be deployed and configured.");
+      "Unable to connect to the connection-code service.";
+
+    showNotice(
+      "error",
+      error?.code === "functions/unauthenticated"
+        ? "Your session has expired. Please sign in again."
+        : error?.code === "functions/permission-denied"
+        ? "Only patient accounts can generate connection codes."
+        : "Could not generate a connection code. Check your Firebase connection and ensure the Cloud Functions emulator is reachable."
+    );
+
   } finally {
     state.codeRequestInProgress = false;
     button.disabled = false;
