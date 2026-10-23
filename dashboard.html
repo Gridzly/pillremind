@@ -6,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#175638">
   <title>Medminder | Authorized Dashboard</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
     :root {
       --green: #175638;
@@ -22,7 +27,10 @@
     * { box-sizing: border-box; }
 
     body {
+      margin: 0;
       font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
     }
 
     button, input, select, textarea { font: inherit; }
@@ -58,10 +66,7 @@
       margin: 12px 10px;
     }
 
-    nav, .sidebar-bottom {
-      display: grid;
-      gap: 7px;
-    }
+    nav, .sidebar-bottom { display: grid; gap: 7px; }
 
     .nav-btn {
       border: 0;
@@ -79,7 +84,6 @@
     }
 
     .sidebar-bottom { margin-top: auto; }
-
     .main { min-width: 0; }
 
     .topbar {
@@ -96,6 +100,7 @@
     h2 { font-size: 20px; margin: 0 0 8px; }
     h3 { margin-top: 0; }
     p { line-height: 1.5; }
+
     .muted { color: var(--muted); font-size: 13px; }
 
     .avatar {
@@ -119,7 +124,6 @@
     }
 
     .content { padding: 26px; }
-
     .page { display: none; }
     .page.active { display: block; }
 
@@ -155,7 +159,6 @@
 
     .stat-label { color: var(--muted); font-size: 13px; }
     .stat-number { font-size: 29px; font-weight: 800; margin: 10px 0; }
-
     .panel { margin-bottom: 20px; }
 
     .panel-heading {
@@ -186,7 +189,6 @@
 
     .field { display: grid; gap: 7px; }
     .field.full { grid-column: 1 / -1; }
-
     label { font-size: 13px; font-weight: 700; }
 
     input, select, textarea {
@@ -221,10 +223,11 @@
       align-items: flex-start;
       justify-content: space-between;
       gap: 14px;
+      min-width: 0;
     }
 
     .record h3 { margin-bottom: 6px; }
-    .record p { margin: 4px 0; font-size: 13px; }
+    .record p { margin: 4px 0; font-size: 13px; overflow-wrap: anywhere; }
     .record-actions { display: flex; flex-wrap: wrap; gap: 7px; }
 
     .empty-state {
@@ -247,6 +250,7 @@
 
     .message.show { display: block; }
     .message.error { background: #fff0ef; color: var(--danger); }
+    [hidden] { display: none !important; }
 
     .connection-code {
       letter-spacing: 2px;
@@ -279,14 +283,62 @@
     }
 
     .day-option input { width: auto; }
-
     .bottom-nav { display: none; }
 
+    /* Notification history */
+    .notification-record {
+      align-items: flex-start;
+    }
+
+    .notification-content {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .notification-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 7px;
+    }
+
+    .notification-description {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+      white-space: pre-line;
+    }
+
+    .notification-time {
+      display: block;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .notification-icon {
+      display: grid;
+      place-items: center;
+      flex: 0 0 38px;
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      background: var(--light);
+      font-size: 17px;
+    }
+
     @media (max-width: 850px) {
-      .app { display: block; padding-bottom: 70px; }
+      .app { display: block; padding-bottom: 75px; }
       .sidebar { display: none; }
-      .topbar { padding: 16px; }
+
+      .topbar {
+        padding: 16px;
+      }
+
       .content { padding: 16px; }
+
       .bottom-nav {
         position: fixed;
         z-index: 20;
@@ -301,11 +353,14 @@
         background: white;
         border-top: 1px solid var(--border);
       }
+
       .bottom-nav .nav-btn {
+        flex: 1;
         text-align: center;
         font-size: 11px;
         padding: 10px 5px;
       }
+
       .stats { gap: 8px; }
       .stat { padding: 13px; }
       .stat-number { font-size: 23px; }
@@ -328,25 +383,28 @@
     }
   </style>
 </head>
+
 <body>
 <div class="app">
   <aside class="sidebar">
     <div class="brand">✚ Medminder</div>
+
     <div>
       <div class="nav-label">AUTHORIZED WORKSPACE</div>
       <nav>
-        <button class="nav-btn active" data-page="medicinesPage">💊 Medicines</button>
-        <button class="nav-btn" data-page="remindersPage">🔔 Reminders</button>
-        <button class="nav-btn" data-page="refillsPage">📦 Refills</button>
-        <button class="nav-btn" data-page="historyPage">📋 History</button>
+        <button class="nav-btn active" data-page="medicinesPage" type="button">💊 Medicines</button>
+        <button class="nav-btn" data-page="remindersPage" type="button">🔔 Reminders</button>
+        <button class="nav-btn" data-page="refillsPage" type="button">📦 Refills</button>
+        <button class="nav-btn" data-page="historyPage" type="button">📋 History</button>
       </nav>
     </div>
+
     <div class="sidebar-bottom">
       <div class="nav-label">ACCOUNT</div>
-      <button class="nav-btn" id="openConnection">🔗 Patient connection</button>
-      <button class="nav-btn" id="openNotifications">🔔 Notifications</button>
-      <button class="nav-btn" id="openProfile">👤 My profile</button>
-      <button class="nav-btn" id="logoutButton">↪ Log out</button>
+      <button class="nav-btn" id="openConnection" type="button">🔗 Patient connection</button>
+      <button class="nav-btn" id="openNotifications" type="button">🔔 Notifications</button>
+      <button class="nav-btn" id="openProfile" type="button">👤 My profile</button>
+      <button class="nav-btn" id="logoutButton" type="button">↪ Log out</button>
     </div>
   </aside>
 
@@ -356,9 +414,13 @@
         <h1 id="pageTitle">Authorized dashboard</h1>
         <div class="muted" id="pageSubtitle">Manage medicine schedules and reminders.</div>
       </div>
+
       <button class="profile-shortcut" id="profileButton" type="button">
         <span class="avatar" id="avatar">A</span>
-        <span class="profile-text"><b id="displayName">My account</b><br><small class="muted">My profile</small></span>
+        <span class="profile-text">
+          <b id="displayName">My account</b><br>
+          <small class="muted">My profile</small>
+        </span>
       </button>
     </header>
 
@@ -375,32 +437,86 @@
         </div>
 
         <div class="stats">
-          <div class="stat"><div class="stat-label">Medicines</div><div class="stat-number" id="medicineCount">0</div><div class="muted">Saved records</div></div>
-          <div class="stat"><div class="stat-label">Schedules</div><div class="stat-number" id="reminderCount">0</div><div class="muted">Reminder records</div></div>
-          <div class="stat"><div class="stat-label">Refill alerts</div><div class="stat-number" id="refillCount">0</div><div class="muted">Need attention</div></div>
+          <div class="stat">
+            <div class="stat-label">Medicines</div>
+            <div class="stat-number" id="medicineCount">0</div>
+            <div class="muted">Saved records</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Schedules</div>
+            <div class="stat-number" id="reminderCount">0</div>
+            <div class="muted">Reminder records</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Refill alerts</div>
+            <div class="stat-number" id="refillCount">0</div>
+            <div class="muted">Need attention</div>
+          </div>
         </div>
 
         <div class="panel">
           <div class="panel-heading">
-            <div><h2>Medicine list</h2><p class="muted">Enter medicine details or use the medicine photo scanner if available in your JavaScript.</p></div>
+            <div>
+              <h2>Medicine list</h2>
+              <p class="muted">Enter medicine details and verify them against the medicine label or prescription.</p>
+            </div>
             <button class="btn btn-primary" id="addMedicineButton" type="button">+ Add medicine</button>
           </div>
-          <div id="medicineList" class="record-list"><div class="empty-state">Loading medicines...</div></div>
+          <div id="medicineList" class="record-list">
+            <div class="empty-state">Loading medicines...</div>
+          </div>
         </div>
 
         <div class="panel" id="medicineFormPanel" hidden>
-          <div class="panel-heading"><div><h2 id="medicineFormTitle">Add medicine</h2><p class="muted">Verify the medicine packaging or prescription before saving.</p></div></div>
+          <div class="panel-heading">
+            <div>
+              <h2 id="medicineFormTitle">Add medicine</h2>
+              <p class="muted">Verify the medicine packaging or prescription before saving.</p>
+            </div>
+          </div>
+
           <form id="medicineForm">
             <input type="hidden" id="medicineId">
+
             <div class="form-grid">
-              <div class="field"><label for="medicineName">Medicine name *</label><input id="medicineName" required maxlength="120"></div>
-              <div class="field"><label for="medicineDosage">Strength / dosage *</label><input id="medicineDosage" required maxlength="80" placeholder="e.g. 500 mg"></div>
-              <div class="field"><label for="medicineQuantity">Current quantity *</label><input id="medicineQuantity" type="number" min="0" step="1" required></div>
-              <div class="field"><label for="medicineRefillAt">Refill alert quantity</label><input id="medicineRefillAt" type="number" min="0" step="1" value="5"></div>
-              <div class="field full"><label for="medicineInstructions">Instructions</label><input id="medicineInstructions" maxlength="250" placeholder="Use only the instructions prescribed by the clinician"></div>
-              <div class="field full"><label for="medicineNotes">Notes</label><textarea id="medicineNotes" rows="3" maxlength="1000"></textarea></div>
-              <div class="field full"><label class="day-option"><input id="detailsVerified" type="checkbox" required> I verified these details against the medicine label or prescription.</label></div>
+              <div class="field">
+                <label for="medicineName">Medicine name *</label>
+                <input id="medicineName" required maxlength="120">
+              </div>
+
+              <div class="field">
+                <label for="medicineDosage">Strength / dosage *</label>
+                <input id="medicineDosage" required maxlength="80" placeholder="e.g. 500 mg">
+              </div>
+
+              <div class="field">
+                <label for="medicineQuantity">Current quantity *</label>
+                <input id="medicineQuantity" type="number" min="0" step="1" required>
+              </div>
+
+              <div class="field">
+                <label for="medicineRefillAt">Refill alert quantity</label>
+                <input id="medicineRefillAt" type="number" min="0" step="1" value="5">
+              </div>
+
+              <div class="field full">
+                <label for="medicineInstructions">Instructions</label>
+                <input id="medicineInstructions" maxlength="250" placeholder="Use only the instructions prescribed by the clinician">
+              </div>
+
+              <div class="field full">
+                <label for="medicineNotes">Notes</label>
+                <textarea id="medicineNotes" rows="3" maxlength="1000"></textarea>
+              </div>
+
+              <div class="field full">
+                <label class="day-option">
+                  <input id="detailsVerified" type="checkbox" required>
+                  I verified these details against the medicine label or prescription.
+                </label>
+              </div>
             </div>
+
             <div class="form-actions">
               <button class="btn btn-primary" type="submit">Save medicine</button>
               <button class="btn btn-secondary" id="cancelMedicineButton" type="button">Cancel</button>
@@ -411,19 +527,56 @@
 
       <section class="page" id="remindersPage">
         <div class="panel">
-          <div class="panel-heading"><div><h2>Medicine reminders</h2><p class="muted">Create one-time or recurring weekly schedules.</p></div><button class="btn btn-primary" id="addReminderButton" type="button">+ Add reminder</button></div>
-          <div id="reminderList" class="record-list"><div class="empty-state">Loading reminders...</div></div>
+          <div class="panel-heading">
+            <div>
+              <h2>Medicine reminders</h2>
+              <p class="muted">Create one-time or recurring weekly schedules.</p>
+            </div>
+            <button class="btn btn-primary" id="addReminderButton" type="button">+ Add reminder</button>
+          </div>
+
+          <div id="reminderList" class="record-list">
+            <div class="empty-state">Loading reminders...</div>
+          </div>
         </div>
+
         <div class="panel" id="reminderFormPanel" hidden>
           <h2 id="reminderFormTitle">Add reminder</h2>
+
           <form id="reminderForm">
             <input type="hidden" id="reminderId">
+
             <div class="form-grid">
-              <div class="field full"><label for="reminderMedicine">Medicine *</label><select id="reminderMedicine" required><option value="">Select a medicine</option></select></div>
-              <div class="field"><label for="reminderRecurrence">Repeat *</label><select id="reminderRecurrence" required><option value="once">One time</option><option value="weekly">Every week</option></select></div>
-              <div class="field"><label for="reminderTime">Time *</label><input id="reminderTime" type="time" required></div>
-              <div class="field" id="reminderDateField"><label for="reminderDate">Date *</label><input id="reminderDate" type="date"></div>
-              <div class="field"><label for="reminderDose">Dose *</label><input id="reminderDose" required maxlength="80" placeholder="e.g. 1 tablet"></div>
+              <div class="field full">
+                <label for="reminderMedicine">Medicine *</label>
+                <select id="reminderMedicine" required>
+                  <option value="">Select a medicine</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="reminderRecurrence">Repeat *</label>
+                <select id="reminderRecurrence" required>
+                  <option value="once">One time</option>
+                  <option value="weekly">Every week</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="reminderTime">Time *</label>
+                <input id="reminderTime" type="time" required>
+              </div>
+
+              <div class="field" id="reminderDateField">
+                <label for="reminderDate">Date *</label>
+                <input id="reminderDate" type="date">
+              </div>
+
+              <div class="field">
+                <label for="reminderDose">Dose *</label>
+                <input id="reminderDose" required maxlength="80" placeholder="e.g. 1 tablet">
+              </div>
+
               <div class="field full" id="reminderDaysField" hidden>
                 <label>Days of the week *</label>
                 <div class="days">
@@ -436,39 +589,78 @@
                   <label class="day-option"><input type="checkbox" name="reminderDay" value="6"> Saturday</label>
                 </div>
               </div>
-              <div class="field full"><label for="reminderNotes">Notes</label><textarea id="reminderNotes" rows="2" maxlength="500"></textarea></div>
+
+              <div class="field full">
+                <label for="reminderNotes">Notes</label>
+                <textarea id="reminderNotes" rows="2" maxlength="500"></textarea>
+              </div>
             </div>
-            <div class="form-actions"><button class="btn btn-primary" type="submit">Save reminder</button><button class="btn btn-secondary" id="cancelReminderButton" type="button">Cancel</button></div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit">Save reminder</button>
+              <button class="btn btn-secondary" id="cancelReminderButton" type="button">Cancel</button>
+            </div>
           </form>
         </div>
       </section>
 
       <section class="page" id="refillsPage">
-        <div class="panel"><h2>Refill tracker</h2><p class="muted">Check stock levels and update quantities after refilling.</p><div id="refillList" class="record-list"><div class="empty-state">Loading refill information...</div></div></div>
+        <div class="panel">
+          <h2>Refill tracker</h2>
+          <p class="muted">Check stock levels and update quantities after refilling.</p>
+          <div id="refillList" class="record-list">
+            <div class="empty-state">Loading refill information...</div>
+          </div>
+        </div>
       </section>
 
       <section class="page" id="historyPage">
-        <div class="panel"><h2>Activity history</h2><p class="muted">Review recent medicine and schedule changes.</p><div id="historyList" class="record-list"><div class="empty-state">Loading activity...</div></div></div>
+        <div class="panel">
+          <h2>Activity history</h2>
+          <p class="muted">Review recent medicine and schedule changes.</p>
+          <div id="historyList" class="record-list">
+            <div class="empty-state">Loading activity...</div>
+          </div>
+        </div>
       </section>
 
       <section class="page" id="connectionPage">
         <div class="panel">
           <h2>Patient connection</h2>
           <p class="muted">Connect to a patient using a connection code. QR scanning has been removed.</p>
-          <div class="notice">Enter the code provided by the patient. A code alone must not grant access to private medicine records. The patient must approve the connection.</div>
+
+          <div class="notice">
+            Enter the code provided by the patient. A code alone must not grant access to private medicine records. The patient must approve the connection.
+          </div>
+
           <form id="connectionForm">
             <div class="field" style="margin-top:16px">
               <label for="connectionCode">Patient connection code</label>
               <input id="connectionCode" class="connection-code" maxlength="64" autocomplete="off" placeholder="Enter connection code" required>
             </div>
-            <div class="form-actions"><button class="btn btn-primary" type="submit">Verify code</button></div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit">Verify code</button>
+            </div>
           </form>
+
           <div id="connectionMessage" class="message" role="status" aria-live="polite"></div>
         </div>
       </section>
 
       <section class="page" id="notificationsPage">
-        <div class="panel"><h2>Notifications</h2><p class="muted">Review reminder and refill alerts.</p><div id="notificationList" class="record-list"><div class="empty-state">No notifications to display.</div></div></div>
+        <div class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Notifications</h2>
+              <p class="muted">Review reminder and refill alerts.</p>
+            </div>
+          </div>
+
+          <div id="notificationList" class="record-list" aria-live="polite">
+            <div class="empty-state">Loading notifications...</div>
+          </div>
+        </div>
       </section>
 
       <section class="page" id="profilePage">
@@ -476,24 +668,51 @@
           <h2>My profile</h2>
           <p id="profileEmail" class="muted"></p>
           <div id="profileMessage" class="message" role="status" aria-live="polite"></div>
+
           <form id="profileForm">
             <div class="form-grid">
-              <div class="field"><label for="profileFirstName">First name *</label><input id="profileFirstName" maxlength="80" required></div>
-              <div class="field"><label for="profileLastName">Last name</label><input id="profileLastName" maxlength="80"></div>
+              <div class="field">
+                <label for="profileFirstName">First name *</label>
+                <input id="profileFirstName" maxlength="80" required>
+              </div>
+
+              <div class="field">
+                <label for="profileLastName">Last name</label>
+                <input id="profileLastName" maxlength="80">
+              </div>
             </div>
-            <div class="form-actions"><button class="btn btn-primary" type="submit">Save profile</button></div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit">Save profile</button>
+            </div>
           </form>
         </div>
+
         <div class="panel">
           <h2>Change password</h2>
           <div id="passwordMessage" class="message" role="status" aria-live="polite"></div>
+
           <form id="passwordForm">
             <div class="form-grid">
-              <div class="field full"><label for="currentPassword">Current password *</label><input id="currentPassword" type="password" autocomplete="current-password" required></div>
-              <div class="field"><label for="newPassword">New password *</label><input id="newPassword" type="password" minlength="8" autocomplete="new-password" required></div>
-              <div class="field"><label for="confirmPassword">Confirm new password *</label><input id="confirmPassword" type="password" minlength="8" autocomplete="new-password" required></div>
+              <div class="field full">
+                <label for="currentPassword">Current password *</label>
+                <input id="currentPassword" type="password" autocomplete="current-password" required>
+              </div>
+
+              <div class="field">
+                <label for="newPassword">New password *</label>
+                <input id="newPassword" type="password" minlength="8" autocomplete="new-password" required>
+              </div>
+
+              <div class="field">
+                <label for="confirmPassword">Confirm new password *</label>
+                <input id="confirmPassword" type="password" minlength="8" autocomplete="new-password" required>
+              </div>
             </div>
-            <div class="form-actions"><button class="btn btn-primary" type="submit">Update password</button></div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit">Update password</button>
+            </div>
           </form>
         </div>
       </section>
@@ -502,11 +721,11 @@
 </div>
 
 <nav class="bottom-nav" aria-label="Mobile navigation">
-  <button class="nav-btn active" data-page="medicinesPage">💊<br>Medicines</button>
-  <button class="nav-btn" data-page="remindersPage">🔔<br>Reminders</button>
-  <button class="nav-btn" data-page="refillsPage">📦<br>Refills</button>
-  <button class="nav-btn" data-page="historyPage">📋<br>History</button>
-  <button class="nav-btn" id="mobileConnectionButton">🔗<br>Connect</button>
+  <button class="nav-btn active" data-page="medicinesPage" type="button">💊<br>Medicines</button>
+  <button class="nav-btn" data-page="remindersPage" type="button">🔔<br>Reminders</button>
+  <button class="nav-btn" data-page="refillsPage" type="button">📦<br>Refills</button>
+  <button class="nav-btn" data-page="historyPage" type="button">📋<br>History</button>
+  <button class="nav-btn" id="mobileConnectionButton" type="button">🔗<br>Connect</button>
 </nav>
 
 <script type="module" src="./js/dashboard.js"></script>
