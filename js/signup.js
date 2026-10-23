@@ -3,8 +3,7 @@ import { auth, db } from "./firebaseConfig.js";
 
 import {
   createUserWithEmailAndPassword,
-  updateProfile,
-  signOut
+  updateProfile
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 import {
@@ -44,23 +43,33 @@ function setLoading(loading) {
 }
 
 function getSignupError(error) {
+  console.error("Firebase signup error:", error);
+
   const messages = {
     "auth/email-already-in-use":
-      "This email already has a Firebase Authentication account. Please log in or reset your password.",
+      "This email already has an account. Please log in instead.",
+
     "auth/invalid-email":
       "Please enter a valid email address.",
+
     "auth/weak-password":
-      "Please choose a stronger password.",
+      "Please choose a stronger password with at least 8 characters.",
+
     "auth/network-request-failed":
-      "Network error. Check your internet connection and try again.",
+      "Cannot connect to Firebase. Check your internet connection and Firebase Emulator settings.",
+
     "auth/operation-not-allowed":
-      "Email/Password sign-in is disabled. Enable it in Firebase Authentication → Sign-in method.",
+      "Email/password authentication is disabled. Enable it in Firebase Authentication settings.",
+
+    "auth/invalid-api-key":
+      "The Firebase API key is invalid. Check firebaseConfig.js.",
+
     "PERMISSION_DENIED":
-      "Firebase denied access to Realtime Database. Check your Database Rules."
+      "Firebase denied the database write. Check your Realtime Database rules and emulator connection."
   };
 
   return messages[error.code] ||
-    `Account setup failed (${error.code || "unknown error"}). Check the browser console.`;
+    `Signup failed (${error.code || "unknown error"}). Check the browser console for details.`;
 }
 
 // Password strength indicator
@@ -99,7 +108,6 @@ if (!form) {
 } else {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    showMessage("");
 
     const firstName =
       document.getElementById("firstName")?.value.trim() || "";
@@ -110,10 +118,13 @@ if (!form) {
     const email =
       document.getElementById("email")?.value.trim().toLowerCase() || "";
 
-    const role = document.getElementById("role")?.value || "";
+    const role =
+      document.getElementById("role")?.value || "";
 
     const password = passwordInput?.value || "";
     const confirmation = confirmPasswordInput?.value || "";
+
+    showMessage("");
 
     if (!firstName || !lastName || !email) {
       showMessage("Please complete all required fields.");
@@ -138,10 +149,10 @@ if (!form) {
     setLoading(true);
 
     let createdUser = null;
-    let authenticationCreated = false;
+    let profileSaved = false;
 
     try {
-      // 1. Create the Firebase Authentication account.
+      // 1. Create the Authentication account.
       const credential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -149,7 +160,6 @@ if (!form) {
       );
 
       createdUser = credential.user;
-      authenticationCreated = true;
 
       const fullName = `${firstName} ${lastName}`;
 
@@ -158,10 +168,10 @@ if (!form) {
         displayName: fullName
       });
 
-      // 3. Save the profile and role under this user's UID.
-      // Keep the role in profile/role for compatibility with
-      // the structure currently shown in your Firebase database.
-      await set(ref(db, `users/${createdUser.uid}`), {
+      // 3. Save the profile using the exact Authentication UID.
+      // Keep role under profile/role for compatibility with your
+      // current Medminder database and Cloud Functions.
+      const userProfile = {
         profile: {
           role,
           firstName,
@@ -170,25 +180,27 @@ if (!form) {
           email,
           createdAt: new Date().toISOString()
         }
-      });
+      };
+
+      await set(ref(db, `users/${createdUser.uid}`), userProfile);
+      profileSaved = true;
 
       showMessage(
         "Account created successfully! Redirecting...",
         "success"
       );
 
+      // 4. Send the user to the dashboard matching their role.
       window.location.replace(destinations[role]);
 
     } catch (error) {
       console.error("Signup error:", error);
 
-      if (authenticationCreated && createdUser) {
+      if (createdUser && !profileSaved) {
         showMessage(
-          "Your Firebase Authentication account was created, but profile setup failed. Do not register again with this email. Check the browser console and Realtime Database Rules, then repair the existing account profile."
+          "Your authentication account was created, but the profile could not be saved. Do not register again with this email. Check your Firebase connection and Realtime Database rules, then repair the profile for UID: " +
+          createdUser.uid
         );
-
-        // Keep the session active so the account can be repaired
-        // without requiring the user to register a second time.
       } else {
         showMessage(getSignupError(error));
       }

@@ -1,167 +1,641 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#175638">
+
   <title>Medminder | Create Account</title>
 
   <style>
-    * { box-sizing: border-box; }
+    :root {
+      --green: #175638;
+      --green-dark: #10442b;
+      --green-light: #e7f4eb;
+      --green-soft: #f2f7f3;
+      --text: #203b2d;
+      --muted: #748278;
+      --border: #dce7df;
+      --white: #ffffff;
+      --danger: #b42318;
+      --success: #167344;
+      --shadow: 0 18px 50px rgba(23, 86, 56, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      -webkit-text-size-adjust: 100%;
+    }
 
     body {
       margin: 0;
       min-height: 100vh;
+      min-height: 100dvh;
+      padding: 32px 18px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #e7f4eb, #f7fbf8);
-      color: #203b2d;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(150, 217, 176, 0.20), transparent 30%),
+        radial-gradient(circle at 90% 90%, rgba(23, 86, 56, 0.07), transparent 35%),
+        var(--green-soft);
     }
 
-    .container {
-      width: 100%;
-      max-width: 460px;
-      padding: 32px;
-      background: white;
-      border-radius: 18px;
-      box-shadow: 0 10px 35px #17563815;
+    button,
+    input,
+    select {
+      font: inherit;
     }
+
+    .page {
+      width: 100%;
+      max-width: 480px;
+      margin: auto;
+    }
+
+    /* Brand */
 
     .brand {
-      text-align: center;
-      color: #175638;
-      font-size: 28px;
-      font-weight: bold;
-      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 11px;
+      margin-bottom: 24px;
+      text-decoration: none;
+      color: var(--green);
+    }
+
+    .brand-logo {
+      width: 46px;
+      height: 46px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--green);
+      box-shadow: 0 5px 12px rgba(23, 86, 56, 0.16);
+    }
+
+    .brand-logo svg {
+      width: 27px;
+      height: 27px;
+      display: block;
+    }
+
+    .brand-name {
+      font-size: 25px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+    }
+
+    .brand-name span {
+      color: #65a77e;
+    }
+
+    /* Signup card */
+
+    .signup-card {
+      width: 100%;
+      padding: 34px;
+      background: var(--white);
+      border: 1px solid rgba(220, 231, 223, 0.9);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .heading {
+      margin-bottom: 27px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 12px;
+      padding: 7px 11px;
+      color: var(--green);
+      background: var(--green-light);
+      border-radius: 30px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .eyebrow svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    h1 {
+      margin: 0 0 9px;
+      color: var(--text);
+      font-size: 29px;
+      line-height: 1.2;
+      letter-spacing: -0.9px;
     }
 
     .subtitle {
-      text-align: center;
-      color: #66776b;
-      margin-bottom: 28px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
     }
 
-    .form-group { margin-bottom: 17px; }
+    /* Form */
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 14px;
+    }
+
+    .form-group {
+      min-width: 0;
+      margin-bottom: 18px;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
 
     label {
       display: block;
-      margin-bottom: 7px;
-      font-size: 14px;
-      font-weight: bold;
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
     }
 
-    input, select {
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      top: 50%;
+      left: 13px;
+      width: 18px;
+      height: 18px;
+      color: #83978a;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    input,
+    select {
       width: 100%;
+      min-width: 0;
+      min-height: 47px;
       padding: 12px 13px;
-      border: 1px solid #d4e2d8;
-      border-radius: 9px;
-      font-size: 15px;
-      background: white;
-      color: #203b2d;
+      color: var(--text);
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+      font-size: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    input:focus, select:focus {
-      outline: 2px solid #96d9b0;
-      border-color: #175638;
+    .input-wrap input {
+      padding-left: 40px;
     }
 
-    button {
-      width: 100%;
-      padding: 13px;
-      border: none;
-      border-radius: 9px;
-      background: #175638;
-      color: white;
-      font-size: 16px;
-      font-weight: bold;
+    input::placeholder {
+      color: #a1ada5;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(23, 86, 56, 0.09);
+    }
+
+    select {
       cursor: pointer;
     }
 
-    button:hover { background: #10442b; }
-    button:disabled { opacity: 0.65; cursor: wait; }
+    .field-hint {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    #passwordStrength {
+      display: block;
+      min-height: 17px;
+      margin-top: 7px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* Feedback */
 
     .message {
-      margin: 14px 0;
-      font-size: 14px;
-      line-height: 1.5;
+      display: none;
+      margin: 0 0 17px;
+      padding: 12px 13px;
+      border-radius: 9px;
+      font-size: 13px;
+      line-height: 1.6;
       overflow-wrap: anywhere;
     }
 
-    .error { color: #b42318; }
-    .success { color: #175638; }
-
-    .footer {
-      text-align: center;
-      margin-top: 22px;
-      font-size: 14px;
+    .message.error,
+    .message.success {
+      display: block;
     }
 
-    a { color: #175638; font-weight: bold; }
+    .message.error {
+      color: var(--danger);
+      background: #fff1f0;
+      border: 1px solid #ffd6d2;
+    }
 
-    @media (max-width: 480px) {
-      body { padding: 14px; }
-      .container { padding: 24px 19px; }
+    .message.success {
+      color: var(--success);
+      background: #edfaf1;
+      border: 1px solid #ccebd6;
+    }
+
+    /* Button */
+
+    .submit-button {
+      width: 100%;
+      min-height: 49px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 13px 18px;
+      color: var(--white);
+      background: var(--green);
+      border: 0;
+      border-radius: 11px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+
+    .submit-button:hover {
+      background: var(--green-dark);
+      box-shadow: 0 5px 14px rgba(23, 86, 56, 0.16);
+    }
+
+    .submit-button:active {
+      transform: scale(0.99);
+    }
+
+    .submit-button:disabled {
+      opacity: 0.65;
+      cursor: wait;
+      box-shadow: none;
+    }
+
+    .submit-button svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .security-note {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 7px;
+      margin: 17px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .security-note svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+      color: var(--green);
+    }
+
+    /* Footer */
+
+    .login-footer {
+      margin: 23px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .login-footer a {
+      color: var(--green);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .copyright {
+      margin-top: 22px;
+      color: #91a096;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    /* Mobile */
+
+    @media (max-width: 520px) {
+      body {
+        padding: 23px 14px;
+        align-items: flex-start;
+      }
+
+      .page {
+        max-width: 430px;
+      }
+
+      .brand {
+        margin-bottom: 19px;
+      }
+
+      .brand-logo {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+      }
+
+      .brand-name {
+        font-size: 23px;
+      }
+
+      .signup-card {
+        padding: 25px 21px;
+        border-radius: 18px;
+      }
+
+      .heading {
+        margin-bottom: 23px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      .form-group.full-width {
+        grid-column: auto;
+      }
+
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      input,
+      select {
+        min-height: 48px;
+        font-size: 16px;
+      }
+
+      .submit-button {
+        min-height: 49px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        transition: none !important;
+      }
     }
   </style>
 </head>
 
 <body>
-  <main class="container">
-    <div class="brand">Medminder</div>
-    <p class="subtitle">Create your account to get started.</p>
+  <main class="page">
 
-    <form id="signupForm">
-      <div class="form-group">
-        <label for="firstName">First Name</label>
-        <input id="firstName" type="text" autocomplete="given-name" required>
-      </div>
+    <!-- Medminder brand: green medical cross logo -->
+    <a class="brand" href="index.html" aria-label="Medminder home">
+      <span class="brand-logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none">
+          <path
+            d="M12 4.5h8v7.5h7.5v8H20v7.5h-8V20H4.5v-8H12V4.5Z"
+            fill="#FFFFFF"
+          />
+        </svg>
+      </span>
 
-      <div class="form-group">
-        <label for="lastName">Last Name</label>
-        <input id="lastName" type="text" autocomplete="family-name" required>
-      </div>
+      <span class="brand-name">Med<span>minder</span></span>
+    </a>
 
-      <div class="form-group">
-        <label for="email">Email Address</label>
-        <input id="email" type="email" autocomplete="email"
-               placeholder="you@gmail.com" required>
-      </div>
+    <section class="signup-card" aria-labelledby="signupTitle">
 
-      <div class="form-group">
-        <label for="role">Account Type</label>
-        <select id="role" required>
-          <option value="">Select account type</option>
-          <option value="authorized">Authorized Person</option>
-          <option value="patient">Patient</option>
-        </select>
-      </div>
+      <header class="heading">
+        <div class="eyebrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="10" cy="7" r="4"/>
+            <path d="M20 8v6"/>
+            <path d="M23 11h-6"/>
+          </svg>
+          GET STARTED
+        </div>
 
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input id="password" type="password" minlength="8"
-               autocomplete="new-password" required>
-        <small id="passwordStrength"></small>
-      </div>
+        <h1 id="signupTitle">Create your account</h1>
+        <p class="subtitle">
+          Join Medminder to help manage medicines and keep track of medication schedules.
+        </p>
+      </header>
 
-      <div class="form-group">
-        <label for="confirmPassword">Confirm Password</label>
-        <input id="confirmPassword" type="password"
-               autocomplete="new-password" required>
-      </div>
+      <form id="signupForm" novalidate>
+        <div class="form-grid">
 
-      <p id="formMessage" class="message" role="alert"></p>
+          <div class="form-group">
+            <label for="firstName">First name</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"
+                aria-hidden="true">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+              </svg>
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                placeholder="First name"
+                autocomplete="given-name"
+                required
+              >
+            </div>
+          </div>
 
-      <button type="submit" id="submitButton">Create Account</button>
-    </form>
+          <div class="form-group">
+            <label for="lastName">Last name</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"
+                aria-hidden="true">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+              </svg>
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                placeholder="Last name"
+                autocomplete="family-name"
+                required
+              >
+            </div>
+          </div>
 
-    <p class="footer">
-      Already have an account?
-      <a href="index.html">Log in</a>
+          <div class="form-group full-width">
+            <label for="email">Email address</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"
+                aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="2"/>
+                <path d="m3 7 9 6 9-6"/>
+              </svg>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                autocomplete="email"
+                required
+              >
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="role">Account type</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"
+                aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="10" cy="7" r="4"/>
+                <path d="m17 11 2 2 4-4"/>
+              </svg>
+              <select id="role" name="role" required>
+                <option value="">Choose your account type</option>
+                <option value="authorized">Authorized Person / Caregiver</option>
+                <option value="patient">Patient / Medicine Taker</option>
+              </select>
+            </div>
+            <small class="field-hint">
+              Choose the role that matches how you will use Medminder.
+            </small>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="password">Password</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"
+                aria-hidden="true">
+                <rect x="4" y="10" width="16" height="11" rx="2"/>
+                <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+              </svg>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Create a password"
+                minlength="8"
+                autocomplete="new-password"
+                aria-describedby="passwordStrength"
+                required
+              >
+            </div>
+            <small id="passwordStrength" aria-live="polite"></small>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="confirmPassword">Confirm password</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"
+                aria-hidden="true">
+                <rect x="4" y="10" width="16" height="11" rx="2"/>
+                <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+              </svg>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                placeholder="Enter your password again"
+                autocomplete="new-password"
+                required
+              >
+            </div>
+          </div>
+
+        </div>
+
+        <p id="formMessage" class="message" role="alert" aria-live="polite"></p>
+
+        <button type="submit" id="submitButton" class="submit-button">
+          <span>Create Account</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true">
+            <path d="M5 12h14"/>
+            <path d="m12 5 7 7-7 7"/>
+          </svg>
+        </button>
+
+        <p class="security-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true">
+            <rect x="4" y="10" width="16" height="11" rx="2"/>
+            <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+          </svg>
+          Your account details are handled through Firebase Authentication.
+        </p>
+      </form>
+
+      <p class="login-footer">
+        Already have an account?
+        <a href="login.html">Log in</a>
+      </p>
+    </section>
+
+    <p class="copyright">
+      © <span id="currentYear"></span> Medminder. Your medication, organized.
     </p>
+
   </main>
+
+  <script>
+    document.getElementById("currentYear").textContent =
+      new Date().getFullYear();
+  </script>
 
   <script type="module" src="js/signup.js"></script>
 </body>
