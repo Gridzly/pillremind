@@ -7,33 +7,33 @@
 <meta name="theme-color" content="#175638">
 <title>Medminder | Patient Dashboard</title>
 <style>
-:root{--green:#175638;--dark:#10442b;--mint:#e7f4eb;--bg:#f4f8f5;--text:#24372b;--muted:#758178;--border:#e0e9e2;--white:#fff;--red:#b52d2d}
+:root{--green:#175638;--dark:#10442b;--mint:#e7f4eb;--bg:#f4f8f5;--text:#24372b;--muted:#758178;--border:#e0e9e2;--red:#b52d2d}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:14px Arial,Helvetica,sans-serif;line-height:1.5}
+body{margin:0;background:var(--bg);color:var(--text);font:14px Arial,sans-serif;line-height:1.5}
 button{font:inherit;cursor:pointer}
-button:disabled{opacity:.55;cursor:not-allowed}
+button:disabled{opacity:.6;cursor:not-allowed}
 header{background:#fff;border-bottom:1px solid var(--border);padding:14px 18px}
 .header-inner{max-width:900px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px}
 .brand{display:flex;align-items:center;gap:9px;color:var(--green);font-size:21px;font-weight:800}
 .logo{display:grid;place-items:center;width:40px;height:40px;background:var(--mint);border-radius:12px;font-size:21px}
 .logout{padding:9px 13px;background:white;color:var(--green);border:1px solid var(--border);border-radius:10px;font-weight:700}
-main{width:min(100% - 28px,900px);margin:22px auto 100px}
+main{width:min(900px,calc(100% - 28px));margin:22px auto 100px}
 h1{font-size:27px;color:var(--dark);margin:0 0 4px}
 h2{font-size:18px;color:var(--dark);margin:0}
 h3{font-size:15px;margin:0 0 5px}
 p{margin:0}
 .muted{color:var(--muted);font-size:13px;line-height:1.65}
-.welcome{display:flex;justify-content:space-between;align-items:center;gap:12px;background:linear-gradient(115deg,#175638,#287b50);color:#fff;border-radius:17px;padding:22px;margin:18px 0}
+.welcome{display:flex;justify-content:space-between;align-items:center;gap:12px;background:linear-gradient(115deg,#175638,#287b50);color:white;border-radius:17px;padding:22px;margin:18px 0}
 .welcome h1{color:white;font-size:24px}
 .welcome p{color:#e2f3e8;margin-top:5px}
 .welcome-icon{font-size:40px}
 .connection-banner{display:none;margin:0 0 16px;padding:13px 15px;border-radius:12px;background:#fff4e5;border:1px solid #f0dfc4;color:#74521e;line-height:1.6}
-.error{display:none;margin-bottom:16px;padding:12px 14px;background:#fff0f0;border:1px solid #f1d1d1;color:var(--red);border-radius:11px;line-height:1.6;overflow-wrap:anywhere}
-.error.show{display:block}
-.success{display:none;margin-bottom:16px;padding:12px 14px;background:var(--mint);color:var(--green);border-radius:11px}
-.success.show{display:block}
+.error,.success{display:none;margin-bottom:16px;padding:12px 14px;border-radius:11px;line-height:1.6;overflow-wrap:anywhere}
+.error{background:#fff0f0;border:1px solid #f1d1d1;color:var(--red)}
+.error.show,.success.show{display:block}
+.success{background:var(--mint);color:var(--green)}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-bottom:20px}
-.stat,.panel,.dose-card,.medicine-card{background:#fff;border:1px solid var(--border);border-radius:14px}
+.stat,.panel,.dose-card,.medicine-card{background:white;border:1px solid var(--border);border-radius:14px}
 .stat{padding:15px}
 .stat-icon{width:35px;height:35px;border-radius:10px;display:grid;place-items:center;background:var(--mint);font-size:18px;margin-bottom:8px}
 .stat-number{font-size:25px;font-weight:800;color:var(--green);overflow-wrap:anywhere}
@@ -51,21 +51,26 @@ p{margin:0}
 .dose-time{font-size:13px;font-weight:700;color:var(--green);margin-top:5px}
 .dose-detail{font-size:13px;color:var(--muted);white-space:pre-line;overflow-wrap:anywhere;margin-top:8px;line-height:1.7}
 .badge{display:inline-block;padding:5px 9px;border-radius:8px;background:var(--mint);color:var(--green);font-size:11px;font-weight:700;white-space:nowrap}
-.badge.past{background:#fff0e0;color:#8a4a10}
+.badge.past,.badge.missed{background:#fff0e0;color:#8a4a10}
 .badge.done{background:#e5f5e9;color:#175638}
-.badge.missed{background:#fff0f0;color:#b52d2d}
 .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 13px;border:1px solid transparent;border-radius:10px;background:var(--green);color:white;font-weight:700}
 .btn:hover{background:var(--dark)}
 .btn.secondary{background:white;border-color:var(--border);color:var(--green)}
 .btn.taken{background:var(--mint);color:var(--green);border-color:#d1e5d7}
 .small-note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:10px}
+#qrCodeArea{margin-top:16px;text-align:center}
+#qrCodeImage{display:flex;justify-content:center;align-items:center;margin:15px auto}
+#qrCodeImage canvas,#qrCodeImage img{max-width:100%;height:auto}
+.connection-code{text-align:center;color:var(--green);font-size:30px;font-weight:800;letter-spacing:7px;margin:8px 0}
+.connection-center{text-align:center}
 .bottom-nav{position:fixed;z-index:5;bottom:0;left:0;width:100%;background:white;border-top:1px solid var(--border);padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
 .nav-inner{max-width:520px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 3px;border:0;border-radius:10px;background:transparent;color:var(--muted);font-size:11px;font-weight:700}
 .nav-btn .icon{font-size:20px}
 .nav-btn.active{background:var(--mint);color:var(--green)}
 #loading{padding:18px;text-align:center;color:var(--muted)}
+[hidden]{display:none!important}
 @media(max-width:480px){
  main{width:calc(100% - 20px);margin-top:15px}
  .welcome{padding:17px}
@@ -95,7 +100,7 @@ p{margin:0}
   <div id="error" class="error" role="alert"></div>
   <div id="success" class="success" role="status"></div>
 
-  <div id="app" style="display:none">
+  <div id="app" hidden>
     <div class="welcome">
       <div>
         <h1 id="welcomeTitle">Hello!</h1>
@@ -111,6 +116,29 @@ p{margin:0}
         <div class="stat"><div class="stat-icon">💊</div><div class="stat-number" id="medicineCount">0</div><div class="stat-label">My medicines</div></div>
         <div class="stat"><div class="stat-icon">🔔</div><div class="stat-number" id="todayCount">0</div><div class="stat-label">Today's doses</div></div>
         <div class="stat"><div class="stat-icon">✓</div><div class="stat-number" id="takenCount">0</div><div class="stat-label">Marked taken today</div></div>
+      </div>
+
+      <div class="panel" id="qrConnectionPanel">
+        <div class="panel-heading">
+          <h2>Connect with your caregiver</h2>
+          <span class="badge" id="connectionStatusBadge">Not connected</span>
+        </div>
+        <p class="muted">Generate a temporary QR code for your authorized person to scan or enter on their Medminder dashboard.</p>
+        <p id="qrConnectionStatus" class="small-note" role="status">Generate a temporary code to begin.</p>
+        <div id="qrCodeArea" hidden>
+          <div id="qrCodeImage"></div>
+          <p class="muted">Your six-digit connection code</p>
+          <p id="qrCodeText" class="connection-code"></p>
+          <p id="qrExpiry" class="small-note"></p>
+          <div class="actions" style="justify-content:center">
+            <button class="btn secondary" id="copyConnectionCode" type="button">Copy code</button>
+            <button class="btn secondary" id="hideConnectionCode" type="button">Hide code</button>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="generateConnectionCode" type="button">Generate QR code</button>
+        </div>
+        <p class="small-note">Only share this temporary code with your authorized caregiver. It must be verified by the secure backend before accounts are linked.</p>
       </div>
 
       <div class="panel">
@@ -130,7 +158,7 @@ p{margin:0}
     <section class="section" id="remindersSection">
       <div class="panel">
         <div class="panel-heading"><h2>All scheduled reminders</h2></div>
-        <p class="muted" style="margin-bottom:13px">Your caregiver's one-time and repeating weekly schedules appear here.</p>
+        <p class="muted" style="margin-bottom:13px">Your caregiver's scheduled and recurring reminders appear here.</p>
         <div id="reminderList" class="list"><div class="empty">Loading reminders…</div></div>
       </div>
     </section>
@@ -152,6 +180,7 @@ p{margin:0}
   </div>
 </nav>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module" src="js/patient-dashboard.js"></script>
 </body>
 </html>

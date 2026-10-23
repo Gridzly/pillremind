@@ -1,0 +1,22 @@
+{
+  "name": "Medminder",
+  "forwardPorts": [9000, 9099, 5001, 4000],
+  "portsAttributes": {
+    "9000": {
+      "label": "Firebase Database Emulator",
+      "onAutoForward": "notify"
+    },
+    "9099": {
+      "label": "Firebase Auth Emulator",
+      "onAutoForward": "notify"
+    },
+    "5001": {
+      "label": "Firebase Functions Emulator",
+      "onAutoForward": "notify"
+    },
+    "4000": {
+      "label": "Firebase Emulator UI",
+      "onAutoForward": "notify"
+    }
+  }
+}
