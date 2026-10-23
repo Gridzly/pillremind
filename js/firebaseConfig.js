@@ -1,20 +1,11 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 
-import {
-  getAuth,
-  connectAuthEmulator
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-import {
-  getDatabase,
-  connectDatabaseEmulator
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-import {
-  getFunctions,
-  connectFunctionsEmulator
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+import { getFunctions } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyClvnZ-4_I6d9Mp8G8onm6BJ9lg-CibG4M",
@@ -32,12 +23,3 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
 export const functions = getFunctions(app, "us-central1");
-
-// Local Firebase Emulator connections
-connectAuthEmulator(auth, "http://127.0.0.1:9099", {
-  disableWarnings: true
-});
-
-connectDatabaseEmulator(db, "127.0.0.1", 9000);
-
-connectFunctionsEmulator(functions, "127.0.0.1", 5001);
