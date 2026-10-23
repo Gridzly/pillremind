@@ -9,7 +9,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 import {
-  ref, onValue, get, push, set, update, remove
+  ref,
+  onValue,
+  get,
+  push,
+  set,
+  update,
+  remove
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const $ = id => document.getElementById(id);
@@ -21,21 +27,24 @@ let activities = {};
 let activePatientUid = null;
 let unsubs = [];
 let busy = false;
+let selectedMedicinePhoto = null;
+let latestOcrResult = null;
 
 const pages = {
-  medicinesPage: ["Medicines", "Manage patient medicine records."],
+  medicinesPage: ["Medicines", "Manage medicine records."],
   remindersPage: ["Reminders", "Manage one-time and weekly schedules."],
   refillsPage: ["Refill tracker", "Monitor medicine stock levels."],
   historyPage: ["Activity history", "Review recent changes."]
 };
 
-const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, c => ({
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;"
-}[c]));
+const escapeHTML = value =>
+  String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
 
 const patientUid = () => activePatientUid || user.uid;
 const dataPath = path => `users/${patientUid()}/${path}`;
@@ -44,6 +53,7 @@ const accountPath = path => `users/${user.uid}/${path}`;
 function message(id, text, type = "success") {
   const el = $(id);
   if (!el) return;
+
   el.textContent = text;
   el.className = `message show ${type}`;
 }
@@ -61,13 +71,13 @@ function closeModal(id) {
 }
 
 function showPage(id) {
-  document.querySelectorAll(".page").forEach(p =>
-    p.classList.toggle("active", p.id === id)
-  );
+  document.querySelectorAll(".page").forEach(page => {
+    page.classList.toggle("active", page.id === id);
+  });
 
-  document.querySelectorAll("[data-page]").forEach(b =>
-    b.classList.toggle("active", b.dataset.page === id)
-  );
+  document.querySelectorAll("[data-page]").forEach(button => {
+    button.classList.toggle("active", button.dataset.page === id);
+  });
 
   if (pages[id]) {
     $("pageTitle").textContent = pages[id][0];
@@ -78,29 +88,35 @@ function showPage(id) {
 }
 
 function localDate() {
-  const d = new Date();
+  const date = new Date();
 
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
 }
 
-function formatDate(date) {
-  if (!date) return "Date not set";
+function formatDate(value) {
+  if (!value) return "Date not set";
 
-  const [y, m, d] = date.split("-").map(Number);
+  const [year, month, day] = value.split("-").map(Number);
 
-  return new Date(y, m - 1, d).toLocaleDateString("en-PH", {
+  return new Date(year, month - 1, day).toLocaleDateString("en-PH", {
     month: "short",
     day: "numeric",
     year: "numeric"
   });
 }
 
-function formatTime(time) {
-  if (!time) return "Time not set";
+function formatTime(value) {
+  if (!value) return "Time not set";
 
-  const [h, m] = time.split(":").map(Number);
+  const [hours, minutes] = value.split(":").map(Number);
 
-  return `${String(h % 12 || 12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+  return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${
+    hours >= 12 ? "PM" : "AM"
+  }`;
 }
 
 function formatStamp(timestamp) {
@@ -128,31 +144,31 @@ function medicineName(id) {
 }
 
 function stopSubscriptions() {
-  unsubs.forEach(fn => fn());
+  unsubs.forEach(unsubscribe => unsubscribe());
   unsubs = [];
 }
 
 function subscribe(path, callback) {
-  const unsub = onValue(
+  const unsubscribe = onValue(
     ref(db, dataPath(path)),
-    snap => callback(snap.val() || {}),
+    snapshot => callback(snapshot.val() || {}),
     error => {
       console.error("Firebase subscription error:", error);
 
       message(
         "pageMessage",
-        "Unable to access these records. Check Firebase Database Rules and patient authorization.",
+        "Unable to load records. Check your Firebase Database Rules and account access.",
         "error"
       );
     }
   );
 
-  unsubs.push(unsub);
+  unsubs.push(unsubscribe);
 }
 
-// ==========================================
-// MEDICINES
-// ==========================================
+// ============================================
+// MEDICINE AND REFILL DISPLAY
+// ============================================
 
 function renderMedicines() {
   const entries = Object.entries(medicines);
@@ -160,38 +176,35 @@ function renderMedicines() {
   $("medicineCount").textContent = entries.length;
 
   $("medicineList").innerHTML = entries.length
-    ? entries.map(([id, m]) => {
+    ? entries.map(([id, medicine]) => {
         const low =
-          Number(m.quantity ?? 0) <= Number(m.refillAt ?? 0);
+          Number(medicine.quantity ?? 0) <=
+          Number(medicine.refillAt ?? 0);
 
         return `
           <article class="record">
             <div class="record-main">
               <div class="record-title">
-                💊 ${escapeHTML(m.name)}
+                💊 ${escapeHTML(medicine.name)}
               </div>
 
               <div class="record-detail">
-                ${m.dosage
-                  ? `Strength: ${escapeHTML(m.dosage)}<br>`
+                ${medicine.dosage
+                  ? `Strength: ${escapeHTML(medicine.dosage)}<br>`
                   : ""}
 
-                ${m.instructions
-                  ? `Instructions: ${escapeHTML(m.instructions)}<br>`
+                ${medicine.instructions
+                  ? `Instructions: ${escapeHTML(medicine.instructions)}<br>`
                   : ""}
 
-                ${m.barcode
-                  ? `Barcode: ${escapeHTML(m.barcode)}<br>`
-                  : ""}
-
-                Stock: ${Number(m.quantity ?? 0)} units
+                Stock: ${Number(medicine.quantity ?? 0)} units
 
                 ${low
                   ? '<br><strong style="color:#c53d3d">Refill needed</strong>'
                   : ""}
 
-                ${m.notes
-                  ? `<br>Notes: ${escapeHTML(m.notes)}`
+                ${medicine.notes
+                  ? `<br>Notes: ${escapeHTML(medicine.notes)}`
                   : ""}
               </div>
             </div>
@@ -216,53 +229,51 @@ function renderMedicines() {
 
   select.innerHTML =
     '<option value="">Choose medicine</option>' +
-    entries.map(([id, m]) =>
-      `<option value="${escapeHTML(id)}">${escapeHTML(m.name)}</option>`
+    entries.map(([id, medicine]) =>
+      `<option value="${escapeHTML(id)}">${escapeHTML(medicine.name)}</option>`
     ).join("");
 
-  if (medicines[previous]) {
-    select.value = previous;
-  }
+  if (medicines[previous]) select.value = previous;
 
   renderRefills();
   renderReminders();
 }
 
 function renderRefills() {
-  const entries = Object.entries(medicines).filter(([, m]) =>
-    Number(m.quantity ?? 0) <= Number(m.refillAt ?? 0)
+  const entries = Object.entries(medicines).filter(([, medicine]) =>
+    Number(medicine.quantity ?? 0) <= Number(medicine.refillAt ?? 0)
   );
 
   $("refillCount").textContent = entries.length;
 
   $("refillList").innerHTML = entries.length
-    ? entries.map(([id, m]) => `
+    ? entries.map(([id, medicine]) => `
         <article class="record">
           <div class="record-main">
-            <div class="record-title">
-              📦 ${escapeHTML(m.name)}
-            </div>
-
+            <div class="record-title">📦 ${escapeHTML(medicine.name)}</div>
             <div class="record-detail">
-              Remaining: ${Number(m.quantity ?? 0)} units ·
-              Alert level: ${Number(m.refillAt ?? 0)} units
+              Remaining: ${Number(medicine.quantity ?? 0)} units<br>
+              Refill threshold: ${Number(medicine.refillAt ?? 0)} units
             </div>
           </div>
 
-          <button class="btn small"
-            data-stock-med="${escapeHTML(id)}">
+          <button class="btn small" data-stock-med="${escapeHTML(id)}">
             Record refill
           </button>
         </article>
       `).join("")
-    : '<div class="empty">All recorded medicine quantities are above their refill thresholds.</div>';
+    : '<div class="empty">No medicines currently need a refill based on their recorded stock.</div>';
 }
+
+// ============================================
+// REMINDER DISPLAY
+// ============================================
 
 function dayNames(days) {
   const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (Array.isArray(days) ? days : [])
-    .map(d => names[Number(d)])
+    .map(day => names[Number(day)])
     .filter(Boolean)
     .join(", ");
 }
@@ -275,26 +286,26 @@ function renderReminders() {
   $("reminderCount").textContent = entries.length;
 
   $("reminderList").innerHTML = entries.length
-    ? entries.map(([id, r]) => `
+    ? entries.map(([id, reminder]) => `
         <article class="record">
           <div class="record-main">
             <div class="record-title">
-              🔔 ${escapeHTML(medicineName(r.medicineId))}
+              🔔 ${escapeHTML(medicineName(reminder.medicineId))}
             </div>
 
             <div class="record-detail">
-              ${r.recurrence === "weekly"
-                ? `Every week: ${escapeHTML(dayNames(r.daysOfWeek))}`
-                : `Date: ${escapeHTML(formatDate(r.date))}`}
+              ${reminder.recurrence === "weekly"
+                ? `Every week: ${escapeHTML(dayNames(reminder.daysOfWeek))}`
+                : `Date: ${escapeHTML(formatDate(reminder.date))}`}
 
-              <br>Time: ${escapeHTML(formatTime(r.time))}
+              <br>Time: ${escapeHTML(formatTime(reminder.time))}
 
-              ${r.dose
-                ? `<br>Dose: ${escapeHTML(r.dose)}`
+              ${reminder.dose
+                ? `<br>Dose: ${escapeHTML(reminder.dose)}`
                 : ""}
 
-              ${r.notes
-                ? `<br>Notes: ${escapeHTML(r.notes)}`
+              ${reminder.notes
+                ? `<br>Notes: ${escapeHTML(reminder.notes)}`
                 : ""}
             </div>
           </div>
@@ -311,24 +322,21 @@ function renderReminders() {
     : '<div class="empty">No reminders created yet.</div>';
 }
 
-// ==========================================
-// HISTORY AND NOTIFICATIONS
-// ==========================================
+// ============================================
+// HISTORY
+// ============================================
 
 function renderHistory() {
   const entries = getActivities();
 
   $("historyList").innerHTML = entries.length
-    ? entries.slice(0, 100).map(a => `
+    ? entries.slice(0, 100).map(activity => `
         <article class="record">
           <div class="record-main">
-            <div class="record-title">
-              ${escapeHTML(a.action)}
-            </div>
-
+            <div class="record-title">${escapeHTML(activity.action)}</div>
             <div class="record-detail">
-              ${escapeHTML(a.detail)}<br>
-              ${escapeHTML(formatStamp(a.timestamp))}
+              ${escapeHTML(activity.detail)}<br>
+              ${escapeHTML(formatStamp(activity.timestamp))}
             </div>
           </div>
         </article>
@@ -336,16 +344,13 @@ function renderHistory() {
     : '<div class="empty">No activity history yet.</div>';
 
   $("notificationList").innerHTML = entries.length
-    ? entries.slice(0, 30).map(a => `
+    ? entries.slice(0, 30).map(activity => `
         <article class="record">
           <div class="record-main">
-            <div class="record-title">
-              ${escapeHTML(a.action)}
-            </div>
-
+            <div class="record-title">${escapeHTML(activity.action)}</div>
             <div class="record-detail">
-              ${escapeHTML(a.detail)}<br>
-              ${escapeHTML(formatStamp(a.timestamp))}
+              ${escapeHTML(activity.detail)}<br>
+              ${escapeHTML(formatStamp(activity.timestamp))}
             </div>
           </div>
         </article>
@@ -353,9 +358,377 @@ function renderHistory() {
     : '<div class="empty">No notifications yet.</div>';
 }
 
-// ==========================================
-// FORM RESET
-// ==========================================
+// ============================================
+// SCANNER: RESET AND PHOTO PREVIEW
+// ============================================
+
+function resetScanner() {
+  selectedMedicinePhoto = null;
+  latestOcrResult = null;
+
+  $("medicinePhotoInput").value = "";
+  $("medicinePhotoPreview").removeAttribute("src");
+  $("photoPreviewWrap").classList.remove("visible");
+  $("ocrResult").hidden = true;
+  $("ocrRawText").textContent = "";
+
+  $("scannerStatus").textContent =
+    "No photo selected. Use bright, even lighting and keep the label in focus.";
+
+  $("runOcrButton").disabled = false;
+  $("startScanner").disabled = false;
+}
+
+$("startScanner").addEventListener("click", () => {
+  $("medicinePhotoInput").click();
+});
+
+$("retakePhoto").addEventListener("click", () => {
+  $("medicinePhotoInput").click();
+});
+
+$("medicinePhotoInput").addEventListener("change", event => {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    $("scannerStatus").textContent =
+      "Please select a valid photo of the medicine packaging.";
+    event.target.value = "";
+    return;
+  }
+
+  // Avoid unexpectedly large uploads/images that may exhaust browser memory.
+  if (file.size > 15 * 1024 * 1024) {
+    $("scannerStatus").textContent =
+      "This image is larger than 15 MB. Take a smaller photo or resize it first.";
+    event.target.value = "";
+    return;
+  }
+
+  selectedMedicinePhoto = file;
+  latestOcrResult = null;
+
+  const previewUrl = URL.createObjectURL(file);
+
+  const preview = $("medicinePhotoPreview");
+  const oldUrl = preview.dataset.objectUrl;
+
+  if (oldUrl) URL.revokeObjectURL(oldUrl);
+
+  preview.dataset.objectUrl = previewUrl;
+  preview.src = previewUrl;
+
+  $("photoPreviewWrap").classList.add("visible");
+  $("ocrResult").hidden = true;
+
+  $("scannerStatus").textContent =
+    "Review the photo. If the label is clear, select Read label. Retake the photo if it is blurry or has glare.";
+
+  // A new image requires fresh verification before the medicine can be saved.
+  $("medicineDetailsVerified").checked = false;
+  $("medicinePhotoInput").value = "";
+});
+
+// ============================================
+// SCANNER: IMAGE ENHANCEMENT
+// ============================================
+
+async function loadImageFromFile(file) {
+  if ("createImageBitmap" in window) {
+    return await createImageBitmap(file);
+  }
+
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("The selected photo could not be opened."));
+    };
+
+    image.src = url;
+  });
+}
+
+async function enhanceMedicineImage(file) {
+  const image = await loadImageFromFile(file);
+
+  const originalWidth = image.width;
+  const originalHeight = image.height;
+
+  if (!originalWidth || !originalHeight) {
+    throw new Error("The image has invalid dimensions.");
+  }
+
+  // Upscale small images, but limit the maximum size to control memory use.
+  const scale = Math.min(
+    2.5,
+    2400 / Math.max(originalWidth, originalHeight)
+  );
+
+  const width = Math.max(1, Math.round(originalWidth * scale));
+  const height = Math.max(1, Math.round(originalHeight * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d", {
+    willReadFrequently: true
+  });
+
+  if (!context) {
+    throw new Error("Image processing is unavailable in this browser.");
+  }
+
+  // Draw the image larger with a high-quality interpolation filter.
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image, 0, 0, width, height);
+
+  if (typeof image.close === "function") image.close();
+
+  const frame = context.getImageData(0, 0, width, height);
+  const pixels = frame.data;
+
+  // Convert to grayscale, increase contrast, and gently brighten.
+  // This can improve printed text, although it cannot restore missing detail.
+  const contrast = 1.35;
+  const brightness = 8;
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    const gray =
+      0.299 * pixels[i] +
+      0.587 * pixels[i + 1] +
+      0.114 * pixels[i + 2];
+
+    let value = (gray - 128) * contrast + 128 + brightness;
+
+    value = Math.max(0, Math.min(255, value));
+
+    pixels[i] = value;
+    pixels[i + 1] = value;
+    pixels[i + 2] = value;
+  }
+
+  context.putImageData(frame, 0, 0);
+
+  const enhancedBlob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      blob => blob ? resolve(blob) : reject(new Error("Could not enhance the photo.")),
+      "image/jpeg",
+      0.94
+    );
+  });
+
+  return enhancedBlob;
+}
+
+// ============================================
+// SCANNER: OCR AND TEXT PARSING
+// ============================================
+
+function parseMedicineText(rawText) {
+  const lines = rawText
+    .split(/\r?\n/)
+    .map(line =>
+      line
+        .replace(/[|]/g, "I")
+        .replace(/[^\p{L}\p{N}®™%.,/+() -]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+    )
+    .filter(line => line.length >= 2);
+
+  // Recognizes common strength units. This is text extraction, not a dose recommendation.
+  const strengthRegex =
+    /\b\d+(?:[.,]\d+)?\s?(?:mg|mcg|µg|ug|g|kg|ml|mL|µl|iu|units?)(?:\s*\/\s*\d+(?:[.,]\d+)?\s?(?:ml|mL|g|mg))?\b/i;
+
+  const strengthLines = lines.filter(line => strengthRegex.test(line));
+
+  const strengths = strengthLines
+    .map(line => line.match(strengthRegex)?.[0])
+    .filter(Boolean);
+
+  const ignoreLine =
+    /^(?:medicine|medicines|tablets?|capsules?|oral|suspension|solution|syrup|prescription only|keep out of reach|dosage|strength|composition|warning|caution|expiry|batch|lot|manufacturer|directions|pharmacy|generic name|active ingredient|each tablet|each capsule|store below)$/i;
+
+  const candidates = lines.filter(line => {
+    if (ignoreLine.test(line)) return false;
+    if (strengthRegex.test(line)) return false;
+    if (line.length < 3 || line.length > 65) return false;
+
+    if (/https?:|www\.|batch\s*(?:no|number)|expiry|exp\s*date|mfg\s*date/i.test(line)) {
+      return false;
+    }
+
+    return /[a-zA-Z]{3,}/.test(line);
+  });
+
+  // Prefer a text line near the strength, but never claim that it is verified.
+  let name = "";
+
+  if (strengthLines.length) {
+    const index = lines.indexOf(strengthLines[0]);
+
+    for (let i = index - 1; i >= Math.max(0, index - 3); i--) {
+      if (candidates.includes(lines[i])) {
+        name = lines[i];
+        break;
+      }
+    }
+  }
+
+  if (!name) name = candidates[0] || "";
+
+  name = name
+    .replace(/\s+\d+(?:[.,]\d+)?\s?(?:mg|mcg|µg|ug|g|ml|mL|iu)\b.*$/i, "")
+    .trim();
+
+  // Return unique extracted strength strings for manual selection if there are several.
+  const uniqueStrengths = [...new Set(
+    strengths.map(s => s.replace(/\s+/g, " ").trim())
+  )];
+
+  return {
+    name,
+    dosage: uniqueStrengths.length === 1 ? uniqueStrengths[0] : "",
+    strengths: uniqueStrengths,
+    lines
+  };
+}
+
+async function runTesseract(blob, label) {
+  if (!window.Tesseract?.recognize) {
+    throw new Error(
+      "The OCR library is unavailable. Check your internet connection and refresh the page."
+    );
+  }
+
+  $("scannerStatus").textContent = `Reading ${label} image…`;
+
+  return window.Tesseract.recognize(blob, "eng", {
+    logger: info => {
+      if (
+        info.status === "recognizing text" &&
+        typeof info.progress === "number"
+      ) {
+        $("scannerStatus").textContent =
+          `Reading ${label} image… ${Math.round(info.progress * 100)}%`;
+      }
+    }
+  });
+}
+
+$("runOcrButton").addEventListener("click", async () => {
+  if (!selectedMedicinePhoto) {
+    $("scannerStatus").textContent =
+      "Capture or select a medicine-box photo first.";
+    return;
+  }
+
+  if (!window.Tesseract?.recognize) {
+    $("scannerStatus").textContent =
+      "OCR could not load. Check your internet connection and refresh the page.";
+    return;
+  }
+
+  const button = $("runOcrButton");
+  button.disabled = true;
+  $("startScanner").disabled = true;
+
+  $("ocrResult").hidden = true;
+  $("scannerStatus").textContent =
+    "Enhancing the photo and recognizing printed text. Please wait…";
+
+  try {
+    // Pass 1: enhanced image.
+    const enhanced = await enhanceMedicineImage(selectedMedicinePhoto);
+    const enhancedResult = await runTesseract(enhanced, "enhanced");
+    let bestResult = enhancedResult;
+
+    // Pass 2: original image. Choose the result with the higher OCR confidence.
+    // OCR confidence is not medicine identity confidence.
+    try {
+      const originalResult = await runTesseract(selectedMedicinePhoto, "original");
+
+      const enhancedConfidence = Number(enhancedResult?.data?.confidence || 0);
+      const originalConfidence = Number(originalResult?.data?.confidence || 0);
+
+      if (originalConfidence > enhancedConfidence) {
+        bestResult = originalResult;
+      }
+    } catch (secondPassError) {
+      console.warn("Original-image OCR pass failed:", secondPassError);
+    }
+
+    const rawText = bestResult?.data?.text || "";
+    const confidence = Number(bestResult?.data?.confidence || 0);
+    const parsed = parseMedicineText(rawText);
+
+    latestOcrResult = {
+      rawText,
+      confidence,
+      parsed
+    };
+
+    $("ocrRawText").textContent =
+      rawText.trim() || "No readable text was found.";
+
+    $("ocrResult").hidden = false;
+
+    // Fill only fields that were extracted. Never save automatically.
+    if (parsed.name) {
+      $("medicineName").value = parsed.name;
+    }
+
+    if (parsed.dosage) {
+      $("medicineDosage").value = parsed.dosage;
+    } else if (parsed.strengths.length > 1) {
+      $("scannerStatus").textContent =
+        `Several possible strengths were detected (${parsed.strengths.join(", ")}). Choose the correct strength from the packaging and enter it manually.`;
+    }
+
+    // Every OCR run clears verification. The user must check the fields.
+    $("medicineDetailsVerified").checked = false;
+
+    if (!rawText.trim()) {
+      $("scannerStatus").textContent =
+        "No readable text was found. Retake the photo with the label flat, well-lit, and in focus, or enter the details manually.";
+    } else if (confidence < 55) {
+      $("scannerStatus").textContent =
+        `OCR confidence is low (${Math.round(confidence)}%). The fields may be wrong. Compare the raw recognized text and photo with the packaging, then correct the fields manually.`;
+    } else if (!parsed.name || !parsed.dosage) {
+      $("scannerStatus").textContent =
+        "Some text was detected, but the name or strength could not be confidently separated. Review the recognized text and complete the fields manually.";
+    } else {
+      $("scannerStatus").textContent =
+        `Text extraction finished (OCR confidence ${Math.round(confidence)}%). This is not a guarantee of accuracy. Verify and correct the medicine name and strength before saving.`;
+    }
+
+    $("medicineName").focus();
+  } catch (error) {
+    console.error("Medicine OCR failed:", error);
+
+    $("scannerStatus").textContent =
+      `Could not read this photo: ${error.message}. Try another clear photo or enter the details manually.`;
+  } finally {
+    button.disabled = false;
+    $("startScanner").disabled = false;
+  }
+});
+
+// ============================================
+// RESET FORMS
+// ============================================
 
 function resetMedicineForm() {
   $("medicineFormElement").reset();
@@ -367,9 +740,7 @@ function resetMedicineForm() {
   $("saveMedicine").textContent = "Save medicine";
 
   $("medicineForm").classList.remove("open");
-
-  $("scannerStatus").textContent =
-    "Capture a photo to read the printed medicine name and strength. Check the results before saving.";
+  resetScanner();
 }
 
 function resetReminderForm() {
@@ -385,186 +756,12 @@ function resetReminderForm() {
   $("reminderDate").required = true;
 
   $("reminderForm").classList.remove("open");
-
   hideMessage("reminderMessage");
 }
 
-// ==========================================
-// MEDICINE PHOTO OCR SCANNER
-// ==========================================
-
-async function stopCamera() {
-  // The scanner uses a captured photo instead of a live barcode stream.
-  const photoInput = $("medicinePhotoInput");
-
-  if (photoInput) {
-    photoInput.value = "";
-  }
-}
-
-function parseMedicineText(rawText) {
-  const lines = rawText
-    .split(/\r?\n/)
-    .map(line =>
-      line
-        .replace(/[|]/g, "I")
-        .replace(/[^\p{L}\p{N}®™%.,/+() -]/gu, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-    )
-    .filter(line => line.length >= 2);
-
-  // Find common medicine strengths, such as 500 mg or 5 mg/mL.
-  const strengthRegex =
-    /\b\d+(?:[.,]\d+)?\s?(?:mg|mcg|µg|ug|g|kg|ml|mL|µl|iu|units?)(?:\s*\/\s*\d+(?:[.,]\d+)?\s?(?:ml|mL|g|mg))?\b/i;
-
-  const strengthLine = lines.find(line =>
-    strengthRegex.test(line)
-  );
-
-  const strengthMatch = strengthLine
-    ? strengthLine.match(strengthRegex)
-    : null;
-
-  const dosage = strengthMatch
-    ? strengthMatch[0].replace(/\s+/g, " ").trim()
-    : "";
-
-  const ignore = /^(?:medicines?|tablets?|capsules?|oral|suspension|solution|syrup|for oral use|prescription only|keep out of reach|store below|dosage|strength|composition|each tablet|each capsule|contains|warning|caution|expiry|batch|lot|manufactured|manufacturer|net contents|directions|take as directed|pharmacy|generic name|active ingredient)$/i;
-
-  const candidates = lines.filter(line => {
-    if (ignore.test(line)) return false;
-    if (strengthRegex.test(line)) return false;
-
-    if (/^(?:\d+[.)]?\s*)?(?:tablets?|capsules?|pcs?|pieces?)\b/i.test(line)) {
-      return false;
-    }
-
-    if (line.length < 3 || line.length > 65) return false;
-
-    if (/https?:|www\.|batch\s*(?:no|number)|expiry|exp\s*date|mfg\s*date/i.test(line)) {
-      return false;
-    }
-
-    return /[a-zA-Z]{3,}/.test(line);
-  });
-
-  // Prefer a likely product name close to the strength line.
-  let name = "";
-
-  if (strengthLine) {
-    const strengthIndex = lines.indexOf(strengthLine);
-
-    for (
-      let i = strengthIndex - 1;
-      i >= Math.max(0, strengthIndex - 3);
-      i--
-    ) {
-      if (candidates.includes(lines[i])) {
-        name = lines[i];
-        break;
-      }
-    }
-  }
-
-  if (!name) {
-    name = candidates[0] || "";
-  }
-
-  name = name
-    .replace(/\s+(?:\d+(?:[.,]\d+)?\s?(?:mg|mcg|µg|ug|g|ml|mL|iu)\b).*$/i, "")
-    .trim();
-
-  return { name, dosage, lines };
-}
-
-$("startScanner").addEventListener("click", () => {
-  hideMessage("pageMessage");
-
-  if (!window.Tesseract?.recognize) {
-    $("scannerStatus").textContent =
-      "Text recognition is loading or unavailable. Check your internet connection and try again.";
-  }
-
-  $("medicinePhotoInput").click();
-});
-
-$("medicinePhotoInput").addEventListener("change", async event => {
-  const file = event.target.files?.[0];
-  const status = $("scannerStatus");
-  const button = $("startScanner");
-
-  if (!file) return;
-
-  if (!file.type.startsWith("image/")) {
-    status.textContent =
-      "Please choose an image of the medicine label.";
-    event.target.value = "";
-    return;
-  }
-
-  if (!window.Tesseract?.recognize) {
-    status.textContent =
-      "Text recognition could not load. Check your internet connection and refresh the page.";
-    event.target.value = "";
-    return;
-  }
-
-  button.disabled = true;
-  status.textContent =
-    "Reading the medicine label. Please keep this page open.";
-
-  try {
-    const result = await window.Tesseract.recognize(
-      file,
-      "eng",
-      {
-        logger: info => {
-          if (
-            info.status === "recognizing text" &&
-            typeof info.progress === "number"
-          ) {
-            status.textContent =
-              `Reading image… ${Math.round(info.progress * 100)}%`;
-          }
-        }
-      }
-    );
-
-    const detectedText = result?.data?.text || "";
-    const parsed = parseMedicineText(detectedText);
-
-    if (parsed.name) {
-      $("medicineName").value = parsed.name;
-    }
-
-    if (parsed.dosage) {
-      $("medicineDosage").value = parsed.dosage;
-    }
-
-    if (parsed.name || parsed.dosage) {
-      status.textContent =
-        `Text detected. ${parsed.name ? `Name: ${parsed.name}. ` : "Name not confidently detected. "}${parsed.dosage ? `Strength: ${parsed.dosage}.` : "Strength not detected; enter it manually."} Verify the fields against the package before saving.`;
-
-      $("medicineName").focus();
-    } else {
-      status.textContent =
-        "No clear medicine name or strength found. Try a brighter, sharper photo with the label filling the frame, or enter the details manually.";
-    }
-  } catch (error) {
-    console.error("Medicine label OCR failed:", error);
-
-    status.textContent =
-      "Could not read this image. Try another clear photo or enter the details manually.";
-  } finally {
-    button.disabled = false;
-    event.target.value = "";
-  }
-});
-
-// ==========================================
-// ADD, EDIT AND DELETE MEDICINES
-// ==========================================
+// ============================================
+// SAVE, EDIT AND DELETE MEDICINES
+// ============================================
 
 $("toggleMedicineForm").addEventListener("click", () => {
   $("medicineForm").classList.toggle("open");
@@ -581,11 +778,27 @@ $("medicineFormElement").addEventListener("submit", async event => {
   if (busy) return;
 
   const name = $("medicineName").value.trim();
+  const dosage = $("medicineDosage").value.trim();
   const quantity = Number($("medicineQuantity").value);
   const refillAt = Number($("medicineRefillAt").value);
+  const verified = $("medicineDetailsVerified").checked;
+
+  if (!name) {
+    message("pageMessage", "Enter the medicine name.", "error");
+    return;
+  }
+
+  if (!verified) {
+    message(
+      "pageMessage",
+      "Before saving, verify the medicine name and strength against the packaging or prescription and tick the confirmation box.",
+      "error"
+    );
+    $("medicineDetailsVerified").focus();
+    return;
+  }
 
   if (
-    !name ||
     quantity < 0 ||
     refillAt < 0 ||
     !Number.isFinite(quantity) ||
@@ -593,7 +806,17 @@ $("medicineFormElement").addEventListener("submit", async event => {
   ) {
     message(
       "pageMessage",
-      "Enter a medicine name and valid non-negative quantities.",
+      "Enter valid non-negative quantities.",
+      "error"
+    );
+    return;
+  }
+
+  // Avoid saving the unreviewed OCR text as if it were a verified result.
+  if (latestOcrResult && !verified) {
+    message(
+      "pageMessage",
+      "Confirm the OCR results before saving.",
       "error"
     );
     return;
@@ -607,20 +830,18 @@ $("medicineFormElement").addEventListener("submit", async event => {
 
     const record = {
       name,
-      dosage: $("medicineDosage").value.trim(),
+      dosage,
       barcode: $("medicineBarcode").value.trim(),
       quantity,
       refillAt,
       instructions: $("medicineInstructions").value.trim(),
       notes: $("medicineNotes").value.trim(),
+      detailsVerified: true,
       updatedAt: Date.now()
     };
 
     if (id) {
-      await update(
-        ref(db, dataPath(`medicines/${id}`)),
-        record
-      );
+      await update(ref(db, dataPath(`medicines/${id}`)), record);
     } else {
       record.createdAt = Date.now();
 
@@ -632,11 +853,11 @@ $("medicineFormElement").addEventListener("submit", async event => {
 
     await logActivity(
       id ? "Medicine updated" : "Medicine added",
-      name
+      `${name}${dosage ? ` (${dosage})` : ""}`
     );
 
     resetMedicineForm();
-    message("pageMessage", "Medicine saved successfully.");
+    message("pageMessage", "Verified medicine details saved successfully.");
   } catch (error) {
     message(
       "pageMessage",
@@ -650,12 +871,11 @@ $("medicineFormElement").addEventListener("submit", async event => {
 });
 
 async function recordRefill(id) {
-  const med = medicines[id];
-
-  if (!med) return;
+  const medicine = medicines[id];
+  if (!medicine) return;
 
   const input = prompt(
-    `How many units are being added to ${med.name}?`,
+    `How many units are being added to ${medicine.name}?`,
     "30"
   );
 
@@ -669,19 +889,16 @@ async function recordRefill(id) {
   }
 
   try {
-    const newQuantity = Number(med.quantity || 0) + amount;
+    const newQuantity = Number(medicine.quantity || 0) + amount;
 
-    await update(
-      ref(db, dataPath(`medicines/${id}`)),
-      {
-        quantity: newQuantity,
-        updatedAt: Date.now()
-      }
-    );
+    await update(ref(db, dataPath(`medicines/${id}`)), {
+      quantity: newQuantity,
+      updatedAt: Date.now()
+    });
 
     await logActivity(
       "Medicine refilled",
-      `${med.name}: added ${amount} units. New stock: ${newQuantity}.`
+      `${medicine.name}: added ${amount} units. New stock: ${newQuantity}.`
     );
   } catch (error) {
     alert("Unable to record refill: " + error.message);
@@ -689,25 +906,24 @@ async function recordRefill(id) {
 }
 
 async function deleteMedicine(id) {
-  const med = medicines[id];
+  const medicine = medicines[id];
 
-  if (!med || !confirm(`Delete ${med.name} and its reminders?`)) {
+  if (!medicine || !confirm(`Delete ${medicine.name} and its reminders?`)) {
     return;
   }
 
   try {
     const changes = {};
-
     changes[dataPath(`medicines/${id}`)] = null;
 
-    for (const [rid, r] of Object.entries(reminders)) {
-      if (r.medicineId === id) {
-        changes[dataPath(`reminders/${rid}`)] = null;
+    for (const [reminderId, reminder] of Object.entries(reminders)) {
+      if (reminder.medicineId === id) {
+        changes[dataPath(`reminders/${reminderId}`)] = null;
       }
     }
 
     await update(ref(db), changes);
-    await logActivity("Medicine deleted", med.name);
+    await logActivity("Medicine deleted", medicine.name);
   } catch (error) {
     alert("Unable to delete medicine: " + error.message);
   }
@@ -718,48 +934,57 @@ $("medicineList").addEventListener("click", async event => {
   const del = event.target.closest("[data-del-med]");
   const stock = event.target.closest("[data-stock-med]");
 
-  if (stock) {
-    return recordRefill(stock.dataset.stockMed);
-  }
-
-  if (del) {
-    return deleteMedicine(del.dataset.delMed);
-  }
-
+  if (stock) return recordRefill(stock.dataset.stockMed);
+  if (del) return deleteMedicine(del.dataset.delMed);
   if (!edit) return;
 
   const id = edit.dataset.editMed;
-  const m = medicines[id];
+  const medicine = medicines[id];
 
-  if (!m) return;
+  if (!medicine) return;
 
   $("medicineEditId").value = id;
-  $("medicineName").value = m.name || "";
-  $("medicineDosage").value = m.dosage || "";
-  $("medicineBarcode").value = m.barcode || "";
-  $("medicineQuantity").value = m.quantity ?? 0;
-  $("medicineRefillAt").value = m.refillAt ?? 5;
-  $("medicineInstructions").value = m.instructions || "";
-  $("medicineNotes").value = m.notes || "";
+  $("medicineName").value = medicine.name || "";
+  $("medicineDosage").value = medicine.dosage || "";
+  $("medicineBarcode").value = medicine.barcode || "";
+  $("medicineQuantity").value = medicine.quantity ?? 0;
+  $("medicineRefillAt").value = medicine.refillAt ?? 5;
+  $("medicineInstructions").value = medicine.instructions || "";
+  $("medicineNotes").value = medicine.notes || "";
+
+  // Editing existing records also requires explicit confirmation before updating.
+  $("medicineDetailsVerified").checked = false;
 
   $("medicineFormTitle").textContent = "Edit medicine";
   $("saveMedicine").textContent = "Update medicine";
   $("medicineForm").classList.add("open");
 
+  resetScanner();
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
 $("refillList").addEventListener("click", event => {
   const button = event.target.closest("[data-stock-med]");
-
-  if (button) {
-    recordRefill(button.dataset.stockMed);
-  }
+  if (button) recordRefill(button.dataset.stockMed);
 });
 
-// ==========================================
-// REMINDERS: ONE-TIME OR RECURRING WEEKLY
-// ==========================================
+// ============================================
+// RECURRING WEEKLY REMINDERS
+// ============================================
+
+$("toggleReminderForm").addEventListener("click", () => {
+  if (!Object.keys(medicines).length) {
+    $("reminderForm").classList.add("open");
+    message(
+      "reminderMessage",
+      "Add a medicine before creating a reminder.",
+      "error"
+    );
+    return;
+  }
+
+  $("reminderForm").classList.toggle("open");
+});
 
 $("recurrenceType").addEventListener("change", () => {
   const weekly = $("recurrenceType").value === "weekly";
@@ -767,21 +992,6 @@ $("recurrenceType").addEventListener("change", () => {
   $("onceDateField").style.display = weekly ? "none" : "";
   $("weeklyDaysField").style.display = weekly ? "" : "none";
   $("reminderDate").required = !weekly;
-});
-
-$("toggleReminderForm").addEventListener("click", () => {
-  if (!Object.keys(medicines).length) {
-    message(
-      "reminderMessage",
-      "Add a medicine before scheduling reminders.",
-      "error"
-    );
-
-    $("reminderForm").classList.add("open");
-    return;
-  }
-
-  $("reminderForm").classList.toggle("open");
 });
 
 $("cancelReminder").addEventListener("click", resetReminderForm);
@@ -801,29 +1011,17 @@ $("reminderFormElement").addEventListener("submit", async event => {
   ].map(input => Number(input.value));
 
   if (!medicines[medicineId]) {
-    message(
-      "reminderMessage",
-      "Choose a valid medicine.",
-      "error"
-    );
+    message("reminderMessage", "Choose a valid medicine.", "error");
     return;
   }
 
   if (!time) {
-    message(
-      "reminderMessage",
-      "Choose a reminder time.",
-      "error"
-    );
+    message("reminderMessage", "Choose a reminder time.", "error");
     return;
   }
 
   if (recurrence === "once" && (!date || date < localDate())) {
-    message(
-      "reminderMessage",
-      "Choose today or a future date.",
-      "error"
-    );
+    message("reminderMessage", "Choose today or a future date.", "error");
     return;
   }
 
@@ -854,10 +1052,7 @@ $("reminderFormElement").addEventListener("submit", async event => {
     };
 
     if (id) {
-      await update(
-        ref(db, dataPath(`reminders/${id}`)),
-        record
-      );
+      await update(ref(db, dataPath(`reminders/${id}`)), record);
     } else {
       record.createdAt = Date.now();
 
@@ -906,7 +1101,7 @@ $("reminderList").addEventListener("click", async event => {
         medicineName(reminders[id]?.medicineId)
       );
     } catch (error) {
-      alert(error.message);
+      alert("Unable to delete reminder: " + error.message);
     }
 
     return;
@@ -915,86 +1110,65 @@ $("reminderList").addEventListener("click", async event => {
   if (!edit) return;
 
   const id = edit.dataset.editRem;
-  const r = reminders[id];
+  const reminder = reminders[id];
 
-  if (!r) return;
+  if (!reminder) return;
 
   showPage("remindersPage");
 
   $("reminderForm").classList.add("open");
   $("reminderEditId").value = id;
-  $("reminderMedicine").value = r.medicineId || "";
-  $("recurrenceType").value = r.recurrence || "once";
-  $("reminderDate").value = r.date || "";
-  $("reminderTime").value = r.time || "08:00";
-  $("reminderDose").value = r.dose || "";
-  $("reminderNotes").value = r.notes || "";
+  $("reminderMedicine").value = reminder.medicineId || "";
+  $("recurrenceType").value = reminder.recurrence || "once";
+  $("reminderDate").value = reminder.date || "";
+  $("reminderTime").value = reminder.time || "08:00";
+  $("reminderDose").value = reminder.dose || "";
+  $("reminderNotes").value = reminder.notes || "";
 
   document.querySelectorAll('input[name="weeklyDay"]').forEach(input => {
-    input.checked = (r.daysOfWeek || []).includes(Number(input.value));
+    input.checked = (reminder.daysOfWeek || []).includes(Number(input.value));
   });
 
   $("recurrenceType").dispatchEvent(new Event("change"));
   $("saveReminder").textContent = "Update reminder";
 });
 
-// ==========================================
+// ============================================
 // NAVIGATION AND MODALS
-// ==========================================
+// ============================================
 
 document.querySelectorAll("[data-page]").forEach(button => {
-  button.addEventListener("click", () => {
-    showPage(button.dataset.page);
-  });
+  button.addEventListener("click", () => showPage(button.dataset.page));
 });
 
-$("openConnection").addEventListener("click", () =>
-  openModal("connectionOverlay")
-);
-
-$("openNotifications").addEventListener("click", () =>
-  openModal("notificationsOverlay")
-);
-
-$("openProfile").addEventListener("click", () =>
-  openModal("profileOverlay")
-);
-
-$("profileButton").addEventListener("click", () =>
-  openModal("profileOverlay")
-);
+$("openConnection").addEventListener("click", () => openModal("connectionOverlay"));
+$("openNotifications").addEventListener("click", () => openModal("notificationsOverlay"));
+$("openProfile").addEventListener("click", () => openModal("profileOverlay"));
+$("profileButton").addEventListener("click", () => openModal("profileOverlay"));
 
 document.querySelectorAll("[data-close]").forEach(button => {
-  button.addEventListener("click", () => {
-    closeModal(button.dataset.close);
-  });
+  button.addEventListener("click", () => closeModal(button.dataset.close));
 });
 
 document.querySelectorAll(".overlay").forEach(overlay => {
   overlay.addEventListener("click", event => {
-    if (event.target === overlay) {
-      closeModal(overlay.id);
-    }
+    if (event.target === overlay) closeModal(overlay.id);
   });
 });
 
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
-    document.querySelectorAll(".overlay.open").forEach(el =>
-      el.classList.remove("open")
-    );
+    document.querySelectorAll(".overlay.open").forEach(overlay => {
+      overlay.classList.remove("open");
+    });
   }
 });
 
 $("refreshHistory").addEventListener("click", renderHistory);
 
-$("markRead").addEventListener("click", () => {
-  closeModal("notificationsOverlay");
-});
-
-// ==========================================
-// PATIENT CONNECTION CODE
-// ==========================================
+// ============================================
+// PATIENT CONNECTION CODE LOOKUP
+// ============================================
 
 $("connectionForm").addEventListener("submit", async event => {
   event.preventDefault();
@@ -1002,11 +1176,7 @@ $("connectionForm").addEventListener("submit", async event => {
   const code = $("connectionCode").value.trim();
 
   if (!code) {
-    message(
-      "connectionMessage",
-      "Enter a patient connection code.",
-      "error"
-    );
+    message("connectionMessage", "Enter a connection code.", "error");
     return;
   }
 
@@ -1016,25 +1186,24 @@ $("connectionForm").addEventListener("submit", async event => {
     if (!snapshot.exists()) {
       message(
         "connectionMessage",
-        "Code not found. Check the code or QR connection setup.",
+        "Code not found. Check the code and your Firebase connection-code setup.",
         "error"
       );
       return;
     }
 
     const record = snapshot.val();
-    const patientId = record.patientUid;
 
-    if (!patientId || typeof patientId !== "string") {
+    if (!record.patientUid || typeof record.patientUid !== "string") {
       message(
         "connectionMessage",
-        "This code does not contain a valid patient reference.",
+        "The code does not contain a valid patient reference.",
         "error"
       );
       return;
     }
 
-    if (patientId === user.uid) {
+    if (record.patientUid === user.uid) {
       message(
         "connectionMessage",
         "You cannot connect an account to itself.",
@@ -1043,23 +1212,25 @@ $("connectionForm").addEventListener("submit", async event => {
       return;
     }
 
+    // Deliberately do not grant access or switch the active database path.
+    // A valid connection needs a server/rules-backed authorization workflow.
     message(
       "connectionMessage",
-      "The code was found, but patient access still requires a verified authorization workflow and matching Firebase security rules.",
+      "The code exists. Patient access has not been granted by this lookup. Complete the secure connection workflow and Firebase rules before sharing records.",
       "error"
     );
   } catch (error) {
     message(
       "connectionMessage",
-      `Connection lookup failed: ${error.message}. Check your connection-code database path and rules.`,
+      `Connection lookup failed: ${error.message}. Check the database path and rules.`,
       "error"
     );
   }
 });
 
-// ==========================================
+// ============================================
 // CHANGE PASSWORD
-// ==========================================
+// ============================================
 
 $("passwordForm").addEventListener("submit", async event => {
   event.preventDefault();
@@ -1078,11 +1249,7 @@ $("passwordForm").addEventListener("submit", async event => {
   }
 
   if (next !== confirmNext) {
-    message(
-      "passwordMessage",
-      "New passwords do not match.",
-      "error"
-    );
+    message("passwordMessage", "New passwords do not match.", "error");
     return;
   }
 
@@ -1096,46 +1263,38 @@ $("passwordForm").addEventListener("submit", async event => {
   }
 
   try {
-    const credential = EmailAuthProvider.credential(
-      user.email,
-      current
-    );
+    const credential = EmailAuthProvider.credential(user.email, current);
 
     await reauthenticateWithCredential(user, credential);
     await updatePassword(user, next);
 
     $("passwordForm").reset();
 
-    message(
-      "passwordMessage",
-      "Password updated successfully."
-    );
+    message("passwordMessage", "Password updated successfully.");
 
-    await logActivity(
-      "Password changed",
-      "Account password updated."
-    );
+    await logActivity("Password changed", "Account password updated.");
   } catch (error) {
-    const text =
-      error.code === "auth/invalid-credential" ||
-      error.code === "auth/wrong-password" ||
-      error.code === "auth/invalid-login-credentials"
-        ? "Your current password is incorrect."
-        : error.message;
+    const text = [
+      "auth/invalid-credential",
+      "auth/wrong-password",
+      "auth/invalid-login-credentials"
+    ].includes(error.code)
+      ? "Your current password is incorrect."
+      : error.message;
 
     message("passwordMessage", text, "error");
   }
 });
 
-// ==========================================
+// ============================================
 // LOG OUT
-// ==========================================
+// ============================================
 
 $("logoutButton").addEventListener("click", async () => {
   if (!confirm("Are you sure you want to log out?")) return;
 
   try {
-    await stopCamera();
+    stopSubscriptions();
     await signOut(auth);
     window.location.replace("login.html");
   } catch (error) {
@@ -1143,11 +1302,11 @@ $("logoutButton").addEventListener("click", async () => {
   }
 });
 
-// ==========================================
-// FIREBASE AUTHENTICATION AND DATA
-// ==========================================
+// ============================================
+// FIREBASE AUTHENTICATION AND LIVE DATA
+// ============================================
 
-onAuthStateChanged(auth, async authenticatedUser => {
+onAuthStateChanged(auth, authenticatedUser => {
   if (!authenticatedUser) {
     stopSubscriptions();
     window.location.replace("login.html");
@@ -1159,9 +1318,7 @@ onAuthStateChanged(auth, async authenticatedUser => {
   user = authenticatedUser;
   activePatientUid = null;
 
-  $("displayName").textContent =
-    user.displayName || "My account";
-
+  $("displayName").textContent = user.displayName || "My account";
   $("avatar").textContent =
     (user.displayName || user.email || "A")[0].toUpperCase();
 
@@ -1170,7 +1327,8 @@ onAuthStateChanged(auth, async authenticatedUser => {
 
   $("profileEmail").textContent = user.email || "";
 
-  // Loads records from the signed-in account by default.
+  // Existing authorized-dashboard structure: signed-in user's records.
+  // Do not switch to another user's data until a secure connection is implemented.
   subscribe("medicines", value => {
     medicines = value;
     renderMedicines();
@@ -1181,21 +1339,23 @@ onAuthStateChanged(auth, async authenticatedUser => {
     renderReminders();
   });
 
-  const historyUnsub = onValue(
+  const historyUnsubscribe = onValue(
     ref(db, accountPath("activity")),
-    snap => {
-      activities = snap.val() || {};
+    snapshot => {
+      activities = snapshot.val() || {};
       renderHistory();
     },
-    error => {
-      console.error("History subscription failed:", error);
-    }
+    error => console.error("History subscription failed:", error)
   );
 
-  unsubs.push(historyUnsub);
+  unsubs.push(historyUnsubscribe);
 });
 
 window.addEventListener("beforeunload", () => {
-  stopCamera();
   stopSubscriptions();
+
+  const preview = $("medicinePhotoPreview");
+  if (preview?.dataset.objectUrl) {
+    URL.revokeObjectURL(preview.dataset.objectUrl);
+  }
 });
