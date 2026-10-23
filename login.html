@@ -1,19 +1,13 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#175638">
-  <title>Medminder | Login & Signup</title>
+  <meta name="description" content="Log in to Medminder to manage medication reminders.">
+  <title>Medminder | Log In</title>
 
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
     :root {
       --green: #175638;
       --green-dark: #10442b;
@@ -27,17 +21,39 @@
       --error-bg: #fef3f2;
       --success: #176b3a;
       --success-bg: #ecfdf3;
+      --shadow: 0 15px 45px rgba(23, 86, 56, 0.09);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      -webkit-text-size-adjust: 100%;
     }
 
     body {
-      font-family: Inter, Arial, sans-serif;
-      background: var(--background);
-      color: var(--text);
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 28px 16px;
+      font-family: Inter, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(150, 217, 176, 0.20), transparent 30%),
+        radial-gradient(circle at 90% 90%, rgba(23, 86, 56, 0.07), transparent 35%),
+        var(--background);
+    }
+
+    button,
+    input {
+      font: inherit;
     }
 
     .auth-container {
@@ -49,11 +65,11 @@
     .auth-card {
       width: 100%;
       max-width: 430px;
-      background: var(--white);
       padding: 38px;
+      background: var(--white);
       border: 1px solid #e8eee9;
       border-radius: 22px;
-      box-shadow: 0 15px 45px rgba(23, 86, 56, 0.09);
+      box-shadow: var(--shadow);
     }
 
     .brand {
@@ -75,13 +91,15 @@
     .brand-icon svg {
       width: 45px;
       height: 45px;
+      display: block;
     }
 
     .brand h1 {
-      font-size: 28px;
-      color: var(--green);
-      letter-spacing: -0.8px;
       margin-bottom: 7px;
+      color: var(--green);
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
     }
 
     .brand p {
@@ -95,14 +113,14 @@
     }
 
     .form-heading h2 {
-      font-size: 24px;
       margin-bottom: 8px;
+      font-size: 24px;
       letter-spacing: -0.5px;
     }
 
     .form-heading p {
-      font-size: 14px;
       color: var(--muted);
+      font-size: 14px;
       line-height: 1.6;
     }
 
@@ -112,31 +130,30 @@
 
     .form-group label {
       display: block;
+      margin-bottom: 9px;
       font-size: 14px;
       font-weight: 600;
-      margin-bottom: 9px;
     }
 
-    .form-group input,
-    .form-group select {
+    .form-group input {
       display: block;
       width: 100%;
+      min-height: 48px;
       padding: 14px;
-      font-family: inherit;
-      font-size: 14px;
       color: var(--text);
       background: #fcfdfc;
       border: 1px solid var(--border);
       border-radius: 10px;
       outline: none;
+      font-size: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
     .form-group input::placeholder {
       color: #a2ada5;
     }
 
-    .form-group input:focus,
-    .form-group select:focus {
+    .form-group input:focus {
       border-color: var(--green);
       box-shadow: 0 0 0 3px rgba(23, 86, 56, 0.10);
     }
@@ -154,13 +171,17 @@
       top: 50%;
       right: 13px;
       transform: translateY(-50%);
-      border: none;
-      background: transparent;
+      padding: 5px 0;
       color: var(--green);
-      font-family: inherit;
+      background: transparent;
+      border: none;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
+    }
+
+    .toggle-password:hover {
+      color: var(--green-dark);
     }
 
     .form-options {
@@ -172,10 +193,9 @@
 
     .text-button {
       padding: 0;
+      color: var(--green);
       background: transparent;
       border: none;
-      color: var(--green);
-      font-family: inherit;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
@@ -187,8 +207,8 @@
 
     .message {
       display: none;
-      padding: 11px 13px;
       margin-bottom: 17px;
+      padding: 11px 13px;
       border-radius: 9px;
       font-size: 13px;
       line-height: 1.5;
@@ -213,14 +233,18 @@
 
     .primary-button {
       width: 100%;
-      padding: 15px 18px;
-      background: var(--green);
+      min-height: 49px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 14px 18px;
       color: var(--white);
+      background: var(--green);
       border: none;
       border-radius: 10px;
-      font-family: inherit;
       font-size: 15px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       transition: background 0.2s, transform 0.2s;
     }
@@ -235,43 +259,79 @@
 
     .primary-button:disabled {
       opacity: 0.65;
-      cursor: not-allowed;
+      cursor: wait;
+    }
+
+    .primary-button svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
     }
 
     .switch-page {
       margin-top: 23px;
-      text-align: center;
       color: var(--muted);
       font-size: 14px;
       line-height: 1.7;
+      text-align: center;
     }
 
-    .switch-page button {
+    .signup-link {
       color: var(--green);
-      font-weight: 600;
-      background: none;
-      border: none;
-      font-family: inherit;
-      font-size: inherit;
-      cursor: pointer;
+      font-weight: 700;
+      text-decoration: none;
     }
 
-    .switch-page button:hover {
+    .signup-link:hover {
+      color: var(--green-dark);
       text-decoration: underline;
     }
 
-    .hidden {
-      display: none !important;
+    .security-note {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .security-note svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+      color: var(--green);
+    }
+
+    .copyright {
+      margin-top: 23px;
+      color: #91a096;
+      font-size: 11px;
+      text-align: center;
     }
 
     @media (max-width: 480px) {
       body {
-        padding: 16px 12px;
+        align-items: flex-start;
+        padding: 22px 13px;
       }
 
       .auth-card {
         padding: 29px 22px;
         border-radius: 18px;
+      }
+
+      .brand {
+        margin-bottom: 25px;
+      }
+
+      .brand-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 17px;
       }
 
       .brand h1 {
@@ -280,6 +340,11 @@
 
       .form-heading h2 {
         font-size: 22px;
+      }
+
+      .form-group input {
+        min-height: 49px;
+        font-size: 16px;
       }
     }
 
@@ -292,7 +357,6 @@
     }
   </style>
 
-  <!-- Your existing Firebase authentication script -->
   <script type="module" src="js/login.js"></script>
 </head>
 
@@ -300,9 +364,8 @@
   <main class="auth-container">
     <section class="auth-card" aria-labelledby="pageTitle">
 
-      <!-- Medminder brand and logo -->
       <header class="brand">
-        <div class="brand-icon" aria-label="Medminder logo">
+        <div class="brand-icon">
           <svg viewBox="0 0 64 64" fill="none"
                xmlns="http://www.w3.org/2000/svg"
                role="img" aria-label="Medicine capsule with a checkmark">
@@ -325,240 +388,117 @@
         <p>Your trusted partner for medication reminders.</p>
       </header>
 
-      <!-- LOGIN FORM -->
-      <div id="loginSection">
-        <div class="form-heading">
-          <h2 id="pageTitle">Welcome back!</h2>
-          <p>Log in to your Medminder account.</p>
+      <div class="form-heading">
+        <h2 id="pageTitle">Welcome back!</h2>
+        <p>Log in to your Medminder account.</p>
+      </div>
+
+      <div id="loginMessage" class="message"
+           role="alert" aria-live="polite"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginEmail">Email address</label>
+          <input
+            type="email"
+            id="loginEmail"
+            name="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required>
         </div>
 
-        <div id="loginMessage" class="message"
-             role="alert" aria-live="polite"></div>
-
-        <form id="loginForm">
-          <div class="form-group">
-            <label for="loginEmail">Email address</label>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <div class="password-field">
             <input
-              type="email"
-              id="loginEmail"
-              name="email"
-              placeholder="you@example.com"
-              autocomplete="email"
+              type="password"
+              id="loginPassword"
+              name="password"
+              placeholder="Enter your password"
+              autocomplete="current-password"
               required>
-          </div>
 
-          <div class="form-group">
-            <label for="loginPassword">Password</label>
-            <div class="password-field">
-              <input
-                type="password"
-                id="loginPassword"
-                name="password"
-                placeholder="Enter your password"
-                autocomplete="current-password"
-                required>
-              <button type="button"
-                      class="toggle-password"
-                      data-target="loginPassword">
-                Show
-              </button>
-            </div>
-          </div>
-
-          <div class="form-options">
-            <button type="button"
-                    class="text-button"
-                    id="forgotPasswordButton">
-              Forgot password?
+            <button
+              type="button"
+              class="toggle-password"
+              data-target="loginPassword"
+              aria-label="Show password">
+              Show
             </button>
           </div>
-
-          <button type="submit" class="primary-button"
-                  id="loginSubmit">
-            Log In
-          </button>
-        </form>
-
-        <p class="switch-page">
-          Don't have an account?
-          <button type="button" id="showSignup">
-            Sign up
-          </button>
-        </p>
-      </div>
-
-      <!-- SIGNUP FORM -->
-      <div id="signupSection" class="hidden">
-        <div class="form-heading">
-          <h2>Create your account</h2>
-          <p>Join Medminder to manage medication reminders.</p>
         </div>
 
-        <div id="signupMessage" class="message"
-             role="alert" aria-live="polite"></div>
-
-        <form id="signupForm">
-          <div class="form-group">
-            <label for="signupName">Full name</label>
-            <input
-              type="text"
-              id="signupName"
-              name="name"
-              placeholder="Enter your full name"
-              autocomplete="name"
-              required>
-          </div>
-
-          <div class="form-group">
-            <label for="signupEmail">Email address</label>
-            <input
-              type="email"
-              id="signupEmail"
-              name="email"
-              placeholder="you@example.com"
-              autocomplete="email"
-              required>
-          </div>
-
-          <div class="form-group">
-            <label for="signupRole">Account role</label>
-            <select id="signupRole" name="role" required>
-              <option value="" disabled selected>
-                Select your role
-              </option>
-              <option value="Authorize Person">
-                Authorized person / Caregiver
-              </option>
-              <option value="medicine_taker">
-                Medicine taker
-              </option>
-            </select>
-          </div>
-
-      
-
-          <div class="form-group">
-            <label for="signupPassword">Password</label>
-            <div class="password-field">
-              <input
-                type="password"
-                id="signupPassword"
-                name="password"
-                placeholder="At least 6 characters"
-                autocomplete="new-password"
-                minlength="6"
-                required>
-              <button type="button"
-                      class="toggle-password"
-                      data-target="signupPassword">
-                Show
-              </button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="confirmPassword">Confirm password</label>
-            <div class="password-field">
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                placeholder="Re-enter your password"
-                autocomplete="new-password"
-                minlength="6"
-                required>
-              <button type="button"
-                      class="toggle-password"
-                      data-target="confirmPassword">
-                Show
-              </button>
-            </div>
-          </div>
-
-          <button type="submit" class="primary-button"
-                  id="signupSubmit">
-            Create Account
+        <div class="form-options">
+          <button
+            type="button"
+            class="text-button"
+            id="forgotPasswordButton">
+            Forgot password?
           </button>
-        </form>
+        </div>
 
-        <p class="switch-page">
-          Already have an account?
-          <button type="button" id="showLogin">
-            Log in
-          </button>
-        </p>
-      </div>
+        <button type="submit"
+                class="primary-button"
+                id="loginSubmit">
+          <span>Log In</span>
+          <svg viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true">
+            <path d="M5 12h14"/>
+            <path d="m12 5 7 7-7 7"/>
+          </svg>
+        </button>
+      </form>
 
+      <p class="switch-page">
+        Don't have an account?
+        <a href="signup.html" class="signup-link">Sign up</a>
+      </p>
+
+      <p class="security-note">
+        <svg viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">
+          <rect x="4" y="10" width="16" height="11" rx="2"/>
+          <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+        </svg>
+        Your account is protected by Firebase Authentication.
+      </p>
     </section>
   </main>
 
   <script>
-    // Switch between the login and signup screens.
-    const loginSection = document.getElementById("loginSection");
-    const signupSection = document.getElementById("signupSection");
-
-    document.getElementById("showSignup").addEventListener("click", () => {
-      loginSection.classList.add("hidden");
-      signupSection.classList.remove("hidden");
-      clearMessages();
-    });
-
-    document.getElementById("showLogin").addEventListener("click", () => {
-      signupSection.classList.add("hidden");
-      loginSection.classList.remove("hidden");
-      clearMessages();
-    });
-
-    // Show or hide password fields.
+    // Show or hide the login password.
     document.querySelectorAll(".toggle-password").forEach(button => {
       button.addEventListener("click", () => {
         const input = document.getElementById(button.dataset.target);
-        const showPassword = input.type === "password";
+        if (!input) return;
 
+        const showPassword = input.type === "password";
         input.type = showPassword ? "text" : "password";
         button.textContent = showPassword ? "Hide" : "Show";
+        button.setAttribute(
+          "aria-label",
+          showPassword ? "Hide password" : "Show password"
+        );
       });
     });
 
-    // Display messages safely as text.
-    function showMessage(elementId, message, type = "error") {
-      const element = document.getElementById(elementId);
-      element.textContent = message;
-      element.className = "message " + type;
+    // Clear login messages when the user edits the form.
+    const loginEmail = document.getElementById("loginEmail");
+    const loginPassword = document.getElementById("loginPassword");
+    const loginMessage = document.getElementById("loginMessage");
+
+    function clearLoginMessage() {
+      loginMessage.textContent = "";
+      loginMessage.className = "message";
     }
 
-    function clearMessages() {
-      document.getElementById("loginMessage").textContent = "";
-      document.getElementById("signupMessage").textContent = "";
-    }
-
-    // Check matching passwords before passing signup to Firebase.
-    document.getElementById("signupForm").addEventListener("submit", event => {
-      const password = document.getElementById("signupPassword").value;
-      const confirm = document.getElementById("confirmPassword").value;
-
-      if (password !== confirm) {
-        event.preventDefault();
-        showMessage("signupMessage", "Passwords do not match.");
-      }
-    });
-
-    // Prevent the browser from submitting the forgot-password button
-    // as part of the login form. Firebase handling belongs in login.js.
-    document.getElementById("forgotPasswordButton").addEventListener("click", () => {
-      const email = document.getElementById("loginEmail").value.trim();
-
-      if (!email) {
-        showMessage("loginMessage", "Enter your email address first.");
-        document.getElementById("loginEmail").focus();
-        return;
-      }
-
-      showMessage(
-        "loginMessage",
-        "Password reset must be connected to Firebase in js/login.js."
-      );
-    });
+    loginEmail.addEventListener("input", clearLoginMessage);
+    loginPassword.addEventListener("input", clearLoginMessage);
   </script>
 </body>
 </html>
