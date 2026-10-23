@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +9,9 @@
 :root{--g:#175638;--gd:#10442b;--gl:#e7f4eb;--bg:#f4f8f5;--w:#fff;--t:#24372c;--m:#758379;--b:#e1eae3;--red:#c53d3d}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--t);font:14px Arial,sans-serif}
-button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.5}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
 .app{min-height:100vh;display:grid;grid-template-columns:225px minmax(0,1fr)}
 .sidebar{height:100vh;position:sticky;top:0;background:white;border-right:1px solid var(--b);padding:24px 14px;display:flex;flex-direction:column;gap:25px}
 .brand{font-size:23px;font-weight:800;color:var(--g);padding:8px}
@@ -21,36 +22,85 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{
 .sidebar-bottom{margin-top:auto}
 .main{min-width:0;padding:25px 28px 45px}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:25px}
-h1{font-size:25px;margin:0 0 6px}h2{font-size:17px;margin:0}h3{font-size:16px}
+h1{font-size:25px;margin:0 0 6px}
+h2{font-size:17px;margin:0}
+h3{font-size:16px}
 .muted{color:var(--m);line-height:1.6}
 .profile-shortcut{display:flex;align-items:center;gap:10px;border:1px solid var(--b);background:white;padding:7px 10px;border-radius:12px;color:var(--t)}
 .avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--gl);color:var(--g);font-weight:bold}
-.page{display:none}.page.active{display:block}
+.page{display:none}
+.page.active{display:block}
 .welcome{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:25px;border-radius:17px;background:linear-gradient(115deg,#175638,#287b50);color:white;margin-bottom:18px}
-.welcome h2{font-size:24px;margin-bottom:9px}.welcome p{line-height:1.7;color:#e2f3e8}.welcome-icon{font-size:48px}
+.welcome h2{font-size:24px;margin-bottom:9px}
+.welcome p{line-height:1.7;color:#e2f3e8}
+.welcome-icon{font-size:48px}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-bottom:18px}
 .panel,.stat{background:white;border:1px solid var(--b);border-radius:15px;padding:19px;margin-bottom:17px;min-width:0;box-shadow:0 5px 20px #1756380b}
-.stat-label{color:var(--m)}.stat-number{font-size:28px;color:var(--g);font-weight:bold;margin:12px 0 5px}
+.stat-label{color:var(--m)}
+.stat-number{font-size:28px;color:var(--g);font-weight:bold;margin:12px 0 5px}
 .panel-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:17px}
 .panel-heading p{margin:5px 0 0}
 .btn{display:inline-flex;justify-content:center;align-items:center;gap:6px;min-height:39px;padding:9px 13px;border:1px solid transparent;border-radius:9px;background:var(--g);color:white;font-weight:bold}
-.btn:hover{background:var(--gd)}.btn.secondary{background:white;color:var(--g);border-color:var(--b)}.btn.danger{background:#fff0f0;color:var(--red);border-color:#f4d9d9}.small{min-height:31px;padding:6px 9px;font-size:12px}
-.record{display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--b)}.record:last-child{border-bottom:0}.record-main{min-width:0;flex:1}.record-title{font-weight:bold;margin-bottom:6px;overflow-wrap:anywhere}.record-detail{font-size:12px;color:var(--m);line-height:1.8;overflow-wrap:anywhere}.record-actions{display:flex;flex-wrap:wrap;gap:6px}
+.btn:hover{background:var(--gd)}
+.btn.secondary{background:white;color:var(--g);border-color:var(--b)}
+.btn.danger{background:#fff0f0;color:var(--red);border-color:#f4d9d9}
+.small{min-height:31px;padding:6px 9px;font-size:12px}
+.record{display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--b)}
+.record:last-child{border-bottom:0}
+.record-main{min-width:0;flex:1}
+.record-title{font-weight:bold;margin-bottom:6px;overflow-wrap:anywhere}
+.record-detail{font-size:12px;color:var(--m);line-height:1.8;overflow-wrap:anywhere}
+.record-actions{display:flex;flex-wrap:wrap;gap:6px}
 .empty{padding:23px 10px;text-align:center;color:var(--m);line-height:1.7}
-.form-panel{display:none;margin:14px 0}.form-panel.open{display:block}
-.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.field{display:flex;flex-direction:column;gap:7px;min-width:0}.field.full{grid-column:1/-1}.field label{font-size:12px;font-weight:bold;color:#435449}
+.form-panel{display:none;margin:14px 0}
+.form-panel.open{display:block}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field.full{grid-column:1/-1}
+.field label{font-size:12px;font-weight:bold;color:#435449}
 .field input,.field select,.field textarea{width:100%;min-height:42px;padding:10px 11px;border:1px solid #dce6de;border-radius:9px;background:white;color:var(--t);outline:none}
-.field textarea{min-height:75px;resize:vertical}.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--g);box-shadow:0 0 0 3px #17563812}
+.field textarea{min-height:75px;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--g);box-shadow:0 0 0 3px #17563812}
 .form-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.message{display:none;margin-top:12px;line-height:1.6}.message.show{display:block}.message.success{color:var(--g)}.message.error{color:var(--red)}
-.days{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.days label{display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:8px;padding:9px;font-size:12px}
-video{width:100%;max-height:300px;background:#10251a;border-radius:12px;object-fit:contain}
-.overlay{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:15px;background:#10251a77}.overlay.open{display:flex}
+.message{display:none;margin-top:12px;line-height:1.6}
+.message.show{display:block}
+.message.success{color:var(--g)}
+.message.error{color:var(--red)}
+.days{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.days label{display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:8px;padding:9px;font-size:12px}
+.overlay{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:15px;background:#10251a77}
+.overlay.open{display:flex}
 .modal{width:min(100%,500px);max-height:85vh;overflow:auto;background:white;border-radius:16px;padding:22px}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
 .close{border:0;border-radius:8px;padding:8px;background:var(--gl);color:var(--g)}
-@media(max-width:850px){.app{grid-template-columns:180px 1fr}.main{padding:20px 15px}.stats{grid-template-columns:1fr}}
-@media(max-width:650px){.app{display:block;padding-bottom:72px}.sidebar{position:fixed;z-index:10;top:auto;bottom:0;left:0;right:0;height:auto;padding:6px 4px calc(6px + env(safe-area-inset-bottom));border:0;border-top:1px solid var(--b);display:block}.brand,.nav-label,.sidebar-bottom{display:none}.sidebar nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}.nav-btn{flex-direction:column;justify-content:center;gap:4px;margin:0;padding:8px 2px;font-size:10px;text-align:center}.main{padding:17px 12px 25px}.topbar h1{font-size:21px}.profile-text{display:none}.welcome{padding:19px}.welcome h2{font-size:20px}.welcome-icon{font-size:32px}.stats{gap:8px}.stat{padding:14px;margin-bottom:0}.stat-number{margin:7px 0}.panel{padding:15px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.days{grid-template-columns:repeat(2,minmax(0,1fr))}.record{gap:7px}.record-actions{flex-direction:column}.modal{padding:17px}}
+@media(max-width:850px){
+  .app{grid-template-columns:180px 1fr}
+  .main{padding:20px 15px}
+  .stats{grid-template-columns:1fr}
+}
+@media(max-width:650px){
+  .app{display:block;padding-bottom:72px}
+  .sidebar{position:fixed;z-index:10;top:auto;bottom:0;left:0;right:0;height:auto;padding:6px 4px calc(6px + env(safe-area-inset-bottom));border:0;border-top:1px solid var(--b);display:block}
+  .brand,.nav-label,.sidebar-bottom{display:none}
+  .sidebar nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px}
+  .nav-btn{flex-direction:column;justify-content:center;gap:4px;margin:0;padding:8px 2px;font-size:10px;text-align:center}
+  .main{padding:17px 12px 25px}
+  .topbar h1{font-size:21px}
+  .profile-text{display:none}
+  .welcome{padding:19px}
+  .welcome h2{font-size:20px}
+  .welcome-icon{font-size:32px}
+  .stats{gap:8px}
+  .stat{padding:14px;margin-bottom:0}
+  .stat-number{margin:7px 0}
+  .panel{padding:15px}
+  .form-grid{grid-template-columns:1fr}
+  .field.full{grid-column:auto}
+  .days{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .record{gap:7px}
+  .record-actions{flex-direction:column}
+  .modal{padding:17px}
+}
 </style>
 </head>
 <body>
@@ -74,41 +124,72 @@ video{width:100%;max-height:300px;background:#10251a;border-radius:12px;object-f
 
 <main class="main">
 <header class="topbar">
-  <div><h1 id="pageTitle">Authorized dashboard</h1><div class="muted" id="pageSubtitle">Manage connected patient medicine schedules.</div></div>
-  <button class="profile-shortcut" id="profileButton"><span class="avatar" id="avatar">A</span><span class="profile-text"><b id="displayName">My account</b><br><small class="muted">My profile</small></span></button>
+  <div>
+    <h1 id="pageTitle">Authorized dashboard</h1>
+    <div class="muted" id="pageSubtitle">Manage connected patient medicine schedules.</div>
+  </div>
+  <button class="profile-shortcut" id="profileButton">
+    <span class="avatar" id="avatar">A</span>
+    <span class="profile-text"><b id="displayName">My account</b><br><small class="muted">My profile</small></span>
+  </button>
 </header>
 
 <section class="page active" id="medicinesPage">
-  <div class="welcome"><div><h2 id="welcomeTitle">Welcome to Medminder!</h2><p>Organize medicines, recurring reminders, and refill alerts for your connected patient.</p></div><div class="welcome-icon">💊</div></div>
+  <div class="welcome">
+    <div>
+      <h2 id="welcomeTitle">Welcome to Medminder!</h2>
+      <p>Organize medicines, recurring reminders, and refill alerts for your connected patient.</p>
+    </div>
+    <div class="welcome-icon">💊</div>
+  </div>
+
   <div class="stats">
     <div class="stat"><div class="stat-label">Medicines</div><div class="stat-number" id="medicineCount">0</div><div class="muted">Saved records</div></div>
     <div class="stat"><div class="stat-label">Schedules</div><div class="stat-number" id="reminderCount">0</div><div class="muted">Reminder records</div></div>
     <div class="stat"><div class="stat-label">Refill alerts</div><div class="stat-number" id="refillCount">0</div><div class="muted">Need attention</div></div>
   </div>
+
   <div class="panel">
-    <div class="panel-heading"><div><h2>Medicine list</h2><p class="muted">Scan a barcode or enter verified medicine details.</p></div><button class="btn" id="toggleMedicineForm">＋ Add medicine</button></div>
+    <div class="panel-heading">
+      <div><h2>Medicine list</h2><p class="muted">Capture a medicine label or enter verified details.</p></div>
+      <button class="btn" id="toggleMedicineForm">＋ Add medicine</button>
+    </div>
+
     <div class="form-panel" id="medicineForm">
       <h3 id="medicineFormTitle">Add medicine</h3>
+
       <div class="panel" style="background:#f8fbf8">
-        <div class="panel-heading"><div><b>📷 Medicine barcode scanner</b><p class="muted">Allow camera access to scan a barcode.</p></div><button type="button" class="btn secondary" id="startScanner">Scan barcode</button></div>
-        <video id="scannerVideo" playsinline style="display:none"></video>
-        <div class="form-actions"><button type="button" class="btn danger small" id="stopScanner" style="display:none">Stop camera</button></div>
-        <div class="muted" id="scannerStatus" role="status">Scanning reads the barcode only; it does not verify the medicine or dosage.</div>
+        <div class="panel-heading">
+          <div>
+            <b>📷 Capture medicine label</b>
+            <p class="muted">Take a clear photo of the printed name and strength on the box or label.</p>
+          </div>
+          <button type="button" class="btn secondary" id="startScanner">📷 Capture photo</button>
+        </div>
+        <input id="medicinePhotoInput" type="file" accept="image/*" capture="environment" hidden>
+        <div class="muted" id="scannerStatus" role="status" aria-live="polite">
+          Capture a photo to read the printed medicine name and strength. Check the results before saving.
+        </div>
       </div>
+
       <form id="medicineFormElement">
         <input type="hidden" id="medicineEditId">
         <div class="form-grid">
           <div class="field"><label for="medicineName">Medicine name *</label><input id="medicineName" required maxlength="100" placeholder="Medicine name"></div>
           <div class="field"><label for="medicineDosage">Dosage / strength</label><input id="medicineDosage" maxlength="100" placeholder="As printed on package"></div>
-          <div class="field"><label for="medicineBarcode">Barcode number</label><input id="medicineBarcode" maxlength="80" placeholder="Scanned barcode"></div>
+          <div class="field"><label for="medicineBarcode">Barcode number (optional)</label><input id="medicineBarcode" maxlength="80" placeholder="Optional barcode"></div>
           <div class="field"><label for="medicineQuantity">Current quantity</label><input id="medicineQuantity" type="number" min="0" step="1" value="0"></div>
           <div class="field"><label for="medicineRefillAt">Refill alert at</label><input id="medicineRefillAt" type="number" min="0" step="1" value="5"></div>
           <div class="field full"><label for="medicineInstructions">Prescription instructions</label><input id="medicineInstructions" maxlength="250" placeholder="Follow the prescription or pharmacist's instructions"></div>
           <div class="field full"><label for="medicineNotes">Additional notes</label><textarea id="medicineNotes" maxlength="500"></textarea></div>
         </div>
-        <div class="form-actions"><button class="btn" id="saveMedicine" type="submit">Save medicine</button><button class="btn secondary" type="button" id="cancelMedicine">Cancel</button></div>
+        <div class="form-actions">
+          <button class="btn" id="saveMedicine" type="submit">Save medicine</button>
+          <button class="btn secondary" type="button" id="cancelMedicine">Cancel</button>
+        </div>
       </form>
     </div>
+
     <div id="medicineList"><div class="empty">Loading medicines...</div></div>
     <div class="message" id="pageMessage" role="status"></div>
   </div>
@@ -116,7 +197,10 @@ video{width:100%;max-height:300px;background:#10251a;border-radius:12px;object-f
 
 <section class="page" id="remindersPage">
   <div class="panel">
-    <div class="panel-heading"><div><h2>Medicine reminders</h2><p class="muted">Set a one-time or weekly repeating schedule.</p></div><button class="btn" id="toggleReminderForm">＋ Add reminder</button></div>
+    <div class="panel-heading">
+      <div><h2>Medicine reminders</h2><p class="muted">Set a one-time or weekly repeating schedule.</p></div>
+      <button class="btn" id="toggleReminderForm">＋ Add reminder</button>
+    </div>
     <div class="form-panel" id="reminderForm">
       <form id="reminderFormElement">
         <input type="hidden" id="reminderEditId">
@@ -124,15 +208,18 @@ video{width:100%;max-height:300px;background:#10251a;border-radius:12px;object-f
           <div class="field full"><label for="reminderMedicine">Medicine *</label><select id="reminderMedicine" required><option value="">Choose medicine</option></select></div>
           <div class="field full"><label for="recurrenceType">Schedule type</label><select id="recurrenceType"><option value="once">One time</option><option value="weekly">Repeat weekly</option></select></div>
           <div class="field full" id="onceDateField"><label for="reminderDate">Date *</label><input type="date" id="reminderDate"></div>
-          <div class="field full" id="weeklyDaysField" style="display:none"><label>Repeat on</label><div class="days">
-            <label><input type="checkbox" name="weeklyDay" value="0"> Sunday</label>
-            <label><input type="checkbox" name="weeklyDay" value="1"> Monday</label>
-            <label><input type="checkbox" name="weeklyDay" value="2"> Tuesday</label>
-            <label><input type="checkbox" name="weeklyDay" value="3"> Wednesday</label>
-            <label><input type="checkbox" name="weeklyDay" value="4"> Thursday</label>
-            <label><input type="checkbox" name="weeklyDay" value="5"> Friday</label>
-            <label><input type="checkbox" name="weeklyDay" value="6"> Saturday</label>
-          </div></div>
+          <div class="field full" id="weeklyDaysField" style="display:none">
+            <label>Repeat on</label>
+            <div class="days">
+              <label><input type="checkbox" name="weeklyDay" value="0"> Sunday</label>
+              <label><input type="checkbox" name="weeklyDay" value="1"> Monday</label>
+              <label><input type="checkbox" name="weeklyDay" value="2"> Tuesday</label>
+              <label><input type="checkbox" name="weeklyDay" value="3"> Wednesday</label>
+              <label><input type="checkbox" name="weeklyDay" value="4"> Thursday</label>
+              <label><input type="checkbox" name="weeklyDay" value="5"> Friday</label>
+              <label><input type="checkbox" name="weeklyDay" value="6"> Saturday</label>
+            </div>
+          </div>
           <div class="field"><label for="reminderTime">Reminder time *</label><input type="time" id="reminderTime" value="08:00" required></div>
           <div class="field"><label for="reminderDose">Dose for this reminder</label><input id="reminderDose" maxlength="100" placeholder="As prescribed"></div>
           <div class="field full"><label for="reminderNotes">Notes</label><textarea id="reminderNotes" maxlength="300"></textarea></div>
@@ -156,28 +243,39 @@ video{width:100%;max-height:300px;background:#10251a;border-radius:12px;object-f
 </div>
 
 <div class="overlay" id="connectionOverlay"><section class="modal">
-<div class="modal-head"><h2>Connect to a patient</h2><button class="close" data-close="connectionOverlay">✕</button></div>
-<p class="muted">Enter the connection code supplied by the patient. Only use a code issued through your Medminder connection workflow.</p>
-<form id="connectionForm"><div class="field"><label for="connectionCode">Patient connection code</label><input id="connectionCode" required maxlength="120" autocomplete="off" placeholder="Enter connection code"></div><div class="form-actions"><button class="btn" type="submit">Connect patient</button></div><div class="message" id="connectionMessage"></div></form>
-<div class="muted">This interface does not bypass Firebase security rules. Connection lookup must match the database structure and permissions configured for your existing QR/code workflow.</div>
+  <div class="modal-head"><h2>Connect to a patient</h2><button class="close" data-close="connectionOverlay">✕</button></div>
+  <p class="muted">Enter the connection code supplied by the patient.</p>
+  <form id="connectionForm">
+    <div class="field"><label for="connectionCode">Patient connection code</label><input id="connectionCode" required maxlength="120" autocomplete="off" placeholder="Enter connection code"></div>
+    <div class="form-actions"><button class="btn" type="submit">Connect patient</button></div>
+    <div class="message" id="connectionMessage"></div>
+  </form>
+  <div class="muted">Patient data sharing also requires a verified connection workflow and matching Firebase Database Rules.</div>
 </section></div>
 
 <div class="overlay" id="notificationsOverlay"><section class="modal">
-<div class="modal-head"><h2>Notifications</h2><button class="close" data-close="notificationsOverlay">✕</button></div>
-<div id="notificationList"></div><div class="form-actions"><button class="btn secondary" id="markRead">Mark all as read</button></div>
+  <div class="modal-head"><h2>Notifications</h2><button class="close" data-close="notificationsOverlay">✕</button></div>
+  <div id="notificationList"></div>
+  <div class="form-actions"><button class="btn secondary" id="markRead">Mark all as read</button></div>
 </section></div>
 
 <div class="overlay" id="profileOverlay"><section class="modal">
-<div class="modal-head"><h2>My profile</h2><button class="close" data-close="profileOverlay">✕</button></div>
-<p id="profileEmail" class="muted"></p>
-<h3>Change password</h3><form id="passwordForm">
-<div class="field"><label for="currentPassword">Current password</label><input id="currentPassword" type="password" required autocomplete="current-password"></div>
-<div class="field" style="margin-top:12px"><label for="newPassword">New password</label><input id="newPassword" type="password" required minlength="8" autocomplete="new-password"></div>
-<div class="field" style="margin-top:12px"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" type="password" required minlength="8" autocomplete="new-password"></div>
-<div class="message" id="passwordMessage"></div><div class="form-actions"><button class="btn" type="submit">Update password</button></div></form>
-<hr style="border:0;border-top:1px solid var(--b);margin:22px 0"><button class="btn danger" id="logoutButton">Log out</button>
+  <div class="modal-head"><h2>My profile</h2><button class="close" data-close="profileOverlay">✕</button></div>
+  <p id="profileEmail" class="muted"></p>
+  <h3>Change password</h3>
+  <form id="passwordForm">
+    <div class="field"><label for="currentPassword">Current password</label><input id="currentPassword" type="password" required autocomplete="current-password"></div>
+    <div class="field" style="margin-top:12px"><label for="newPassword">New password</label><input id="newPassword" type="password" required minlength="8" autocomplete="new-password"></div>
+    <div class="field" style="margin-top:12px"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" type="password" required minlength="8" autocomplete="new-password"></div>
+    <div class="message" id="passwordMessage"></div>
+    <div class="form-actions"><button class="btn" type="submit">Update password</button></div>
+  </form>
+  <hr style="border:0;border-top:1px solid var(--b);margin:22px 0">
+  <button class="btn danger" id="logoutButton">Log out</button>
 </section></div>
 
+<!-- OCR library for reading printed text in medicine photos -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script type="module" src="js/dashboard.js"></script>
 </body>
 </html>
