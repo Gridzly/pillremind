@@ -1,6 +1,10 @@
 
 import { auth, db, functions } from "./firebaseConfig.js";
-import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+
+import {
+  httpsCallable
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+
 import {
   onAuthStateChanged,
   signOut,
@@ -22,7 +26,6 @@ import {
 
 /* =========================================================
    MEDMINDER — AUTHORIZED PERSON DASHBOARD
-   Keeps the existing HTML and green UI.
    ========================================================= */
 
 const $ = id => document.getElementById(id);
@@ -83,10 +86,12 @@ function setButtonBusy(button, busy, busyText = "Please wait…") {
     if (!button.dataset.originalText) {
       button.dataset.originalText = button.textContent;
     }
+
     button.disabled = true;
     button.textContent = busyText;
   } else {
     button.disabled = false;
+
     if (button.dataset.originalText) {
       button.textContent = button.dataset.originalText;
       delete button.dataset.originalText;
@@ -108,7 +113,6 @@ function showPage(id) {
   if ($("pageTitle")) $("pageTitle").textContent = pages[id][0];
   if ($("pageSubtitle")) $("pageSubtitle").textContent = pages[id][1];
 
-  // Reset the content scroll area, not the entire browser window.
   const content = document.querySelector(".content");
   if (content) content.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -117,6 +121,7 @@ function showPage(id) {
 
 function localDate() {
   const now = new Date();
+
   return [
     now.getFullYear(),
     String(now.getMonth() + 1).padStart(2, "0"),
@@ -128,6 +133,7 @@ function formatDate(value) {
   if (!value) return "Date not set";
 
   const parts = String(value).split("-").map(Number);
+
   if (
     parts.length !== 3 ||
     parts.some(Number.isNaN) ||
@@ -154,6 +160,7 @@ function formatTime(value) {
   }
 
   const [hours, minutes] = value.split(":").map(Number);
+
   if (hours > 23 || minutes > 59) return "Time not set";
 
   return new Date(2000, 0, 1, hours, minutes)
@@ -166,6 +173,7 @@ function formatTime(value) {
 
 function formatStamp(timestamp) {
   const numericTimestamp = Number(timestamp);
+
   if (!Number.isFinite(numericTimestamp) || numericTimestamp <= 0) {
     return "Time unavailable";
   }
@@ -176,7 +184,6 @@ function formatStamp(timestamp) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
     hour12: true
   });
 }
@@ -205,6 +212,7 @@ function subscribe(path, callback) {
     snapshot => callback(snapshot.val() || {}),
     error => {
       console.error(`Firebase error at ${path}:`, error);
+
       showMessage(
         "pageMessage",
         `Unable to load ${path}. Check your connection and Firebase database rules.`,
@@ -237,11 +245,20 @@ function getActivities() {
 }
 
 /* =========================================================
-   RECORD DISPLAY
+   MEDICINE, REFILL, REMINDER AND ACTIVITY DISPLAY
    ========================================================= */
 
 function emptyState(text) {
   return `<div class="empty-state">${escapeHTML(text)}</div>`;
+}
+
+function dayNames(days) {
+  return (Array.isArray(days) ? days : [])
+    .map(Number)
+    .filter(day => Number.isInteger(day) && day >= 0 && day <= 6)
+    .sort((a, b) => a - b)
+    .map(day => DAYS[day])
+    .join(", ");
 }
 
 function renderMedicines() {
@@ -262,9 +279,7 @@ function renderMedicines() {
             <article class="record">
               <div class="record-main">
                 <h3>${escapeHTML(medicine.name || "Unnamed medicine")}</h3>
-                <p>${medicine.dosage
-                  ? `Strength: ${escapeHTML(medicine.dosage)}`
-                  : "Strength not provided"}</p>
+                <p>Strength: ${escapeHTML(medicine.dosage || "Not provided")}</p>
                 <p>Stock: ${quantity} units</p>
                 ${lowStock
                   ? '<p style="color:#b42318;font-weight:700">Refill needed</p>'
@@ -279,6 +294,7 @@ function renderMedicines() {
                   ? '<p style="color:#175638">✓ Details verified</p>'
                   : ""}
               </div>
+
               <div class="record-actions">
                 <button type="button" class="btn btn-secondary"
                   data-edit-med="${escapeHTML(id)}">Edit</button>
@@ -294,6 +310,7 @@ function renderMedicines() {
   }
 
   const select = $("reminderMedicine");
+
   if (select) {
     const previous = select.value;
 
@@ -363,6 +380,7 @@ function renderReminders() {
                 ? `<p>Notes: ${escapeHTML(reminder.notes)}</p>`
                 : ""}
             </div>
+
             <div class="record-actions">
               <button type="button" class="btn btn-secondary"
                 data-edit-rem="${escapeHTML(id)}">Edit</button>
@@ -374,20 +392,6 @@ function renderReminders() {
       }).join("")
     : emptyState("No reminders created yet.");
 }
-
-function dayNames(days) {
-  return (Array.isArray(days) ? days : [])
-    .map(Number)
-    .filter(day => Number.isInteger(day) && day >= 0 && day <= 6)
-    .sort((a, b) => a - b)
-    .map(day => DAYS[day])
-    .join(", ");
-}
-
-/* =========================================================
-   ACTIVITY HISTORY AND NOTIFICATIONS
-   Both views use the same saved activity records.
-   ========================================================= */
 
 function renderHistory() {
   const entries = getActivities();
@@ -479,12 +483,17 @@ $("medicineForm")?.addEventListener("submit", async event => {
   }
 
   if (verified && !verified.checked) {
-    showMessage("pageMessage", "Verify the details against the medicine label or prescription before saving.", "error");
+    showMessage(
+      "pageMessage",
+      "Verify the details against the medicine label or prescription before saving.",
+      "error"
+    );
     verified.focus();
     return;
   }
 
   state.busy = true;
+
   const saveButton = $("medicineForm")?.querySelector('button[type="submit"]');
   setButtonBusy(saveButton, true, "Saving…");
 
@@ -571,20 +580,19 @@ async function recordRefill(id) {
   const medicine = state.medicines[id];
   if (!medicine || !state.user || state.busy) return;
 
-  const input = prompt(
-    `How many units are being added to ${medicine.name}?`,
-    "30"
-  );
+  const input = prompt(`How many units are being added to ${medicine.name}?`, "30");
 
   if (input === null) return;
 
   const amount = Number(input);
+
   if (!Number.isInteger(amount) || amount <= 0 || amount > 100000) {
     showMessage("pageMessage", "Enter a positive whole number up to 100,000.", "error");
     return;
   }
 
   const current = Number(medicine.quantity ?? 0);
+
   if (current + amount > 100000) {
     showMessage("pageMessage", "The resulting stock quantity is too large.", "error");
     return;
@@ -629,7 +637,11 @@ async function deleteMedicine(id) {
     }
 
     await update(ref(db), changes);
-    await logActivity("Medicine deleted", `Deleted ${medicine.name} and its associated reminders.`);
+
+    await logActivity(
+      "Medicine deleted",
+      `Deleted ${medicine.name} and its associated reminders.`
+    );
 
     showMessage("pageMessage", "Medicine and associated reminders deleted.");
   } catch (error) {
@@ -736,6 +748,7 @@ $("reminderForm")?.addEventListener("submit", async event => {
   }
 
   state.busy = true;
+
   const saveButton = $("reminderForm")?.querySelector('button[type="submit"]');
   setButtonBusy(saveButton, true, "Saving…");
 
@@ -789,6 +802,7 @@ $("reminderList")?.addEventListener("click", async event => {
 
   if (del) {
     const id = del.dataset.delRem;
+
     if (!confirm("Delete this reminder?")) return;
 
     try {
@@ -803,6 +817,7 @@ $("reminderList")?.addEventListener("click", async event => {
       console.error(error);
       showMessage("pageMessage", `Unable to delete reminder: ${error.message}`, "error");
     }
+
     return;
   }
 
@@ -853,33 +868,22 @@ $("openNotifications")?.addEventListener("click", () => showPage("notificationsP
 $("openProfile")?.addEventListener("click", () => showPage("profilePage"));
 $("profileButton")?.addEventListener("click", () => showPage("profilePage"));
 
-
 /* =========================================================
    PATIENT CONNECTION
-   Connect an authorized person to a patient using a code.
-   Uses Firebase Callable Cloud Functions.
    ========================================================= */
 
-$("connectionForm")?.addEventListener("submit", async (event) => {
+$("connectionForm")?.addEventListener("submit", async event => {
   event.preventDefault();
 
   if (!state.user || !auth.currentUser) {
-    showMessage(
-      "connectionMessage",
-      "Please sign in again.",
-      "error"
-    );
+    showMessage("connectionMessage", "Please sign in again.", "error");
     return;
   }
 
   const code = $("connectionCode")?.value.trim().toUpperCase() || "";
 
   if (!code) {
-    showMessage(
-      "connectionMessage",
-      "Please enter the patient's connection code.",
-      "error"
-    );
+    showMessage("connectionMessage", "Please enter the patient's connection code.", "error");
     return;
   }
 
@@ -887,9 +891,10 @@ $("connectionForm")?.addEventListener("submit", async (event) => {
   const submitButton = form.querySelector('button[type="submit"]');
 
   hideMessage("connectionMessage");
-  setButtonBusy(submitButton, true, "Connecting...");
+  setButtonBusy(submitButton, true, "Connecting…");
 
   try {
+    // This must match the deployed Firebase Callable Function name and region.
     const redeemConnectionCode = httpsCallable(
       functions,
       "redeemConnectionCode"
@@ -901,31 +906,26 @@ $("connectionForm")?.addEventListener("submit", async (event) => {
 
     showMessage(
       "connectionMessage",
-      result.data?.message ||
-        "Patient connection processed successfully.",
+      result.data?.message || "Patient connection processed successfully.",
       "success"
     );
 
     form.reset();
   } catch (error) {
-    console.error("Patient connection error:", {
-      code: error.code,
-      message: error.message,
-      details: error.details
-    });
+    console.error("Patient connection failed:", error);
 
     const messages = {
       "functions/unauthenticated":
         "Your session has expired. Please sign in again.",
 
       "functions/permission-denied":
-        "Only an authorized person can connect to a patient. Please check your account role.",
+        "Only an authorized person can connect to a patient.",
 
       "functions/invalid-argument":
-        "Please enter a valid six-digit patient connection code.",
+        "Please enter a valid connection code.",
 
       "functions/not-found":
-        "The connection code is invalid, expired, or already used. Ask the patient to generate a new code.",
+        "The code is invalid, expired, or already used. Ask the patient to generate a new code.",
 
       "functions/already-exists":
         "This patient already has an active caregiver connection.",
@@ -934,14 +934,12 @@ $("connectionForm")?.addEventListener("submit", async (event) => {
         "The patient or authorized-person profile is missing or has an incorrect role.",
 
       "functions/unavailable":
-        "The connection service is unavailable. Check your Firebase Cloud Functions deployment."
+        "The connection service is unavailable. Check the Cloud Function deployment and region."
     };
 
     showMessage(
       "connectionMessage",
-      messages[error.code] ||
-        error.message ||
-        "Unable to connect to the patient. Please try again.",
+      messages[error.code] || error.message || "Unable to connect. Please try again.",
       "error"
     );
   } finally {
@@ -966,7 +964,9 @@ function loadProfileForm(profile = {}) {
       profile.lastName || nameParts.slice(1).join(" ");
   }
 
-  if ($("profileEmail")) $("profileEmail").textContent = state.user?.email || "";
+  if ($("profileEmail")) {
+    $("profileEmail").textContent = state.user?.email || "";
+  }
 }
 
 $("profileForm")?.addEventListener("submit", async event => {
@@ -1057,6 +1057,7 @@ $("passwordForm")?.addEventListener("submit", async event => {
     await updatePassword(state.user, next);
 
     $("passwordForm").reset();
+
     await logActivity("Password changed", "Account password updated.");
 
     showMessage("passwordMessage", "Password updated successfully.");
@@ -1113,7 +1114,6 @@ onAuthStateChanged(auth, async authenticatedUser => {
     return;
   }
 
-  // Avoid initializing twice for the same signed-in account.
   if (state.initializedUid === authenticatedUser.uid) return;
 
   state.user = authenticatedUser;
@@ -1133,10 +1133,14 @@ onAuthStateChanged(auth, async authenticatedUser => {
 
     if ($("displayName")) $("displayName").textContent = name;
     if ($("avatar")) $("avatar").textContent = name[0].toUpperCase();
+
     if ($("welcomeTitle")) {
       $("welcomeTitle").textContent = `Welcome, ${name.split(" ")[0]}!`;
     }
-    if ($("profileEmail")) $("profileEmail").textContent = authenticatedUser.email || "";
+
+    if ($("profileEmail")) {
+      $("profileEmail").textContent = authenticatedUser.email || "";
+    }
 
     loadProfileForm(profile);
 

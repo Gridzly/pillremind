@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,20 +21,20 @@
       --muted: #718078;
       --border: #dce8df;
       --danger: #b42318;
-      --topbar-height: 88px;
     }
 
     * { box-sizing: border-box; }
 
-    html {
-      height: 100%;
-      overflow: hidden;
-    }
-
-    body {
+    html, body {
+      width: 100%;
       height: 100%;
       margin: 0;
-      font-family: 'Inter', sans-serif;
+    }
+
+    html { overflow: hidden; }
+
+    body {
+      font-family: Inter, sans-serif;
       background: var(--bg);
       color: var(--text);
       overflow: hidden;
@@ -43,6 +42,14 @@
 
     button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--green);
+      outline-offset: 2px;
+    }
 
     .app {
       display: grid;
@@ -52,47 +59,46 @@
       overflow: hidden;
     }
 
-    /* Fixed sidebar: the sidebar itself does not move while scrolling. */
     .sidebar {
-      height: 100%;
-      min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      overscroll-behavior: contain;
-      background: var(--white);
-      border-right: 1px solid var(--border);
-      padding: 24px 16px;
       display: flex;
       flex-direction: column;
       gap: 20px;
+      min-height: 0;
+      padding: 24px 16px;
+      overflow-y: auto;
+      background: var(--white);
+      border-right: 1px solid var(--border);
     }
 
     .brand {
+      padding: 4px 10px 18px;
       color: var(--green);
       font-size: 23px;
       font-weight: 800;
-      padding: 4px 10px 18px;
     }
 
     .nav-label {
+      margin: 12px 10px;
+      color: var(--muted);
       font-size: 11px;
       font-weight: 800;
-      color: var(--muted);
       letter-spacing: 1px;
-      margin: 12px 10px;
     }
 
-    nav, .sidebar-bottom { display: grid; gap: 7px; }
+    nav, .sidebar-bottom {
+      display: grid;
+      gap: 7px;
+    }
 
     .nav-btn {
       width: 100%;
-      border: 0;
-      background: transparent;
       padding: 13px;
+      border: 0;
       border-radius: 10px;
-      text-align: left;
+      background: transparent;
       color: var(--text);
-      transition: background .18s ease, color .18s ease;
+      text-align: left;
+      transition: background .18s, color .18s;
     }
 
     .nav-btn:hover,
@@ -102,16 +108,8 @@
       font-weight: 700;
     }
 
-    .nav-btn:focus-visible,
-    .btn:focus-visible,
-    .profile-shortcut:focus-visible {
-      outline: 2px solid var(--green);
-      outline-offset: 3px;
-    }
-
     .sidebar-bottom { margin-top: auto; }
 
-    /* Main area is independent of the sidebar. */
     .main {
       display: flex;
       flex-direction: column;
@@ -121,31 +119,34 @@
       overflow: hidden;
     }
 
-    /* Fixed top bar: only .content scrolls. */
     .topbar {
       position: relative;
       z-index: 5;
-      flex: 0 0 auto;
-      min-height: var(--topbar-height);
       display: flex;
-      justify-content: space-between;
+      flex: 0 0 auto;
       align-items: center;
+      justify-content: space-between;
       gap: 16px;
+      min-height: 88px;
       padding: 18px 28px;
       background: var(--white);
       border-bottom: 1px solid var(--border);
     }
 
-    h1 { font-size: 22px; margin: 0 0 6px; }
-    h2 { font-size: 20px; margin: 0 0 8px; }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    h2 { margin: 0 0 8px; font-size: 20px; }
     h3 { margin-top: 0; }
     p { line-height: 1.5; }
-    .muted { color: var(--muted); font-size: 13px; }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
 
     .avatar {
       display: inline-grid;
-      place-items: center;
       flex: 0 0 40px;
+      place-items: center;
       width: 40px;
       height: 40px;
       border-radius: 50%;
@@ -155,24 +156,23 @@
     }
 
     .profile-shortcut {
-      border: 0;
-      background: transparent;
       display: flex;
       align-items: center;
       gap: 10px;
+      border: 0;
+      background: transparent;
       text-align: left;
     }
 
-    /* This is the only main dashboard scrolling container. */
     .content {
       flex: 1 1 auto;
       min-height: 0;
+      padding: 26px;
       overflow-y: auto;
       overflow-x: hidden;
       overscroll-behavior-y: contain;
       -webkit-overflow-scrolling: touch;
       scrollbar-gutter: stable;
-      padding: 26px;
       scroll-behavior: smooth;
     }
 
@@ -184,15 +184,15 @@
       align-items: center;
       justify-content: space-between;
       gap: 20px;
+      margin-bottom: 20px;
       padding: 26px;
       border-radius: 18px;
-      color: white;
       background: linear-gradient(120deg, var(--green), #28794d);
-      margin-bottom: 20px;
+      color: white;
     }
 
     .welcome h2 { font-size: 24px; }
-    .welcome p { margin-bottom: 0; max-width: 600px; }
+    .welcome p { max-width: 600px; margin-bottom: 0; }
     .welcome-icon { font-size: 48px; }
 
     .stats {
@@ -203,14 +203,14 @@
     }
 
     .stat, .panel {
-      background: var(--white);
+      padding: 20px;
       border: 1px solid var(--border);
       border-radius: 15px;
-      padding: 20px;
+      background: var(--white);
     }
 
     .stat-label { color: var(--muted); font-size: 13px; }
-    .stat-number { font-size: 29px; font-weight: 800; margin: 10px 0; }
+    .stat-number { margin: 10px 0; font-size: 29px; font-weight: 800; }
     .panel { margin-bottom: 20px; }
 
     .panel-heading {
@@ -222,9 +222,9 @@
     }
 
     .btn {
+      padding: 11px 15px;
       border: 0;
       border-radius: 9px;
-      padding: 11px 15px;
       font-weight: 700;
     }
 
@@ -239,8 +239,9 @@
       gap: 16px;
     }
 
-    .field { display: grid; gap: 7px; }
+    .field { display: grid; gap: 7px; min-width: 0; }
     .field.full { grid-column: 1 / -1; }
+
     label { font-size: 13px; font-weight: 700; }
 
     input, select, textarea {
@@ -254,9 +255,11 @@
     }
 
     input:focus, select:focus, textarea:focus {
-      outline: 2px solid #b6ddc3;
       border-color: var(--green);
+      outline: 2px solid #b6ddc3;
     }
+
+    textarea { resize: vertical; }
 
     .form-actions {
       display: flex;
@@ -268,16 +271,17 @@
     .record-list { display: grid; gap: 12px; }
 
     .record {
-      padding: 15px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 14px;
       min-width: 0;
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
     }
 
+    .record-main { min-width: 0; }
     .record h3 { margin-bottom: 6px; }
     .record p {
       margin: 4px 0;
@@ -285,14 +289,18 @@
       overflow-wrap: anywhere;
     }
 
-    .record-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .record-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
 
     .empty-state {
-      text-align: center;
       padding: 28px 12px;
-      color: var(--muted);
       border: 1px dashed var(--border);
       border-radius: 12px;
+      color: var(--muted);
+      text-align: center;
     }
 
     .message {
@@ -309,19 +317,27 @@
     .message.error { background: #fff0ef; color: var(--danger); }
     [hidden] { display: none !important; }
 
-    .connection-code {
-      letter-spacing: 2px;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-
     .notice {
+      margin: 16px 0;
       padding: 13px;
-      background: var(--light);
       border-radius: 10px;
+      background: var(--light);
       color: var(--dark);
       font-size: 13px;
       line-height: 1.6;
+    }
+
+    .connection-form {
+      display: grid;
+      gap: 12px;
+      max-width: 520px;
+      margin-top: 20px;
+    }
+
+    .connection-code {
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
     }
 
     .days {
@@ -335,31 +351,27 @@
       align-items: center;
       gap: 7px;
       padding: 10px;
-      background: var(--bg);
       border-radius: 8px;
+      background: var(--bg);
     }
 
     .day-option input { width: auto; }
-    .bottom-nav { display: none; }
 
     .notification-record { align-items: flex-start; }
 
-    .notification-content {
-      min-width: 0;
-      flex: 1;
-    }
+    .notification-content { flex: 1; min-width: 0; }
 
     .notification-title {
+      margin: 0 0 7px;
+      color: var(--text);
       font-size: 14px;
       font-weight: 700;
-      color: var(--text);
-      margin: 0 0 7px;
     }
 
     .notification-description {
+      color: var(--muted);
       font-size: 13px;
       line-height: 1.6;
-      color: var(--muted);
       overflow-wrap: anywhere;
       white-space: pre-line;
     }
@@ -374,8 +386,8 @@
 
     .notification-icon {
       display: grid;
-      place-items: center;
       flex: 0 0 38px;
+      place-items: center;
       width: 38px;
       height: 38px;
       border-radius: 11px;
@@ -383,12 +395,13 @@
       font-size: 17px;
     }
 
+    .bottom-nav { display: none; }
+
     @media (max-width: 850px) {
       .app {
         display: block;
         height: 100vh;
         height: 100dvh;
-        padding-bottom: 0;
       }
 
       .sidebar { display: none; }
@@ -406,34 +419,34 @@
 
       .content {
         padding: 16px;
-        padding-bottom: 24px;
+        padding-bottom: 100px;
         scrollbar-gutter: auto;
       }
 
       .bottom-nav {
         position: fixed;
         z-index: 30;
+        right: 0;
         bottom: 0;
         left: 0;
-        right: 0;
         display: flex;
-        justify-content: space-around;
         align-items: stretch;
+        justify-content: space-around;
         gap: 3px;
         padding: 7px 4px;
         padding-bottom: max(7px, env(safe-area-inset-bottom));
-        background: white;
         border-top: 1px solid var(--border);
+        background: white;
       }
 
       .bottom-nav .nav-btn {
         flex: 1 1 0;
         min-width: 0;
-        text-align: center;
-        font-size: 11px;
-        line-height: 1.5;
         padding: 8px 2px;
         border-radius: 8px;
+        font-size: 11px;
+        line-height: 1.5;
+        text-align: center;
       }
 
       .stats { gap: 8px; }
@@ -456,6 +469,7 @@
       .panel { padding: 15px; }
       .topbar h1 { font-size: 19px; }
       .panel-heading { align-items: flex-start; }
+      .panel-heading .btn { flex-shrink: 0; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -472,7 +486,7 @@
 
     <div>
       <div class="nav-label">AUTHORIZED WORKSPACE</div>
-      <nav>
+      <nav aria-label="Main navigation">
         <button class="nav-btn active" data-page="medicinesPage" type="button">💊 Medicines</button>
         <button class="nav-btn" data-page="remindersPage" type="button">🔔 Reminders</button>
         <button class="nav-btn" data-page="refillsPage" type="button">📦 Refills</button>
@@ -492,11 +506,11 @@
   <main class="main">
     <header class="topbar">
       <div>
-        <h1 id="pageTitle">Authorized dashboard</h1>
-        <div class="muted" id="pageSubtitle">Manage medicine schedules and reminders.</div>
+        <h1 id="pageTitle">Medicines</h1>
+        <div class="muted" id="pageSubtitle">Manage your medicine records.</div>
       </div>
 
-      <button class="profile-shortcut" id="profileButton" type="button">
+      <button class="profile-shortcut" id="profileButton" type="button" aria-label="Open my profile">
         <span class="avatar" id="avatar">A</span>
         <span class="profile-text">
           <b id="displayName">My account</b><br>
@@ -514,7 +528,7 @@
             <h2 id="welcomeTitle">Welcome to Medminder!</h2>
             <p>Organize medicine records, recurring reminders, and refill alerts.</p>
           </div>
-          <div class="welcome-icon">💊</div>
+          <div class="welcome-icon" aria-hidden="true">💊</div>
         </div>
 
         <div class="stats">
@@ -539,7 +553,7 @@
           <div class="panel-heading">
             <div>
               <h2>Medicine list</h2>
-              <p class="muted">Manage medicine records and check the details before saving.</p>
+              <p class="muted">Manage medicine records and check details before saving.</p>
             </div>
             <button class="btn btn-primary" id="addMedicineButton" type="button">+ Add medicine</button>
           </div>
@@ -555,6 +569,7 @@
               <p class="muted">Verify the medicine packaging or prescription before saving.</p>
             </div>
           </div>
+
           <form id="medicineForm">
             <input type="hidden" id="medicineId">
             <div class="form-grid">
@@ -568,11 +583,11 @@
               </div>
               <div class="field">
                 <label for="medicineQuantity">Current quantity *</label>
-                <input id="medicineQuantity" type="number" min="0" step="1" required>
+                <input id="medicineQuantity" type="number" min="0" max="100000" step="1" value="0" required>
               </div>
               <div class="field">
                 <label for="medicineRefillAt">Refill alert quantity</label>
-                <input id="medicineRefillAt" type="number" min="0" step="1" value="5">
+                <input id="medicineRefillAt" type="number" min="0" max="100000" step="1" value="5">
               </div>
               <div class="field full">
                 <label for="medicineInstructions">Instructions</label>
@@ -631,7 +646,7 @@
               </div>
               <div class="field">
                 <label for="reminderTime">Time *</label>
-                <input id="reminderTime" type="time" required>
+                <input id="reminderTime" type="time" value="08:00" required>
               </div>
               <div class="field" id="reminderDateField">
                 <label for="reminderDate">Date *</label>
@@ -689,33 +704,45 @@
       <section class="page" id="connectionPage">
         <div class="panel">
           <h2>Patient connection</h2>
-          <p class="muted">Connect to a patient using a connection code. QR scanning has been removed.</p>
-          <div class="notice">Enter the code provided by the patient. A code alone must not grant access to private medicine records. The patient must approve the connection.</div>
-          <form id="connectionForm">
-          <label for="connectionCode">Patient connection code</label>
+          <p class="muted">Connect your authorized-person account to a patient account.</p>
 
-          <input
-            type="text"
-            id="connectionCode"
-            name="connectionCode"
-            placeholder="Enter patient's code"
-            maxlength="6"
-            autocomplete="off"
-            required
-          />
+          <div class="notice">
+            Enter the connection code provided by the patient. The code must be validated by the server, and private medicine records should only be shared after the connection is authorized.
+          </div>
 
-          <button type="submit">Connect to Patient</button>
+          <form id="connectionForm" class="connection-form">
+            <div class="field">
+              <label for="connectionCode">Patient connection code *</label>
+              <input
+                class="connection-code"
+                type="text"
+                id="connectionCode"
+                name="connectionCode"
+                placeholder="Enter connection code"
+                maxlength="6"
+                minlength="6"
+                pattern="[A-Za-z0-9]{6}"
+                title="Enter the six-character connection code."
+                autocomplete="off"
+                autocapitalize="characters"
+                spellcheck="false"
+                required
+              >
+            </div>
 
-          <p id="connectionMessage" role="status"></p>
-        </form>
-          <div id="connectionMessage" class="message" role="status" aria-live="polite"></div>
+            <div id="connectionMessage" class="message" role="status" aria-live="polite"></div>
+
+            <div>
+              <button class="btn btn-primary" type="submit">Connect to patient</button>
+            </div>
+          </form>
         </div>
       </section>
 
       <section class="page" id="notificationsPage">
         <div class="panel">
           <h2>Notifications</h2>
-          <p class="muted">Review reminder and refill alerts.</p>
+          <p class="muted">Review recent activity and updates.</p>
           <div id="notificationList" class="record-list" aria-live="polite">
             <div class="empty-state">Loading notifications...</div>
           </div>
@@ -727,6 +754,7 @@
           <h2>My profile</h2>
           <p id="profileEmail" class="muted"></p>
           <div id="profileMessage" class="message" role="status" aria-live="polite"></div>
+
           <form id="profileForm">
             <div class="form-grid">
               <div class="field">
@@ -747,6 +775,7 @@
         <div class="panel">
           <h2>Change password</h2>
           <div id="passwordMessage" class="message" role="status" aria-live="polite"></div>
+
           <form id="passwordForm">
             <div class="form-grid">
               <div class="field full">
@@ -781,62 +810,5 @@
 </nav>
 
 <script type="module" src="./js/dashboard.js"></script>
-
-<script>
-  /*
-   * Layout navigation fallback.
-   * Existing dashboard.js can continue handling Firebase and form actions.
-   * This script only switches visible pages and updates navigation highlights.
-   */
-  (() => {
-    const titles = {
-      medicinesPage: ["Authorized dashboard", "Manage medicine schedules and reminders."],
-      remindersPage: ["Medicine reminders", "Manage your one-time and recurring schedules."],
-      refillsPage: ["Refill tracker", "Monitor medicine stock and refill needs."],
-      historyPage: ["Activity history", "Review recent medicine and schedule changes."],
-      connectionPage: ["Patient connection", "Manage your patient connection."],
-      notificationsPage: ["Notifications", "Review reminder and refill alerts."],
-      profilePage: ["My profile", "Manage your account details and password."]
-    };
-
-    const content = document.getElementById("mainContent");
-
-    function showPage(pageId) {
-      const page = document.getElementById(pageId);
-      if (!page || !page.classList.contains("page")) return;
-
-      document.querySelectorAll(".page").forEach(section => {
-        section.classList.toggle("active", section.id === pageId);
-      });
-
-      document.querySelectorAll("[data-page]").forEach(button => {
-        const active = button.dataset.page === pageId;
-        button.classList.toggle("active", active);
-
-        if (active) {
-          button.setAttribute("aria-current", "page");
-        } else {
-          button.removeAttribute("aria-current");
-        }
-      });
-
-      const [title, subtitle] = titles[pageId] || ["Medminder", "Manage your medicines."];
-      document.getElementById("pageTitle").textContent = title;
-      document.getElementById("pageSubtitle").textContent = subtitle;
-
-      if (content) content.scrollTop = 0;
-    }
-
-    document.querySelectorAll("[data-page]").forEach(button => {
-      button.addEventListener("click", () => showPage(button.dataset.page));
-    });
-
-    document.getElementById("openConnection")?.addEventListener("click", () => showPage("connectionPage"));
-    document.getElementById("mobileConnectionButton")?.addEventListener("click", () => showPage("connectionPage"));
-    document.getElementById("openNotifications")?.addEventListener("click", () => showPage("notificationsPage"));
-    document.getElementById("openProfile")?.addEventListener("click", () => showPage("profilePage"));
-    document.getElementById("profileButton")?.addEventListener("click", () => showPage("profilePage"));
-  })();
-</script>
 </body>
 </html>
