@@ -1,0 +1,156 @@
+{
+  "users": {
+    "4LTwhobBK0cFsxqS9GweReTPG2p1": {
+      "profile": {
+        "createdAt": "2026-10-23T11:40:45.490Z",
+        "email": "dongustavo638@gmail.com",
+        "firstName": "Admin",
+        "fullName": "Admin Tester",
+        "lastName": "Tester"
+      },
+      "role": "authorized"
+    },
+    "RpxHQeTMk0a3X3V2uKitsDdmCPD3": {
+      "activity": {
+        "-P40YUf3vcbgV2a8nbjz": {
+          "action": "Medicine added",
+          "detail": "Added Paracetamol.",
+          "timestamp": 1792101184559
+        },
+        "-P42hjvsqtXzQTnNd-zP": {
+          "action": "Reminder added",
+          "detail": "Scheduled Paracetamol for October 16, 2026 at 04:00 PM.",
+          "timestamp": 1792137426995
+        },
+        "-P42jNym6WI3S9WwyENB": {
+          "action": "Medicine deleted",
+          "detail": "Deleted Paracetamol and its associated reminders.",
+          "timestamp": 1792137857250
+        },
+        "-P443d5DEWPM_XBLoAnX": {
+          "action": "Medicine added",
+          "detail": "Added hhhh.",
+          "timestamp": 1792160205497
+        },
+        "-P4440hGz5XHK2Nx2zSY": {
+          "action": "Reminder added",
+          "detail": "Scheduled hhhh for October 19, 2026 at 08:00 AM.",
+          "timestamp": 1792160306300
+        },
+        "-P4JmqphWbBu-rt8Fw8x": {
+          "action": "Reminder updated",
+          "detail": "hhhh — weekly: Sun, Mon, Tue, Wed, Thu, Fri, Sat at 08:00 AM",
+          "timestamp": 1792423985659
+        },
+        "-P4cfp1DXrEi3uPTaMyH": {
+          "action": "Medicine deleted",
+          "detail": "hhhh",
+          "timestamp": 1792757681853
+        }
+      },
+      "profile": {
+        "createdAt": "2026-10-15T18:30:26.860Z",
+        "email": "alysonsamson9@gmail.com",
+        "fullName": "ALYSON SAMSON"
+      },
+      "readNotifications": {
+        "-P40YUf3vcbgV2a8nbjz": true,
+        "-P42hjvsqtXzQTnNd-zP": true,
+        "-P42jNym6WI3S9WwyENB": true,
+        "-P443d5DEWPM_XBLoAnX": true,
+        "-P4440hGz5XHK2Nx2zSY": true
+      },
+      "role": "authorized"
+    },
+    "WtPRPRZS0MeAh77XqXHI8GcxNtZ2": {
+      "profile": {
+        "createdAt": "2026-10-15T18:31:06.903Z",
+        "email": "alysonsamson248@gmail.com",
+        "fullName": "ALYSON SAMSON"
+      },
+      "role": "patient"
+    },
+    "X1Iex7RFwBXFWmNiA0qvfszESEN2": {
+      "profile": {
+        "createdAt": "2026-10-16T16:51:29.971Z",
+        "email": "jamainemalabanan35@gmail.com",
+        "firstName": "Jamaine",
+        "fullName": "Jamaine Malabanan",
+        "lastName": "Malabanan"
+      }
+    },
+    "ZgntMNylQWVwzirFRhS1OeaGHL52": {
+      "profile": {
+        "createdAt": "2026-10-15T18:18:46.680Z",
+        "email": "alyson.samson@cvsu.edu.ph",
+        "fullName": "ALYSON SAMSON"
+      },
+      "role": "patient"
+    },
+    "cTjNpPPftDXENYpJevIKFmLXM222": {
+      "activity": {
+        "-P4cZ6RJA1EhFbY239nd": {
+          "action": "Medicine added",
+          "detail": "Jeje",
+          "timestamp": 1792755659470
+        },
+        "-P4cZJ27p0UEd5iGLKXL": {
+          "action": "Reminder created",
+          "detail": "Jeje — Oct 23, 2026 at 07:45 AM",
+          "timestamp": 1792755711106
+        }
+      },
+      "medicines": {
+        "-P4cZ6N_NCuDl_gErkOK": {
+          "barcode": "Hajahs",
+          "createdAt": 1792755659230,
+          "dosage": "Hahaha",
+          "instructions": "Bbb",
+          "name": "Jeje",
+          "notes": "Bbbb",
+          "quantity": 6,
+          "refillAt": 5,
+          "updatedAt": 1792755659230
+        }
+      },
+      "profile": {
+        "createdAt": "2026-10-23T11:40:07.606Z",
+        "email": "jamainemalabanan0110@gmail.com",
+        "firstName": "Jamaine",
+        "fullName": "Jamaine Malabanan",
+        "lastName": "Malabanan"
+      },
+      "reminders": {
+        "-P4cZIz7xGHH9O2UfxgE": {
+          "createdAt": 1792755710849,
+          "date": "2026-10-23",
+          "dose": "Haha",
+          "medicineId": "-P4cZ6N_NCuDl_gErkOK",
+          "notes": "Haha",
+          "recurrence": "once",
+          "time": "07:45",
+          "updatedAt": 1792755710849
+        }
+      },
+      "role": "authorized"
+    },
+    "cmGHfSPaqYW7QyAjZOIzqDLOsRn2": {
+      "profile": {
+        "createdAt": "2026-10-15T18:18:15.271Z",
+        "email": "alysonsamson248@gmail.com",
+        "fullName": "ALYSON SAMSON"
+      },
+      "role": "authorized"
+    },
+    "e5R0IcaNZCX4oEunD2vSSxTD3zj1": {
+      "profile": {
+        "createdAt": "2026-10-23T13:20:56.733Z",
+        "email": "alysonsamson22@gmail.com",
+        "firstName": "alyson",
+        "fullName": "alyson samson",
+        "lastName": "samson",
+        "role": "patient"
+      }
+    }
+  }
+}

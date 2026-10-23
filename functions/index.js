@@ -4,7 +4,9 @@ const { initializeApp } = require("firebase-admin/app");
 const { getDatabase } = require("firebase-admin/database");
 const crypto = require("crypto");
 
-initializeApp();
+initializeApp({
+  databaseURL: "https://pillremind-e6294-default-rtdb.firebaseio.com"
+});
 
 const db = getDatabase();
 
