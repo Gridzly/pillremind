@@ -2,403 +2,516 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#175638">
-<title>Medminder | Authorized Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#175638">
+  <title>Medminder | Authorized Dashboard</title>
+  <style>
+    :root {
+      --green: #175638;
+      --dark: #10442b;
+      --light: #e7f4eb;
+      --bg: #f2f7f3;
+      --white: #fff;
+      --text: #24352b;
+      --muted: #718078;
+      --border: #dce8df;
+      --danger: #b42318;
+    }
 
-<style>
-:root {
-  --green:#175638;
-  --dark:#10442b;
-  --light:#e7f4eb;
-  --bg:#f4f8f5;
-  --white:#fff;
-  --text:#24372c;
-  --muted:#758379;
-  --border:#e1eae3;
-  --red:#c53d3d;
-}
-* { box-sizing:border-box; }
-body { margin:0; background:var(--bg); color:var(--text); font:14px Arial,sans-serif; }
-button,input,select,textarea { font:inherit; }
-button { cursor:pointer; }
-button:disabled { opacity:.6; cursor:not-allowed; }
+    * { box-sizing: border-box; }
 
-.app { min-height:100vh; display:grid; grid-template-columns:225px minmax(0,1fr); }
-.sidebar {
-  height:100vh; position:sticky; top:0; background:white;
-  border-right:1px solid var(--border); padding:24px 14px;
-  display:flex; flex-direction:column; gap:25px;
-}
-.brand { font-size:23px; font-weight:800; color:var(--green); padding:8px; }
-.brand span { background:var(--green); color:white; border-radius:10px; padding:8px; margin-right:7px; }
-.nav-label { display:block; padding:0 10px; color:var(--muted); font-size:10px; font-weight:bold; letter-spacing:1.2px; }
-.sidebar nav { display:flex; flex-direction:column; }
-.nav-btn {
-  display:flex; align-items:center; gap:10px; width:100%; padding:12px;
-  border:0; border-radius:10px; background:transparent; color:#647369;
-  text-align:left; margin:3px 0;
-}
-.nav-btn.active,.nav-btn:hover { background:var(--light); color:var(--green); font-weight:bold; }
-.sidebar-bottom { display:block; position:static; margin-top:auto; padding:0; border:0; background:transparent; box-shadow:none; }
-#mobileAccountButton { display:none; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
 
-.main { min-width:0; padding:25px 28px 45px; }
-.topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:25px; }
-h1 { font-size:25px; margin:0 0 6px; }
-h2 { font-size:17px; margin:0; }
-h3 { font-size:16px; }
-p { line-height:1.65; }
-.muted { color:var(--muted); line-height:1.6; }
-.profile-shortcut { display:flex; align-items:center; gap:10px; border:1px solid var(--border); background:white; padding:7px 10px; border-radius:12px; color:var(--text); }
-.avatar { display:grid; place-items:center; width:34px; height:34px; border-radius:50%; background:var(--light); color:var(--green); font-weight:bold; }
-.page { display:none; }
-.page.active { display:block; }
-.welcome { display:flex; justify-content:space-between; align-items:center; gap:15px; padding:25px; border-radius:17px; background:linear-gradient(115deg,#175638,#287b50); color:white; margin-bottom:18px; }
-.welcome h2 { font-size:24px; margin-bottom:9px; }
-.welcome p { color:#e2f3e8; }
-.welcome-icon { font-size:48px; }
-.stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; margin-bottom:18px; }
-.panel,.stat { background:white; border:1px solid var(--border); border-radius:15px; padding:19px; margin-bottom:17px; min-width:0; box-shadow:0 5px 20px #1756380b; }
-.stat-label { color:var(--muted); }
-.stat-number { font-size:28px; color:var(--green); font-weight:bold; margin:12px 0 5px; }
-.panel-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:17px; }
-.panel-heading p { margin:5px 0 0; }
-.btn { display:inline-flex; justify-content:center; align-items:center; gap:6px; min-height:40px; padding:9px 14px; border:1px solid transparent; border-radius:10px; background:var(--green); color:white; font-weight:bold; }
-.btn:hover { background:var(--dark); }
-.btn.secondary { background:white; color:var(--green); border-color:var(--border); }
-.btn.danger { background:#fff0f0; color:var(--red); border-color:#f4d9d9; }
-.btn.small { min-height:32px; padding:6px 9px; font-size:12px; }
-.record { display:flex; justify-content:space-between; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); }
-.record:last-child { border-bottom:0; }
-.record-main { min-width:0; flex:1; }
-.record-title { font-weight:bold; margin-bottom:6px; overflow-wrap:anywhere; }
-.record-detail { font-size:12px; color:var(--muted); line-height:1.8; overflow-wrap:anywhere; }
-.record-actions { display:flex; flex-wrap:wrap; gap:6px; }
-.empty { padding:23px 10px; text-align:center; color:var(--muted); line-height:1.7; }
-.form-panel { display:none; margin:14px 0; }
-.form-panel.open { display:block; }
-.form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
-.field { display:flex; flex-direction:column; gap:7px; min-width:0; }
-.field.full { grid-column:1/-1; }
-.field label { font-size:12px; font-weight:bold; color:#435449; }
-.field input,.field select,.field textarea { width:100%; min-height:43px; padding:10px 12px; border:1px solid #dce6de; border-radius:10px; background:white; color:var(--text); outline:none; }
-.field textarea { min-height:75px; resize:vertical; }
-.field input:focus,.field select:focus,.field textarea:focus { border-color:var(--green); box-shadow:0 0 0 3px #17563812; }
-.form-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
-.message { display:none; margin-top:12px; line-height:1.6; }
-.message.show { display:block; }
-.message.success { color:var(--green); }
-.message.error { color:var(--red); }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
 
-/* Medicine verification checkbox */
-.verify-option { display:flex; gap:12px; align-items:flex-start; margin-top:16px; padding:14px; border:1px solid var(--border); border-radius:13px; background:#f7faf8; cursor:pointer; }
-.verify-option input { position:absolute; opacity:0; width:1px; height:1px; }
-.verify-box { width:24px; height:24px; flex:0 0 24px; border:2px solid #bdcbc0; border-radius:7px; background:white; display:grid; place-items:center; color:white; }
-.verify-option input:checked + .verify-box { background:var(--green); border-color:var(--green); }
-.verify-option input:checked + .verify-box::after { content:"✓"; font-weight:bold; }
-.verify-option input:focus-visible + .verify-box { outline:3px solid #8dc6a0; outline-offset:3px; }
-.verify-copy { line-height:1.6; }
-.verify-copy small { display:block; margin-top:3px; color:var(--muted); }
+    .app {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      min-height: 100vh;
+    }
 
-/* Weekly reminder checkboxes */
-.days { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
-.day-option { position:relative; }
-.day-option input { position:absolute; opacity:0; width:1px; height:1px; }
-.day-option label {
-  min-height:58px; display:flex; align-items:center; justify-content:flex-start;
-  gap:10px; padding:12px; border:1px solid var(--border); border-radius:12px;
-  background:#f7faf8; cursor:pointer; transition:all .18s ease;
-  color:#435449; font-size:13px; font-weight:600;
-}
-.day-check { width:23px; height:23px; flex:0 0 23px; border:2px solid #bdcbc0; border-radius:7px; background:white; display:grid; place-items:center; color:white; font-size:15px; transition:all .18s ease; }
-.day-option input:checked + label { background:var(--light); border-color:var(--green); color:var(--dark); }
-.day-option input:checked + label .day-check { background:var(--green); border-color:var(--green); }
-.day-option input:checked + label .day-check::after { content:"✓"; font-weight:bold; }
-.day-option input:focus-visible + label { outline:3px solid #8dc6a0; outline-offset:2px; }
+    .sidebar {
+      background: var(--white);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
 
-/* Patient QR connection */
-.connection-intro { margin:0 0 16px; }
-.scanner-card { border:1px solid var(--border); background:#f7faf8; border-radius:15px; padding:14px; margin:16px 0; }
-.scanner-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
-.scanner-head h3 { margin:0 0 4px; }
-.scanner-view { min-height:185px; display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center; gap:9px; background:#eaf2ec; border:1px dashed #b7cbbc; border-radius:12px; padding:15px; overflow:hidden; }
-.scanner-view video { display:none; width:100%; max-height:270px; object-fit:cover; border-radius:10px; background:#10251a; }
-.scanner-view.scanning video { display:block; }
-.scanner-view.scanning .scanner-placeholder { display:none; }
-.scanner-icon { font-size:35px; }
-.scanner-status { font-size:12px; color:var(--muted); line-height:1.6; }
-.or-divider { display:flex; align-items:center; gap:12px; margin:18px 0; color:var(--muted); font-size:12px; }
-.or-divider::before,.or-divider::after { content:""; height:1px; background:var(--border); flex:1; }
-.connection-note { background:#f7faf8; border-radius:10px; padding:12px; font-size:12px; line-height:1.7; color:var(--muted); margin-top:16px; }
-video { max-width:100%; }
+    .brand {
+      color: var(--green);
+      font-size: 23px;
+      font-weight: 800;
+      padding: 4px 10px 18px;
+    }
 
-.overlay { position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; padding:15px; background:#10251a77; }
-.overlay.open { display:flex; }
-.modal { width:min(100%,520px); max-height:90vh; overflow:auto; background:white; border-radius:18px; padding:23px; box-shadow:0 20px 70px #10251a30; }
-.modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:15px; }
-.close { flex:0 0 auto; border:0; border-radius:9px; padding:9px 11px; background:var(--light); color:var(--green); }
+    .nav-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      letter-spacing: 1px;
+      margin: 12px 10px;
+    }
 
-@media(max-width:850px) {
-  .app { grid-template-columns:180px minmax(0,1fr); }
-  .main { padding:20px 15px; }
-  .stats { grid-template-columns:1fr; }
-}
+    nav, .sidebar-bottom {
+      display: grid;
+      gap: 7px;
+    }
 
-@media(max-width:650px) {
-  .app { display:block; padding-bottom:85px; }
-  .sidebar {
-    position:fixed; z-index:30; top:auto; bottom:0; left:0; right:0;
-    height:auto; padding:6px 4px calc(6px + env(safe-area-inset-bottom));
-    border:0; border-top:1px solid var(--border); display:block; background:white;
-  }
-  .brand,.sidebar > .nav-label { display:none; }
-  .sidebar nav { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px; }
-  .nav-btn { flex-direction:column; justify-content:center; align-items:center; gap:4px; margin:0; padding:8px 2px; font-size:10px; text-align:center; }
-  #mobileAccountButton { display:flex; }
-  .sidebar-bottom { display:none; }
-  .sidebar-bottom.mobile-open {
-    display:block; position:fixed; left:12px; right:12px;
-    bottom:calc(78px + env(safe-area-inset-bottom)); z-index:40;
-    margin:0; padding:12px; background:white; border:1px solid var(--border);
-    border-radius:15px; box-shadow:0 8px 30px #10442b25;
-  }
-  .sidebar-bottom.mobile-open .nav-label { display:block; padding:7px 10px; }
-  .sidebar-bottom.mobile-open .nav-btn { display:flex; flex-direction:row; justify-content:flex-start; align-items:center; gap:10px; padding:13px 12px; font-size:13px; text-align:left; }
-  .main { padding:17px 12px 25px; }
-  .topbar h1 { font-size:21px; }
-  .profile-text { display:none; }
-  .welcome { padding:19px; }
-  .welcome h2 { font-size:20px; }
-  .welcome-icon { font-size:32px; }
-  .stats { grid-template-columns:1fr; gap:8px; }
-  .stat { padding:14px; margin-bottom:0; }
-  .panel { padding:15px; }
-  .form-grid { grid-template-columns:1fr; }
-  .field.full { grid-column:auto; }
-  .days { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-  .day-option label { min-height:52px; padding:10px; }
-  .record { gap:7px; }
-  .record-actions { flex-direction:column; }
-  .modal { padding:17px; }
-}
-</style>
+    .nav-btn {
+      border: 0;
+      background: transparent;
+      padding: 13px;
+      border-radius: 10px;
+      text-align: left;
+      color: var(--text);
+    }
+
+    .nav-btn:hover, .nav-btn.active {
+      background: var(--light);
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .sidebar-bottom { margin-top: auto; }
+
+    .main { min-width: 0; }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 22px 28px;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 { font-size: 22px; margin: 0 0 6px; }
+    h2 { font-size: 20px; margin: 0 0 8px; }
+    h3 { margin-top: 0; }
+    p { line-height: 1.5; }
+    .muted { color: var(--muted); font-size: 13px; }
+
+    .avatar {
+      display: inline-grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--light);
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .profile-shortcut {
+      border: 0;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+    }
+
+    .content { padding: 26px; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .welcome {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 26px;
+      border-radius: 18px;
+      color: white;
+      background: linear-gradient(120deg, var(--green), #28794d);
+      margin-bottom: 20px;
+    }
+
+    .welcome h2 { font-size: 24px; }
+    .welcome p { margin-bottom: 0; max-width: 600px; }
+    .welcome-icon { font-size: 48px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .stat, .panel {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 20px;
+    }
+
+    .stat-label { color: var(--muted); font-size: 13px; }
+    .stat-number { font-size: 29px; font-weight: 800; margin: 10px 0; }
+
+    .panel { margin-bottom: 20px; }
+
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 9px;
+      padding: 11px 15px;
+      font-weight: 700;
+    }
+
+    .btn-primary { background: var(--green); color: white; }
+    .btn-primary:hover { background: var(--dark); }
+    .btn-secondary { background: var(--light); color: var(--green); }
+    .btn-danger { background: #fff0ef; color: var(--danger); }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .field { display: grid; gap: 7px; }
+    .field.full { grid-column: 1 / -1; }
+
+    label { font-size: 13px; font-weight: 700; }
+
+    input, select, textarea {
+      width: 100%;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: white;
+      color: var(--text);
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid #b6ddc3;
+      border-color: var(--green);
+    }
+
+    .form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .record-list { display: grid; gap: 12px; }
+
+    .record {
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .record h3 { margin-bottom: 6px; }
+    .record p { margin: 4px 0; font-size: 13px; }
+    .record-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 28px 12px;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+    }
+
+    .message {
+      display: none;
+      margin: 12px 0;
+      padding: 12px;
+      border-radius: 9px;
+      background: var(--light);
+      color: var(--green);
+      overflow-wrap: anywhere;
+    }
+
+    .message.show { display: block; }
+    .message.error { background: #fff0ef; color: var(--danger); }
+
+    .connection-code {
+      letter-spacing: 2px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .notice {
+      padding: 13px;
+      background: var(--light);
+      border-radius: 10px;
+      color: var(--dark);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .days {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .day-option {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px;
+      background: var(--bg);
+      border-radius: 8px;
+    }
+
+    .day-option input { width: auto; }
+
+    .bottom-nav { display: none; }
+
+    @media (max-width: 850px) {
+      .app { display: block; padding-bottom: 70px; }
+      .sidebar { display: none; }
+      .topbar { padding: 16px; }
+      .content { padding: 16px; }
+      .bottom-nav {
+        position: fixed;
+        z-index: 20;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-around;
+        gap: 3px;
+        padding: 8px 4px;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        background: white;
+        border-top: 1px solid var(--border);
+      }
+      .bottom-nav .nav-btn {
+        text-align: center;
+        font-size: 11px;
+        padding: 10px 5px;
+      }
+      .stats { gap: 8px; }
+      .stat { padding: 13px; }
+      .stat-number { font-size: 23px; }
+      .profile-text { display: none; }
+    }
+
+    @media (max-width: 520px) {
+      .welcome { padding: 18px; }
+      .welcome h2 { font-size: 20px; }
+      .welcome-icon { font-size: 32px; }
+      .stats { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .days { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .record { flex-direction: column; }
+      .record-actions { width: 100%; }
+      .record-actions button { flex: 1; }
+      .panel { padding: 15px; }
+      .topbar h1 { font-size: 19px; }
+    }
+  </style>
 </head>
 <body>
-
 <div class="app">
-<aside class="sidebar">
-  <div class="brand"><span>✚</span>Medminder</div>
-  <div class="nav-label">AUTHORIZED WORKSPACE</div>
-
-  <nav>
-    <button class="nav-btn active" data-page="medicinesPage" type="button">💊 <span>Medicines</span></button>
-    <button class="nav-btn" data-page="remindersPage" type="button">🔔 <span>Reminders</span></button>
-    <button class="nav-btn" data-page="refillsPage" type="button">📦 <span>Refills</span></button>
-    <button class="nav-btn" data-page="historyPage" type="button">📋 <span>History</span></button>
-    <button class="nav-btn" id="mobileAccountButton" type="button" aria-expanded="false" aria-controls="accountMenu">👤 <span>Account</span></button>
-  </nav>
-
-  <div class="sidebar-bottom" id="accountMenu">
-    <div class="nav-label">ACCOUNT</div>
-    <button class="nav-btn" id="openConnection" type="button">🔗 <span>Patient connection</span></button>
-    <button class="nav-btn" id="openNotifications" type="button">🔔 <span>Notifications</span></button>
-    <button class="nav-btn" id="openProfile" type="button">👤 <span>My profile</span></button>
-  </div>
-</aside>
-
-<main class="main">
-<header class="topbar">
-  <div>
-    <h1 id="pageTitle">Authorized dashboard</h1>
-    <div class="muted" id="pageSubtitle">Manage connected patient medicine schedules.</div>
-  </div>
-  <button class="profile-shortcut" id="profileButton" type="button">
-    <span class="avatar" id="avatar">A</span>
-    <span class="profile-text"><b id="displayName">My account</b><br><small class="muted">My profile</small></span>
-  </button>
-</header>
-
-<section class="page active" id="medicinesPage">
-  <div class="welcome">
-    <div><h2 id="welcomeTitle">Welcome to Medminder!</h2><p>Organize medicines, recurring reminders, and refill alerts for your connected patient.</p></div>
-    <div class="welcome-icon">💊</div>
-  </div>
-  <div class="stats">
-    <div class="stat"><div class="stat-label">Medicines</div><div class="stat-number" id="medicineCount">0</div><div class="muted">Saved records</div></div>
-    <div class="stat"><div class="stat-label">Schedules</div><div class="stat-number" id="reminderCount">0</div><div class="muted">Reminder records</div></div>
-    <div class="stat"><div class="stat-label">Refill alerts</div><div class="stat-number" id="refillCount">0</div><div class="muted">Need attention</div></div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-heading">
-      <div><h2>Medicine list</h2><p class="muted">Enter medicine details and verify them before saving.</p></div>
-      <button class="btn" id="toggleMedicineForm" type="button">＋ Add medicine</button>
+  <aside class="sidebar">
+    <div class="brand">✚ Medminder</div>
+    <div>
+      <div class="nav-label">AUTHORIZED WORKSPACE</div>
+      <nav>
+        <button class="nav-btn active" data-page="medicinesPage">💊 Medicines</button>
+        <button class="nav-btn" data-page="remindersPage">🔔 Reminders</button>
+        <button class="nav-btn" data-page="refillsPage">📦 Refills</button>
+        <button class="nav-btn" data-page="historyPage">📋 History</button>
+      </nav>
     </div>
-    <div class="form-panel" id="medicineForm">
-      <h3 id="medicineFormTitle">Add medicine</h3>
-      <form id="medicineFormElement">
-        <input type="hidden" id="medicineEditId">
-        <div class="form-grid">
-          <div class="field"><label for="medicineName">Medicine name *</label><input id="medicineName" required maxlength="100" placeholder="Medicine name"></div>
-          <div class="field"><label for="medicineDosage">Dosage / strength</label><input id="medicineDosage" maxlength="100" placeholder="As printed on package"></div>
-          <div class="field"><label for="medicineQuantity">Current quantity</label><input id="medicineQuantity" type="number" min="0" max="100000" step="1" value="0" required></div>
-          <div class="field"><label for="medicineRefillAt">Refill alert at</label><input id="medicineRefillAt" type="number" min="0" max="100000" step="1" value="5" required></div>
-          <div class="field full"><label for="medicineInstructions">Prescription instructions</label><input id="medicineInstructions" maxlength="250" placeholder="Follow the prescription or pharmacist's instructions"></div>
-          <div class="field full"><label for="medicineNotes">Additional notes</label><textarea id="medicineNotes" maxlength="500" placeholder="Optional notes"></textarea></div>
-        </div>
-        <label class="verify-option" for="medicineDetailsVerified">
-          <input type="checkbox" id="medicineDetailsVerified" required>
-          <span class="verify-box" aria-hidden="true"></span>
-          <span class="verify-copy"><strong>I have verified these medicine details</strong><small>Check the name, strength, and instructions against the package or prescription.</small></span>
-        </label>
-        <div class="form-actions">
-          <button class="btn" id="saveMedicine" type="submit">Save medicine</button>
-          <button class="btn secondary" type="button" id="cancelMedicine">Cancel</button>
-        </div>
-      </form>
+    <div class="sidebar-bottom">
+      <div class="nav-label">ACCOUNT</div>
+      <button class="nav-btn" id="openConnection">🔗 Patient connection</button>
+      <button class="nav-btn" id="openNotifications">🔔 Notifications</button>
+      <button class="nav-btn" id="openProfile">👤 My profile</button>
+      <button class="nav-btn" id="logoutButton">↪ Log out</button>
     </div>
-    <div id="medicineList"><div class="empty">Loading medicines...</div></div>
-    <div class="message" id="pageMessage" role="status"></div>
-  </div>
-</section>
+  </aside>
 
-<section class="page" id="remindersPage">
-  <div class="panel">
-    <div class="panel-heading">
-      <div><h2>Medicine reminders</h2><p class="muted">Set a one-time or weekly repeating schedule.</p></div>
-      <button class="btn" id="toggleReminderForm" type="button">＋ Add reminder</button>
-    </div>
-    <div class="form-panel" id="reminderForm">
-      <form id="reminderFormElement">
-        <input type="hidden" id="reminderEditId">
-        <div class="form-grid">
-          <div class="field full"><label for="reminderMedicine">Medicine *</label><select id="reminderMedicine" required><option value="">Choose medicine</option></select></div>
-          <div class="field full"><label for="recurrenceType">Schedule type</label><select id="recurrenceType"><option value="once">One time</option><option value="weekly">Repeat weekly</option></select></div>
-          <div class="field full" id="onceDateField"><label for="reminderDate">Date *</label><input type="date" id="reminderDate" required></div>
-          <div class="field full" id="weeklyDaysField" style="display:none">
-            <label>Repeat on</label>
-            <div class="days">
-              <div class="day-option"><input id="day0" type="checkbox" name="weeklyDay" value="0"><label for="day0"><span class="day-check"></span>Sunday</label></div>
-              <div class="day-option"><input id="day1" type="checkbox" name="weeklyDay" value="1"><label for="day1"><span class="day-check"></span>Monday</label></div>
-              <div class="day-option"><input id="day2" type="checkbox" name="weeklyDay" value="2"><label for="day2"><span class="day-check"></span>Tuesday</label></div>
-              <div class="day-option"><input id="day3" type="checkbox" name="weeklyDay" value="3"><label for="day3"><span class="day-check"></span>Wednesday</label></div>
-              <div class="day-option"><input id="day4" type="checkbox" name="weeklyDay" value="4"><label for="day4"><span class="day-check"></span>Thursday</label></div>
-              <div class="day-option"><input id="day5" type="checkbox" name="weeklyDay" value="5"><label for="day5"><span class="day-check"></span>Friday</label></div>
-              <div class="day-option"><input id="day6" type="checkbox" name="weeklyDay" value="6"><label for="day6"><span class="day-check"></span>Saturday</label></div>
-            </div>
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="pageTitle">Authorized dashboard</h1>
+        <div class="muted" id="pageSubtitle">Manage medicine schedules and reminders.</div>
+      </div>
+      <button class="profile-shortcut" id="profileButton" type="button">
+        <span class="avatar" id="avatar">A</span>
+        <span class="profile-text"><b id="displayName">My account</b><br><small class="muted">My profile</small></span>
+      </button>
+    </header>
+
+    <div class="content">
+      <div id="pageMessage" class="message" role="status" aria-live="polite"></div>
+
+      <section class="page active" id="medicinesPage">
+        <div class="welcome">
+          <div>
+            <h2 id="welcomeTitle">Welcome to Medminder!</h2>
+            <p>Organize medicine records, recurring reminders, and refill alerts.</p>
           </div>
-          <div class="field"><label for="reminderTime">Reminder time *</label><input type="time" id="reminderTime" value="08:00" required></div>
-          <div class="field"><label for="reminderDose">Dose for this reminder</label><input id="reminderDose" maxlength="100" placeholder="As prescribed"></div>
-          <div class="field full"><label for="reminderNotes">Notes</label><textarea id="reminderNotes" maxlength="300" placeholder="Optional reminder notes"></textarea></div>
+          <div class="welcome-icon">💊</div>
         </div>
-        <div class="form-actions">
-          <button class="btn" id="saveReminder" type="submit">Save reminder</button>
-          <button class="btn secondary" type="button" id="cancelReminder">Cancel</button>
+
+        <div class="stats">
+          <div class="stat"><div class="stat-label">Medicines</div><div class="stat-number" id="medicineCount">0</div><div class="muted">Saved records</div></div>
+          <div class="stat"><div class="stat-label">Schedules</div><div class="stat-number" id="reminderCount">0</div><div class="muted">Reminder records</div></div>
+          <div class="stat"><div class="stat-label">Refill alerts</div><div class="stat-number" id="refillCount">0</div><div class="muted">Need attention</div></div>
         </div>
-        <div class="message" id="reminderMessage" role="status"></div>
-      </form>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <div><h2>Medicine list</h2><p class="muted">Enter medicine details or use the medicine photo scanner if available in your JavaScript.</p></div>
+            <button class="btn btn-primary" id="addMedicineButton" type="button">+ Add medicine</button>
+          </div>
+          <div id="medicineList" class="record-list"><div class="empty-state">Loading medicines...</div></div>
+        </div>
+
+        <div class="panel" id="medicineFormPanel" hidden>
+          <div class="panel-heading"><div><h2 id="medicineFormTitle">Add medicine</h2><p class="muted">Verify the medicine packaging or prescription before saving.</p></div></div>
+          <form id="medicineForm">
+            <input type="hidden" id="medicineId">
+            <div class="form-grid">
+              <div class="field"><label for="medicineName">Medicine name *</label><input id="medicineName" required maxlength="120"></div>
+              <div class="field"><label for="medicineDosage">Strength / dosage *</label><input id="medicineDosage" required maxlength="80" placeholder="e.g. 500 mg"></div>
+              <div class="field"><label for="medicineQuantity">Current quantity *</label><input id="medicineQuantity" type="number" min="0" step="1" required></div>
+              <div class="field"><label for="medicineRefillAt">Refill alert quantity</label><input id="medicineRefillAt" type="number" min="0" step="1" value="5"></div>
+              <div class="field full"><label for="medicineInstructions">Instructions</label><input id="medicineInstructions" maxlength="250" placeholder="Use only the instructions prescribed by the clinician"></div>
+              <div class="field full"><label for="medicineNotes">Notes</label><textarea id="medicineNotes" rows="3" maxlength="1000"></textarea></div>
+              <div class="field full"><label class="day-option"><input id="detailsVerified" type="checkbox" required> I verified these details against the medicine label or prescription.</label></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit">Save medicine</button>
+              <button class="btn btn-secondary" id="cancelMedicineButton" type="button">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="page" id="remindersPage">
+        <div class="panel">
+          <div class="panel-heading"><div><h2>Medicine reminders</h2><p class="muted">Create one-time or recurring weekly schedules.</p></div><button class="btn btn-primary" id="addReminderButton" type="button">+ Add reminder</button></div>
+          <div id="reminderList" class="record-list"><div class="empty-state">Loading reminders...</div></div>
+        </div>
+        <div class="panel" id="reminderFormPanel" hidden>
+          <h2 id="reminderFormTitle">Add reminder</h2>
+          <form id="reminderForm">
+            <input type="hidden" id="reminderId">
+            <div class="form-grid">
+              <div class="field full"><label for="reminderMedicine">Medicine *</label><select id="reminderMedicine" required><option value="">Select a medicine</option></select></div>
+              <div class="field"><label for="reminderRecurrence">Repeat *</label><select id="reminderRecurrence" required><option value="once">One time</option><option value="weekly">Every week</option></select></div>
+              <div class="field"><label for="reminderTime">Time *</label><input id="reminderTime" type="time" required></div>
+              <div class="field" id="reminderDateField"><label for="reminderDate">Date *</label><input id="reminderDate" type="date"></div>
+              <div class="field"><label for="reminderDose">Dose *</label><input id="reminderDose" required maxlength="80" placeholder="e.g. 1 tablet"></div>
+              <div class="field full" id="reminderDaysField" hidden>
+                <label>Days of the week *</label>
+                <div class="days">
+                  <label class="day-option"><input type="checkbox" name="reminderDay" value="0"> Sunday</label>
+                  <label class="day-option"><input type="checkbox" name="reminderDay" value="1"> Monday</label>
+                  <label class="day-option"><input type="checkbox" name="reminderDay" value="2"> Tuesday</label>
+                  <label class="day-option"><input type="checkbox" name="reminderDay" value="3"> Wednesday</label>
+                  <label class="day-option"><input type="checkbox" name="reminderDay" value="4"> Thursday</label>
+                  <label class="day-option"><input type="checkbox" name="reminderDay" value="5"> Friday</label>
+                  <label class="day-option"><input type="checkbox" name="reminderDay" value="6"> Saturday</label>
+                </div>
+              </div>
+              <div class="field full"><label for="reminderNotes">Notes</label><textarea id="reminderNotes" rows="2" maxlength="500"></textarea></div>
+            </div>
+            <div class="form-actions"><button class="btn btn-primary" type="submit">Save reminder</button><button class="btn btn-secondary" id="cancelReminderButton" type="button">Cancel</button></div>
+          </form>
+        </div>
+      </section>
+
+      <section class="page" id="refillsPage">
+        <div class="panel"><h2>Refill tracker</h2><p class="muted">Check stock levels and update quantities after refilling.</p><div id="refillList" class="record-list"><div class="empty-state">Loading refill information...</div></div></div>
+      </section>
+
+      <section class="page" id="historyPage">
+        <div class="panel"><h2>Activity history</h2><p class="muted">Review recent medicine and schedule changes.</p><div id="historyList" class="record-list"><div class="empty-state">Loading activity...</div></div></div>
+      </section>
+
+      <section class="page" id="connectionPage">
+        <div class="panel">
+          <h2>Patient connection</h2>
+          <p class="muted">Connect to a patient using a connection code. QR scanning has been removed.</p>
+          <div class="notice">Enter the code provided by the patient. A code alone must not grant access to private medicine records. The patient must approve the connection.</div>
+          <form id="connectionForm">
+            <div class="field" style="margin-top:16px">
+              <label for="connectionCode">Patient connection code</label>
+              <input id="connectionCode" class="connection-code" maxlength="64" autocomplete="off" placeholder="Enter connection code" required>
+            </div>
+            <div class="form-actions"><button class="btn btn-primary" type="submit">Verify code</button></div>
+          </form>
+          <div id="connectionMessage" class="message" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="page" id="notificationsPage">
+        <div class="panel"><h2>Notifications</h2><p class="muted">Review reminder and refill alerts.</p><div id="notificationList" class="record-list"><div class="empty-state">No notifications to display.</div></div></div>
+      </section>
+
+      <section class="page" id="profilePage">
+        <div class="panel">
+          <h2>My profile</h2>
+          <p id="profileEmail" class="muted"></p>
+          <div id="profileMessage" class="message" role="status" aria-live="polite"></div>
+          <form id="profileForm">
+            <div class="form-grid">
+              <div class="field"><label for="profileFirstName">First name *</label><input id="profileFirstName" maxlength="80" required></div>
+              <div class="field"><label for="profileLastName">Last name</label><input id="profileLastName" maxlength="80"></div>
+            </div>
+            <div class="form-actions"><button class="btn btn-primary" type="submit">Save profile</button></div>
+          </form>
+        </div>
+        <div class="panel">
+          <h2>Change password</h2>
+          <div id="passwordMessage" class="message" role="status" aria-live="polite"></div>
+          <form id="passwordForm">
+            <div class="form-grid">
+              <div class="field full"><label for="currentPassword">Current password *</label><input id="currentPassword" type="password" autocomplete="current-password" required></div>
+              <div class="field"><label for="newPassword">New password *</label><input id="newPassword" type="password" minlength="8" autocomplete="new-password" required></div>
+              <div class="field"><label for="confirmPassword">Confirm new password *</label><input id="confirmPassword" type="password" minlength="8" autocomplete="new-password" required></div>
+            </div>
+            <div class="form-actions"><button class="btn btn-primary" type="submit">Update password</button></div>
+          </form>
+        </div>
+      </section>
     </div>
-    <div id="reminderList"><div class="empty">Loading reminders...</div></div>
-  </div>
-</section>
-
-<section class="page" id="refillsPage">
-  <div class="panel"><div class="panel-heading"><div><h2>Refill tracker</h2><p class="muted">Check stock levels and record refills.</p></div></div><div id="refillList"></div></div>
-</section>
-
-<section class="page" id="historyPage">
-  <div class="panel"><div class="panel-heading"><div><h2>Activity history</h2><p class="muted">Medicine and reminder changes.</p></div><button class="btn secondary" id="refreshHistory" type="button">↻ Refresh</button></div><div id="historyList"></div></div>
-</section>
-</main>
+  </main>
 </div>
 
-<div class="overlay" id="connectionOverlay">
-  <section class="modal">
-    <div class="modal-head"><h2>Connect to a patient</h2><button class="close" data-close="connectionOverlay" type="button" aria-label="Close">✕</button></div>
-    <p class="muted connection-intro">Scan the patient's Medminder QR code or enter the connection code manually.</p>
-    <div class="scanner-card">
-      <div class="scanner-head"><div><h3>📷 Scan patient QR code</h3><div class="muted" style="font-size:12px">Allow camera access when prompted.</div></div></div>
-      <div class="scanner-view" id="scannerView">
-        <video id="qrVideo" playsinline muted></video>
-        <div class="scanner-placeholder"><div class="scanner-icon">▦</div><strong>QR scanner ready</strong><div class="scanner-status" id="scannerStatus">Start the camera and point it at the patient's connection QR code.</div></div>
-      </div>
-      <div class="form-actions">
-        <button class="btn" type="button" id="startQrScanner">Start camera scanner</button>
-        <button class="btn secondary" type="button" id="stopQrScanner" disabled>Stop camera</button>
-        <label class="btn secondary" for="qrImageInput">Upload QR image</label>
-        <input id="qrImageInput" type="file" accept="image/*" hidden>
-      </div>
-    </div>
-    <div class="or-divider">OR ENTER CODE MANUALLY</div>
-    <form id="connectionForm">
-      <div class="field"><label for="connectionCode">Patient connection code</label><input id="connectionCode" required maxlength="120" autocomplete="off" placeholder="Enter or scan the connection code"></div>
-      <div class="form-actions"><button class="btn" id="connectPatientButton" type="submit">Connect patient</button></div>
-      <div class="message" id="connectionMessage" role="status"></div>
-    </form>
-    <div class="connection-note"><strong>Security notice</strong><br>Only use codes issued through your Medminder connection workflow. Scanning or entering a code does not grant access by itself. Your Firebase database must verify the patient and authorize the relationship.</div>
-  </section>
-</div>
+<nav class="bottom-nav" aria-label="Mobile navigation">
+  <button class="nav-btn active" data-page="medicinesPage">💊<br>Medicines</button>
+  <button class="nav-btn" data-page="remindersPage">🔔<br>Reminders</button>
+  <button class="nav-btn" data-page="refillsPage">📦<br>Refills</button>
+  <button class="nav-btn" data-page="historyPage">📋<br>History</button>
+  <button class="nav-btn" id="mobileConnectionButton">🔗<br>Connect</button>
+</nav>
 
-<div class="overlay" id="notificationsOverlay">
-  <section class="modal">
-    <div class="modal-head"><h2>Notifications</h2><button class="close" data-close="notificationsOverlay" type="button">✕</button></div>
-    <div id="notificationList"></div>
-    <div class="form-actions"><button class="btn secondary" id="markRead" type="button">Close notifications</button></div>
-  </section>
-</div>
-
-<div class="overlay" id="profileOverlay">
-  <section class="modal">
-    <div class="modal-head"><h2>My profile</h2><button class="close" data-close="profileOverlay" type="button">✕</button></div>
-    <p id="profileEmail" class="muted"></p>
-    <h3>Change password</h3>
-    <form id="passwordForm">
-      <div class="field"><label for="currentPassword">Current password</label><input id="currentPassword" type="password" required autocomplete="current-password"></div>
-      <div class="field" style="margin-top:12px"><label for="newPassword">New password</label><input id="newPassword" type="password" required minlength="8" autocomplete="new-password"></div>
-      <div class="field" style="margin-top:12px"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" type="password" required minlength="8" autocomplete="new-password"></div>
-      <div class="message" id="passwordMessage" role="status"></div>
-      <div class="form-actions"><button class="btn" type="submit">Update password</button></div>
-    </form>
-    <hr style="border:0;border-top:1px solid var(--border);margin:22px 0">
-    <button class="btn danger" id="logoutButton" type="button">Log out</button>
-  </section>
-</div>
-
-<script type="module">
-import "./js/dashboard.js";
-
-const accountButton = document.getElementById("mobileAccountButton");
-const accountMenu = document.getElementById("accountMenu");
-
-function closeAccountMenu() {
-  accountMenu?.classList.remove("mobile-open");
-  accountButton?.setAttribute("aria-expanded", "false");
-}
-
-accountButton?.addEventListener("click", event => {
-  event.stopPropagation();
-  const open = !accountMenu.classList.contains("mobile-open");
-  accountMenu.classList.toggle("mobile-open", open);
-  accountButton.setAttribute("aria-expanded", String(open));
-});
-
-["openConnection", "openNotifications", "openProfile"].forEach(id => {
-  document.getElementById(id)?.addEventListener("click", closeAccountMenu);
-});
-
-document.addEventListener("click", event => {
-  if (
-    accountMenu?.classList.contains("mobile-open") &&
-    !accountMenu.contains(event.target) &&
-    !accountButton?.contains(event.target)
-  ) closeAccountMenu();
-});
-
-window.addEventListener("resize", () => {
-  if (window.innerWidth > 650) closeAccountMenu();
-});
-</script>
+<script type="module" src="./js/dashboard.js"></script>
 </body>
 </html>
