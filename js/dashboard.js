@@ -1,3 +1,4 @@
+
 import { auth, db } from "./firebaseConfig.js";
 
 import {
@@ -21,6 +22,10 @@ let activities = {};
 let activePatientUid = null;
 let unsubs = [];
 let busy = false;
+let qrStream = null;
+let qrDetector = null;
+let scanning = false;
+let scanFrame = null;
 
 const pages = {
   medicinesPage: ["Medicines", "Manage patient medicine records."],
@@ -30,11 +35,7 @@ const pages = {
 };
 
 const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, c => ({
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;"
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[c]));
 
 const patientUid = () => activePatientUid || user.uid;
@@ -44,7 +45,6 @@ const accountPath = path => `users/${user.uid}/${path}`;
 function message(id, text, type = "success") {
   const el = $(id);
   if (!el) return;
-
   el.textContent = text;
   el.className = `message show ${type}`;
 }
@@ -57,51 +57,42 @@ function openModal(id) {
   $(id)?.classList.add("open");
 }
 
-function closeModal(id) {
+async function closeModal(id) {
   $(id)?.classList.remove("open");
+  if (id === "connectionOverlay") await stopQrScanner();
 }
 
 function showPage(id) {
-  document.querySelectorAll(".page").forEach(page => {
-    page.classList.toggle("active", page.id === id);
-  });
-
-  document.querySelectorAll("[data-page]").forEach(button => {
-    button.classList.toggle("active", button.dataset.page === id);
-  });
-
+  document.querySelectorAll(".page").forEach(p =>
+    p.classList.toggle("active", p.id === id)
+  );
+  document.querySelectorAll("[data-page]").forEach(b =>
+    b.classList.toggle("active", b.dataset.page === id)
+  );
   if (pages[id]) {
     $("pageTitle").textContent = pages[id][0];
     $("pageSubtitle").textContent = pages[id][1];
   }
-
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function localDate() {
-  const date = new Date();
-
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function formatDate(date) {
   if (!date) return "Date not set";
-
-  const [year, month, day] = date.split("-").map(Number);
-
-  return new Date(year, month - 1, day).toLocaleDateString("en-PH", {
-    month: "short",
-    day: "numeric",
-    year: "numeric"
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-PH", {
+    month: "short", day: "numeric", year: "numeric"
   });
 }
 
 function formatTime(time) {
   if (!time) return "Time not set";
-
-  const [hour, minute] = time.split(":").map(Number);
-
-  return `${String(hour % 12 || 12).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
+  const [h, m] = time.split(":").map(Number);
+  return `${String(h % 12 || 12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
 }
 
 function formatStamp(timestamp) {
@@ -110,11 +101,8 @@ function formatStamp(timestamp) {
 
 async function logActivity(action, detail) {
   if (!user) return;
-
   await set(push(ref(db, accountPath("activity"))), {
-    action,
-    detail,
-    timestamp: Date.now()
+    action, detail, timestamp: Date.now()
   });
 }
 
@@ -129,99 +117,55 @@ function medicineName(id) {
 }
 
 function stopSubscriptions() {
-  unsubs.forEach(unsubscribe => unsubscribe());
+  unsubs.forEach(fn => fn());
   unsubs = [];
 }
 
 function subscribe(path, callback) {
-  const unsubscribe = onValue(
-    ref(db, dataPath(path)),
-    snapshot => callback(snapshot.val() || {}),
-    error => {
-      console.error("Firebase subscription error:", error);
-
-      message(
-        "pageMessage",
-        "Unable to access these records. Check Firebase Database Rules and patient authorization.",
-        "error"
-      );
-    }
-  );
-
-  unsubs.push(unsubscribe);
+  const unsub = onValue(ref(db, dataPath(path)), snap => {
+    callback(snap.val() || {});
+  }, error => {
+    console.error("Firebase subscription error:", error);
+    message("pageMessage",
+      "Unable to access these records. Check Firebase Database Rules and patient authorization.",
+      "error");
+  });
+  unsubs.push(unsub);
 }
 
 function renderMedicines() {
   const entries = Object.entries(medicines);
   $("medicineCount").textContent = entries.length;
 
-  $("medicineList").innerHTML = entries.length
-    ? entries.map(([id, medicine]) => {
-        const low =
-          Number(medicine.quantity ?? 0) <= Number(medicine.refillAt ?? 0);
-
-        return `
-          <article class="record">
-            <div class="record-main">
-              <div class="record-title">
-                💊 ${escapeHTML(medicine.name)}
-              </div>
-
-              <div class="record-detail">
-                ${medicine.dosage
-                  ? `Strength: ${escapeHTML(medicine.dosage)}<br>`
-                  : ""}
-
-                ${medicine.instructions
-                  ? `Instructions: ${escapeHTML(medicine.instructions)}<br>`
-                  : ""}
-
-                ${medicine.barcode
-                  ? `Barcode: ${escapeHTML(medicine.barcode)}<br>`
-                  : ""}
-
-                Stock: ${Number(medicine.quantity ?? 0)} units
-
-                ${low
-                  ? '<br><strong style="color:#c53d3d">Refill needed</strong>'
-                  : ""}
-
-                ${medicine.notes
-                  ? `<br>Notes: ${escapeHTML(medicine.notes)}`
-                  : ""}
-              </div>
-            </div>
-
-            <div class="record-actions">
-              <button
-                class="btn secondary small"
-                data-edit-med="${escapeHTML(id)}"
-                type="button">Edit</button>
-
-              <button
-                class="btn secondary small"
-                data-stock-med="${escapeHTML(id)}"
-                type="button">＋ Refill</button>
-
-              <button
-                class="btn danger small"
-                data-del-med="${escapeHTML(id)}"
-                type="button">Delete</button>
-            </div>
-          </article>
-        `;
-      }).join("")
-    : '<div class="empty">No medicines saved yet. Add a medicine to begin.</div>';
+  $("medicineList").innerHTML = entries.length ? entries.map(([id, m]) => {
+    const low = Number(m.quantity ?? 0) <= Number(m.refillAt ?? 0);
+    return `
+      <article class="record">
+        <div class="record-main">
+          <div class="record-title">💊 ${escapeHTML(m.name)}</div>
+          <div class="record-detail">
+            ${m.dosage ? `Strength: ${escapeHTML(m.dosage)}<br>` : ""}
+            ${m.instructions ? `Instructions: ${escapeHTML(m.instructions)}<br>` : ""}
+            Stock: ${Number(m.quantity ?? 0)} units
+            ${low ? '<br><strong style="color:#c53d3d">Refill needed</strong>' : ""}
+            ${m.notes ? `<br>Notes: ${escapeHTML(m.notes)}` : ""}
+            ${m.detailsVerified ? '<br><strong style="color:#175638">✓ Details verified</strong>' : ""}
+          </div>
+        </div>
+        <div class="record-actions">
+          <button class="btn secondary small" data-edit-med="${escapeHTML(id)}">Edit</button>
+          <button class="btn secondary small" data-stock-med="${escapeHTML(id)}">＋ Refill</button>
+          <button class="btn danger small" data-del-med="${escapeHTML(id)}">Delete</button>
+        </div>
+      </article>`;
+  }).join("") : '<div class="empty">No medicines saved yet. Add a medicine to begin.</div>';
 
   const select = $("reminderMedicine");
   const previous = select.value;
-
-  select.innerHTML =
-    '<option value="">Choose medicine</option>' +
-    entries.map(([id, medicine]) => `
-      <option value="${escapeHTML(id)}">${escapeHTML(medicine.name)}</option>
-    `).join("");
-
+  select.innerHTML = '<option value="">Choose medicine</option>' +
+    entries.map(([id, m]) =>
+      `<option value="${escapeHTML(id)}">${escapeHTML(m.name)}</option>`
+    ).join("");
   if (medicines[previous]) select.value = previous;
 
   renderRefills();
@@ -229,42 +173,26 @@ function renderMedicines() {
 }
 
 function renderRefills() {
-  const entries = Object.entries(medicines).filter(([, medicine]) =>
-    Number(medicine.quantity ?? 0) <= Number(medicine.refillAt ?? 0)
+  const entries = Object.entries(medicines).filter(([, m]) =>
+    Number(m.quantity ?? 0) <= Number(m.refillAt ?? 0)
   );
 
   $("refillCount").textContent = entries.length;
 
-  $("refillList").innerHTML = entries.length
-    ? entries.map(([id, medicine]) => `
-        <article class="record">
-          <div class="record-main">
-            <div class="record-title">
-              📦 ${escapeHTML(medicine.name)}
-            </div>
-
-            <div class="record-detail">
-              Remaining: ${Number(medicine.quantity ?? 0)} units ·
-              Alert level: ${Number(medicine.refillAt ?? 0)} units
-            </div>
-          </div>
-
-          <button
-            class="btn small"
-            data-stock-med="${escapeHTML(id)}"
-            type="button">Record refill</button>
-        </article>
-      `).join("")
-    : '<div class="empty">All recorded medicine quantities are above their refill thresholds.</div>';
+  $("refillList").innerHTML = entries.length ? entries.map(([id, m]) => `
+    <article class="record">
+      <div class="record-main">
+        <div class="record-title">📦 ${escapeHTML(m.name)}</div>
+        <div class="record-detail">Remaining: ${Number(m.quantity ?? 0)} units · Alert level: ${Number(m.refillAt ?? 0)} units</div>
+      </div>
+      <button class="btn small" data-stock-med="${escapeHTML(id)}">Record refill</button>
+    </article>
+  `).join("") : '<div class="empty">All recorded medicine quantities are above their refill thresholds.</div>';
 }
 
 function dayNames(days) {
-  const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-  return (Array.isArray(days) ? days : [])
-    .map(day => names[Number(day)])
-    .filter(Boolean)
-    .join(", ");
+  const names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return (Array.isArray(days) ? days : []).map(d => names[Number(d)] || "").filter(Boolean).join(", ");
 }
 
 function renderReminders() {
@@ -274,83 +202,47 @@ function renderReminders() {
 
   $("reminderCount").textContent = entries.length;
 
-  $("reminderList").innerHTML = entries.length
-    ? entries.map(([id, reminder]) => `
-        <article class="record">
-          <div class="record-main">
-            <div class="record-title">
-              🔔 ${escapeHTML(medicineName(reminder.medicineId))}
-            </div>
-
-            <div class="record-detail">
-              ${reminder.recurrence === "weekly"
-                ? `Every week: ${escapeHTML(dayNames(reminder.daysOfWeek))}`
-                : `Date: ${escapeHTML(formatDate(reminder.date))}`}
-
-              <br>Time: ${escapeHTML(formatTime(reminder.time))}
-
-              ${reminder.dose
-                ? `<br>Dose: ${escapeHTML(reminder.dose)}`
-                : ""}
-
-              ${reminder.notes
-                ? `<br>Notes: ${escapeHTML(reminder.notes)}`
-                : ""}
-            </div>
-          </div>
-
-          <div class="record-actions">
-            <button
-              class="btn secondary small"
-              data-edit-rem="${escapeHTML(id)}"
-              type="button">Edit</button>
-
-            <button
-              class="btn danger small"
-              data-del-rem="${escapeHTML(id)}"
-              type="button">Delete</button>
-          </div>
-        </article>
-      `).join("")
-    : '<div class="empty">No reminders created yet.</div>';
+  $("reminderList").innerHTML = entries.length ? entries.map(([id, r]) => `
+    <article class="record">
+      <div class="record-main">
+        <div class="record-title">🔔 ${escapeHTML(medicineName(r.medicineId))}</div>
+        <div class="record-detail">
+          ${r.recurrence === "weekly"
+            ? `Every week: ${escapeHTML(dayNames(r.daysOfWeek))}`
+            : `Date: ${escapeHTML(formatDate(r.date))}`}
+          <br>Time: ${escapeHTML(formatTime(r.time))}
+          ${r.dose ? `<br>Dose: ${escapeHTML(r.dose)}` : ""}
+          ${r.notes ? `<br>Notes: ${escapeHTML(r.notes)}` : ""}
+        </div>
+      </div>
+      <div class="record-actions">
+        <button class="btn secondary small" data-edit-rem="${escapeHTML(id)}">Edit</button>
+        <button class="btn danger small" data-del-rem="${escapeHTML(id)}">Delete</button>
+      </div>
+    </article>
+  `).join("") : '<div class="empty">No reminders created yet.</div>';
 }
 
 function renderHistory() {
   const entries = getActivities();
 
-  $("historyList").innerHTML = entries.length
-    ? entries.slice(0, 100).map(activity => `
-        <article class="record">
-          <div class="record-main">
-            <div class="record-title">
-              ${escapeHTML(activity.action)}
-            </div>
+  $("historyList").innerHTML = entries.length ? entries.slice(0, 100).map(a => `
+    <article class="record">
+      <div class="record-main">
+        <div class="record-title">${escapeHTML(a.action)}</div>
+        <div class="record-detail">${escapeHTML(a.detail)}<br>${escapeHTML(formatStamp(a.timestamp))}</div>
+      </div>
+    </article>
+  `).join("") : '<div class="empty">No activity history yet.</div>';
 
-            <div class="record-detail">
-              ${escapeHTML(activity.detail)}<br>
-              ${escapeHTML(formatStamp(activity.timestamp))}
-            </div>
-          </div>
-        </article>
-      `).join("")
-    : '<div class="empty">No activity history yet.</div>';
-
-  $("notificationList").innerHTML = entries.length
-    ? entries.slice(0, 30).map(activity => `
-        <article class="record">
-          <div class="record-main">
-            <div class="record-title">
-              ${escapeHTML(activity.action)}
-            </div>
-
-            <div class="record-detail">
-              ${escapeHTML(activity.detail)}<br>
-              ${escapeHTML(formatStamp(activity.timestamp))}
-            </div>
-          </div>
-        </article>
-      `).join("")
-    : '<div class="empty">No notifications yet.</div>';
+  $("notificationList").innerHTML = entries.length ? entries.slice(0, 30).map(a => `
+    <article class="record">
+      <div class="record-main">
+        <div class="record-title">${escapeHTML(a.action)}</div>
+        <div class="record-detail">${escapeHTML(a.detail)}<br>${escapeHTML(formatStamp(a.timestamp))}</div>
+      </div>
+    </article>
+  `).join("") : '<div class="empty">No notifications yet.</div>';
 }
 
 function resetMedicineForm() {
@@ -376,9 +268,9 @@ function resetReminderForm() {
   hideMessage("reminderMessage");
 }
 
+/* Medicine form */
 $("toggleMedicineForm").addEventListener("click", () => {
   $("medicineForm").classList.toggle("open");
-  hideMessage("pageMessage");
 });
 
 $("cancelMedicine").addEventListener("click", () => {
@@ -388,48 +280,33 @@ $("cancelMedicine").addEventListener("click", () => {
 
 $("medicineFormElement").addEventListener("submit", async event => {
   event.preventDefault();
-
-  if (busy) return;
+  if (!user || busy) return;
 
   const name = $("medicineName").value.trim();
   const quantity = Number($("medicineQuantity").value);
   const refillAt = Number($("medicineRefillAt").value);
-  const detailsVerified = $("medicineDetailsVerified").checked;
 
-  if (!detailsVerified) {
-    message(
-      "pageMessage",
-      "Please confirm that you have checked the medicine details against the packaging or prescription.",
-      "error"
-    );
-
-    $("medicineDetailsVerified").focus();
+  if (!name) {
+    message("pageMessage", "Enter the medicine name.", "error");
     return;
   }
-
-  if (
-    !name ||
-    quantity < 0 ||
-    refillAt < 0 ||
-    !Number.isInteger(quantity) ||
-    !Number.isInteger(refillAt) ||
-    !Number.isFinite(quantity) ||
-    !Number.isFinite(refillAt)
-  ) {
-    message(
-      "pageMessage",
-      "Enter a medicine name and valid non-negative whole-number quantities.",
-      "error"
-    );
+  if (!Number.isInteger(quantity) || quantity < 0 || quantity > 100000 ||
+      !Number.isInteger(refillAt) || refillAt < 0 || refillAt > 100000) {
+    message("pageMessage", "Enter valid whole-number quantities.", "error");
+    return;
+  }
+  if (!$("medicineDetailsVerified").checked) {
+    message("pageMessage", "Please verify the medicine details before saving.", "error");
+    $("medicineDetailsVerified").focus();
     return;
   }
 
   busy = true;
   $("saveMedicine").disabled = true;
+  hideMessage("pageMessage");
 
   try {
     const id = $("medicineEditId").value;
-
     const record = {
       name,
       dosage: $("medicineDosage").value.trim(),
@@ -448,19 +325,12 @@ $("medicineFormElement").addEventListener("submit", async event => {
       await set(push(ref(db, dataPath("medicines"))), record);
     }
 
-    await logActivity(
-      id ? "Medicine updated" : "Medicine added",
-      name
-    );
-
+    await logActivity(id ? "Medicine updated" : "Medicine added", name);
     resetMedicineForm();
     message("pageMessage", "Medicine saved successfully.");
   } catch (error) {
-    message(
-      "pageMessage",
-      `Unable to save medicine: ${error.message}`,
-      "error"
-    );
+    console.error(error);
+    message("pageMessage", "Unable to save medicine. Check your Firebase connection and database rules.", "error");
   } finally {
     busy = false;
     $("saveMedicine").disabled = false;
@@ -468,60 +338,44 @@ $("medicineFormElement").addEventListener("submit", async event => {
 });
 
 async function recordRefill(id) {
-  const medicine = medicines[id];
-  if (!medicine) return;
+  const med = medicines[id];
+  if (!med) return;
 
-  const input = prompt(
-    `How many units are being added to ${medicine.name}?`,
-    "30"
-  );
-
+  const input = prompt(`How many units are being added to ${med.name}?`, "30");
   if (input === null) return;
-
   const amount = Number(input);
 
-  if (!Number.isInteger(amount) || amount <= 0) {
-    alert("Enter a positive whole number.");
+  if (!Number.isInteger(amount) || amount <= 0 || amount > 100000) {
+    alert("Enter a positive whole number up to 100,000.");
     return;
   }
 
   try {
-    const newQuantity = Number(medicine.quantity || 0) + amount;
-
+    const newQuantity = Number(med.quantity || 0) + amount;
     await update(ref(db, dataPath(`medicines/${id}`)), {
       quantity: newQuantity,
       updatedAt: Date.now()
     });
-
-    await logActivity(
-      "Medicine refilled",
-      `${medicine.name}: added ${amount} units. New stock: ${newQuantity}.`
-    );
+    await logActivity("Medicine refilled", `${med.name}: added ${amount} units. New stock: ${newQuantity}.`);
   } catch (error) {
     alert("Unable to record refill: " + error.message);
   }
 }
 
 async function deleteMedicine(id) {
-  const medicine = medicines[id];
-
-  if (!medicine || !confirm(`Delete ${medicine.name} and its reminders?`)) {
-    return;
-  }
+  const med = medicines[id];
+  if (!med || !confirm(`Delete ${med.name} and its reminders?`)) return;
 
   try {
     const changes = {};
-
     changes[dataPath(`medicines/${id}`)] = null;
 
-    for (const [reminderId, reminder] of Object.entries(reminders)) {
-      if (reminder.medicineId === id) {
-        changes[dataPath(`reminders/${reminderId}`)] = null;
-      }
+    for (const [rid, reminder] of Object.entries(reminders)) {
+      if (reminder.medicineId === id) changes[dataPath(`reminders/${rid}`)] = null;
     }
 
     await update(ref(db), changes);
-    await logActivity("Medicine deleted", medicine.name);
+    await logActivity("Medicine deleted", med.name);
   } catch (error) {
     alert("Unable to delete medicine: " + error.message);
   }
@@ -537,26 +391,20 @@ $("medicineList").addEventListener("click", async event => {
   if (!edit) return;
 
   const id = edit.dataset.editMed;
-  const medicine = medicines[id];
-
-  if (!medicine) return;
+  const med = medicines[id];
+  if (!med) return;
 
   $("medicineEditId").value = id;
-  $("medicineName").value = medicine.name || "";
-  $("medicineDosage").value = medicine.dosage || "";
-  $("medicineQuantity").value = medicine.quantity ?? 0;
-  $("medicineRefillAt").value = medicine.refillAt ?? 5;
-  $("medicineInstructions").value = medicine.instructions || "";
-  $("medicineNotes").value = medicine.notes || "";
-
-  // The user must confirm the details again when editing.
+  $("medicineName").value = med.name || "";
+  $("medicineDosage").value = med.dosage || "";
+  $("medicineQuantity").value = med.quantity ?? 0;
+  $("medicineRefillAt").value = med.refillAt ?? 5;
+  $("medicineInstructions").value = med.instructions || "";
+  $("medicineNotes").value = med.notes || "";
   $("medicineDetailsVerified").checked = false;
-
   $("medicineFormTitle").textContent = "Edit medicine";
   $("saveMedicine").textContent = "Update medicine";
   $("medicineForm").classList.add("open");
-
-  hideMessage("pageMessage");
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
 
@@ -565,9 +413,9 @@ $("refillList").addEventListener("click", event => {
   if (button) recordRefill(button.dataset.stockMed);
 });
 
+/* Reminder form */
 $("recurrenceType").addEventListener("change", () => {
   const weekly = $("recurrenceType").value === "weekly";
-
   $("onceDateField").style.display = weekly ? "none" : "";
   $("weeklyDaysField").style.display = weekly ? "" : "none";
   $("reminderDate").required = !weekly;
@@ -575,58 +423,42 @@ $("recurrenceType").addEventListener("change", () => {
 
 $("toggleReminderForm").addEventListener("click", () => {
   if (!Object.keys(medicines).length) {
-    message(
-      "reminderMessage",
-      "Add a medicine before scheduling reminders.",
-      "error"
-    );
-
+    message("reminderMessage", "Add a medicine before scheduling reminders.", "error");
     $("reminderForm").classList.add("open");
-    showPage("remindersPage");
     return;
   }
-
   $("reminderForm").classList.toggle("open");
-  hideMessage("reminderMessage");
 });
 
 $("cancelReminder").addEventListener("click", resetReminderForm);
 
 $("reminderFormElement").addEventListener("submit", async event => {
   event.preventDefault();
-
-  if (busy) return;
+  if (!user || busy) return;
 
   const medicineId = $("reminderMedicine").value;
   const recurrence = $("recurrenceType").value;
   const date = $("reminderDate").value;
   const time = $("reminderTime").value;
+  const daysOfWeek = [...document.querySelectorAll('input[name="weeklyDay"]:checked')]
+    .map(input => Number(input.value));
 
-  const daysOfWeek = [
-    ...document.querySelectorAll('input[name="weeklyDay"]:checked')
-  ].map(input => Number(input.value));
+  hideMessage("reminderMessage");
 
   if (!medicines[medicineId]) {
-    message("reminderMessage", "Choose a valid medicine.", "error");
+    message("reminderMessage", "Choose a valid medicine first.", "error");
     return;
   }
-
-  if (!time) {
-    message("reminderMessage", "Choose a reminder time.", "error");
+  if (!time || !/^\d{2}:\d{2}$/.test(time)) {
+    message("reminderMessage", "Choose a valid reminder time.", "error");
     return;
   }
-
   if (recurrence === "once" && (!date || date < localDate())) {
     message("reminderMessage", "Choose today or a future date.", "error");
     return;
   }
-
   if (recurrence === "weekly" && !daysOfWeek.length) {
-    message(
-      "reminderMessage",
-      "Select at least one day for the weekly schedule.",
-      "error"
-    );
+    message("reminderMessage", "Select at least one day for the weekly schedule.", "error");
     return;
   }
 
@@ -635,7 +467,6 @@ $("reminderFormElement").addEventListener("submit", async event => {
 
   try {
     const id = $("reminderEditId").value;
-
     const record = {
       medicineId,
       recurrence,
@@ -656,20 +487,13 @@ $("reminderFormElement").addEventListener("submit", async event => {
 
     await logActivity(
       id ? "Reminder updated" : "Reminder created",
-      `${medicineName(medicineId)} — ${
-        recurrence === "weekly"
-          ? "weekly: " + dayNames(daysOfWeek)
-          : formatDate(date)
-      } at ${formatTime(time)}`
+      `${medicineName(medicineId)} — ${recurrence === "weekly" ? "weekly: " + dayNames(daysOfWeek) : formatDate(date)} at ${formatTime(time)}`
     );
 
     resetReminderForm();
   } catch (error) {
-    message(
-      "reminderMessage",
-      `Unable to save reminder: ${error.message}`,
-      "error"
-    );
+    console.error(error);
+    message("reminderMessage", "Unable to save reminder. Check your Firebase connection and database rules.", "error");
   } finally {
     busy = false;
     $("saveReminder").disabled = false;
@@ -682,28 +506,19 @@ $("reminderList").addEventListener("click", async event => {
 
   if (del) {
     const id = del.dataset.delRem;
-
     if (!confirm("Delete this reminder?")) return;
-
     try {
       await remove(ref(db, dataPath(`reminders/${id}`)));
-
-      await logActivity(
-        "Reminder deleted",
-        medicineName(reminders[id]?.medicineId)
-      );
+      await logActivity("Reminder deleted", medicineName(reminders[id]?.medicineId));
     } catch (error) {
-      alert(error.message);
+      alert("Unable to delete reminder: " + error.message);
     }
-
     return;
   }
 
   if (!edit) return;
-
   const id = edit.dataset.editRem;
   const reminder = reminders[id];
-
   if (!reminder) return;
 
   showPage("remindersPage");
@@ -724,6 +539,200 @@ $("reminderList").addEventListener("click", async event => {
   $("saveReminder").textContent = "Update reminder";
 });
 
+/* QR scanner */
+function scannerStatus(text) {
+  $("scannerStatus").textContent = text;
+}
+
+async function stopQrScanner() {
+  scanning = false;
+  if (scanFrame !== null) {
+    cancelAnimationFrame(scanFrame);
+    scanFrame = null;
+  }
+  if (qrStream) {
+    qrStream.getTracks().forEach(track => track.stop());
+    qrStream = null;
+  }
+  $("qrVideo").srcObject = null;
+  $("scannerView").classList.remove("scanning");
+  $("startQrScanner").disabled = false;
+  $("stopQrScanner").disabled = true;
+}
+
+function useScannedCode(rawValue) {
+  const value = String(rawValue || "").trim();
+  if (!value) return;
+
+  let code = value;
+  try {
+    const url = new URL(value);
+    code = url.searchParams.get("code") ||
+           url.searchParams.get("connectionCode") ||
+           url.searchParams.get("token") || value;
+  } catch {
+    // QR value is plain text rather than a URL.
+  }
+
+  $("connectionCode").value = code;
+  scannerStatus("QR code detected. Check the code above, then select Connect patient.");
+  message("connectionMessage", "Code scanned. Verify it before connecting.", "success");
+  stopQrScanner();
+}
+
+async function scanVideoFrame() {
+  if (!scanning) return;
+
+  const video = $("qrVideo");
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && qrDetector) {
+    try {
+      const results = await qrDetector.detect(video);
+      if (results?.length && results[0].rawValue) {
+        useScannedCode(results[0].rawValue);
+        return;
+      }
+    } catch (error) {
+      console.warn("QR scan frame error:", error);
+    }
+  }
+
+  if (scanning) scanFrame = requestAnimationFrame(scanVideoFrame);
+}
+
+$("startQrScanner").addEventListener("click", async () => {
+  hideMessage("connectionMessage");
+
+  if (!("BarcodeDetector" in window)) {
+    scannerStatus("QR scanning is not supported in this browser. Try Chrome on HTTPS, or enter the code manually.");
+    message("connectionMessage", "This browser does not support built-in QR scanning. You can enter the code manually.", "error");
+    return;
+  }
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    scannerStatus("Camera access is unavailable. Open the site over HTTPS or localhost, or enter the code manually.");
+    return;
+  }
+
+  try {
+    qrDetector = new BarcodeDetector({ formats: ["qr_code"] });
+    $("startQrScanner").disabled = true;
+    scannerStatus("Requesting camera permission…");
+
+    qrStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false
+    });
+
+    $("qrVideo").srcObject = qrStream;
+    $("scannerView").classList.add("scanning");
+    await $("qrVideo").play();
+
+    scanning = true;
+    $("stopQrScanner").disabled = false;
+    scannerStatus("Camera active. Hold the patient's QR code inside the camera view.");
+    scanVideoFrame();
+  } catch (error) {
+    console.error("QR camera error:", error);
+    await stopQrScanner();
+    scannerStatus("Unable to start the camera. Check browser permissions or enter the code manually.");
+    message("connectionMessage", "Camera access failed. Allow camera permission and try again, or enter the code manually.", "error");
+  }
+});
+
+$("stopQrScanner").addEventListener("click", async () => {
+  await stopQrScanner();
+  scannerStatus("Scanner stopped. You can restart it or enter the code manually.");
+});
+
+$("qrImageInput").addEventListener("change", async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    if (!("BarcodeDetector" in window)) {
+      message("connectionMessage", "QR image scanning is not supported in this browser. Enter the code manually.", "error");
+      return;
+    }
+    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    const bitmap = await createImageBitmap(file);
+    const results = await detector.detect(bitmap);
+    bitmap.close?.();
+
+    if (results?.length && results[0].rawValue) {
+      useScannedCode(results[0].rawValue);
+    } else {
+      message("connectionMessage", "No QR code was found in that image. Try a clearer image or enter the code manually.", "error");
+    }
+  } catch (error) {
+    console.error("QR image scan error:", error);
+    message("connectionMessage", "Could not scan this image. Try another image or enter the code manually.", "error");
+  } finally {
+    event.target.value = "";
+  }
+});
+
+/*
+  IMPORTANT:
+  This looks up the existing connectionCodes/{code} structure.
+  A successful lookup does not grant cross-account access.
+  Complete the trusted patient-consent workflow and secure Firebase
+  rules before changing activePatientUid or reading another user's data.
+*/
+$("connectionForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!user) return;
+
+  const code = $("connectionCode").value.trim();
+  if (!code) {
+    message("connectionMessage", "Enter or scan a patient connection code.", "error");
+    return;
+  }
+
+  const button = $("connectPatientButton");
+  button.disabled = true;
+  button.textContent = "Checking code…";
+  hideMessage("connectionMessage");
+
+  try {
+    const snapshot = await get(ref(db, `connectionCodes/${code}`));
+
+    if (!snapshot.exists()) {
+      message("connectionMessage", "Code not found. Check the code or ask the patient to generate a new one.", "error");
+      return;
+    }
+
+    const record = snapshot.val();
+    const patientId = record.patientUid;
+
+    if (!patientId || typeof patientId !== "string") {
+      message("connectionMessage", "This code has no valid patient reference. Please generate a valid code through the connection workflow.", "error");
+      return;
+    }
+
+    if (patientId === user.uid) {
+      message("connectionMessage", "You cannot connect an account to itself.", "error");
+      return;
+    }
+
+    message(
+      "connectionMessage",
+      "Code found. Before patient records can be accessed, the verified connection workflow must confirm consent and authorize this caregiver in Firebase.",
+      "error"
+    );
+  } catch (error) {
+    console.error("Connection lookup error:", error);
+    message(
+      "connectionMessage",
+      "Connection lookup failed. Check the connectionCodes database path and Firebase security rules.",
+      "error"
+    );
+  } finally {
+    button.disabled = false;
+    button.textContent = "Connect patient";
+  }
+});
+
+/* Navigation and modals */
 document.querySelectorAll("[data-page]").forEach(button => {
   button.addEventListener("click", () => showPage(button.dataset.page));
 });
@@ -745,102 +754,32 @@ document.querySelectorAll(".overlay").forEach(overlay => {
 
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
-    document.querySelectorAll(".overlay.open").forEach(element => {
-      element.classList.remove("open");
+    document.querySelectorAll(".overlay.open").forEach(async el => {
+      await closeModal(el.id);
     });
   }
 });
 
 $("refreshHistory").addEventListener("click", renderHistory);
+$("markRead").addEventListener("click", () => closeModal("notificationsOverlay"));
 
-$("markRead").addEventListener("click", () => {
-  closeModal("notificationsOverlay");
-});
-
-$("connectionForm").addEventListener("submit", async event => {
-  event.preventDefault();
-
-  const code = $("connectionCode").value.trim();
-
-  if (!code) {
-    message("connectionMessage", "Enter a patient connection code.", "error");
-    return;
-  }
-
-  /*
-   * This looks up a connection code only.
-   * It does not grant access to another user's records.
-   * A trusted authorization workflow and appropriate Firebase
-   * Database Rules are required for cross-account access.
-   */
-  try {
-    const snapshot = await get(ref(db, `connectionCodes/${code}`));
-
-    if (!snapshot.exists()) {
-      message(
-        "connectionMessage",
-        "Code not found. Check the code or QR connection setup.",
-        "error"
-      );
-      return;
-    }
-
-    const record = snapshot.val();
-    const patientId = record.patientUid;
-
-    if (!patientId || typeof patientId !== "string") {
-      message(
-        "connectionMessage",
-        "This code does not contain a valid patient reference.",
-        "error"
-      );
-      return;
-    }
-
-    if (patientId === user.uid) {
-      message(
-        "connectionMessage",
-        "You cannot connect an account to itself.",
-        "error"
-      );
-      return;
-    }
-
-    message(
-      "connectionMessage",
-      "The code was found, but patient access requires the verified authorization workflow and matching Firebase rules.",
-      "error"
-    );
-  } catch (error) {
-    message(
-      "connectionMessage",
-      `Connection lookup failed: ${error.message}. Check your connection-code database path and rules.`,
-      "error"
-    );
-  }
-});
-
+/* Password and logout */
 $("passwordForm").addEventListener("submit", async event => {
   event.preventDefault();
+  if (!user) return;
 
   const current = $("currentPassword").value;
   const next = $("newPassword").value;
   const confirmNext = $("confirmPassword").value;
 
   if (next.length < 8) {
-    message(
-      "passwordMessage",
-      "New password must contain at least 8 characters.",
-      "error"
-    );
+    message("passwordMessage", "New password must contain at least 8 characters.", "error");
     return;
   }
-
   if (next !== confirmNext) {
     message("passwordMessage", "New passwords do not match.", "error");
     return;
   }
-
   if (next === current) {
     message("passwordMessage", "Choose a different password.", "error");
     return;
@@ -848,30 +787,26 @@ $("passwordForm").addEventListener("submit", async event => {
 
   try {
     const credential = EmailAuthProvider.credential(user.email, current);
-
     await reauthenticateWithCredential(user, credential);
     await updatePassword(user, next);
-
     $("passwordForm").reset();
     message("passwordMessage", "Password updated successfully.");
-
     await logActivity("Password changed", "Account password updated.");
   } catch (error) {
-    const text =
-      error.code === "auth/invalid-credential" ||
-      error.code === "auth/wrong-password" ||
-      error.code === "auth/invalid-login-credentials"
-        ? "Your current password is incorrect."
+    const text = ["auth/invalid-credential", "auth/wrong-password", "auth/invalid-login-credentials"].includes(error.code)
+      ? "Your current password is incorrect."
+      : error.code === "auth/requires-recent-login"
+        ? "Please sign in again before changing your password."
         : error.message;
-
     message("passwordMessage", text, "error");
   }
 });
 
 $("logoutButton").addEventListener("click", async () => {
   if (!confirm("Are you sure you want to log out?")) return;
-
   try {
+    await stopQrScanner();
+    stopSubscriptions();
     await signOut(auth);
     window.location.replace("login.html");
   } catch (error) {
@@ -879,6 +814,7 @@ $("logoutButton").addEventListener("click", async () => {
   }
 });
 
+/* Authentication and Firebase listeners */
 onAuthStateChanged(auth, async authenticatedUser => {
   if (!authenticatedUser) {
     stopSubscriptions();
@@ -887,25 +823,16 @@ onAuthStateChanged(auth, async authenticatedUser => {
   }
 
   stopSubscriptions();
-
   user = authenticatedUser;
   activePatientUid = null;
 
   $("displayName").textContent = user.displayName || "My account";
-  $("avatar").textContent =
-    (user.displayName || user.email || "A")[0].toUpperCase();
-
-  $("welcomeTitle").textContent =
-    `Welcome, ${(user.displayName || "there").split(" ")[0]}!`;
-
+  $("avatar").textContent = (user.displayName || user.email || "A")[0].toUpperCase();
+  $("welcomeTitle").textContent = `Welcome, ${(user.displayName || "there").split(" ")[0]}!`;
   $("profileEmail").textContent = user.email || "";
 
-  /*
-   * The default data target is the signed-in account.
-   * Patient switching requires a verified relationship and matching
-   * Firebase security rules before cross-account records can be read
-   * or modified.
-   */
+  // Until a verified patient relationship is implemented, the
+  // dashboard reads and writes only the signed-in account's data.
   subscribe("medicines", value => {
     medicines = value;
     renderMedicines();
@@ -916,18 +843,15 @@ onAuthStateChanged(auth, async authenticatedUser => {
     renderReminders();
   });
 
-  const historyUnsubscribe = onValue(
-    ref(db, accountPath("activity")),
-    snapshot => {
-      activities = snapshot.val() || {};
-      renderHistory();
-    },
-    error => console.error("History subscription failed:", error)
-  );
+  const historyUnsub = onValue(ref(db, accountPath("activity")), snap => {
+    activities = snap.val() || {};
+    renderHistory();
+  }, error => console.error("History subscription failed:", error));
 
-  unsubs.push(historyUnsubscribe);
+  unsubs.push(historyUnsub);
 });
 
 window.addEventListener("beforeunload", () => {
+  stopQrScanner();
   stopSubscriptions();
 });
