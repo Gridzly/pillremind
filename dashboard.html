@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,35 +24,26 @@ body { margin:0; background:var(--bg); color:var(--text); font:14px Arial,sans-s
 button,input,select,textarea { font:inherit; }
 button { cursor:pointer; }
 button:disabled { opacity:.6; cursor:not-allowed; }
+
 .app { min-height:100vh; display:grid; grid-template-columns:225px minmax(0,1fr); }
-.sidebar { height:100vh; position:sticky; top:0; background:white; border-right:1px solid var(--border); padding:24px 14px; display:flex; flex-direction:column; gap:25px; }
+.sidebar {
+  height:100vh; position:sticky; top:0; background:white;
+  border-right:1px solid var(--border); padding:24px 14px;
+  display:flex; flex-direction:column; gap:25px;
+}
 .brand { font-size:23px; font-weight:800; color:var(--green); padding:8px; }
 .brand span { background:var(--green); color:white; border-radius:10px; padding:8px; margin-right:7px; }
-.brand,
-.nav-label {
-  display: none;
+.nav-label { display:block; padding:0 10px; color:var(--muted); font-size:10px; font-weight:bold; letter-spacing:1.2px; }
+.sidebar nav { display:flex; flex-direction:column; }
+.nav-btn {
+  display:flex; align-items:center; gap:10px; width:100%; padding:12px;
+  border:0; border-radius:10px; background:transparent; color:#647369;
+  text-align:left; margin:3px 0;
 }
-
-.sidebar-bottom {
-  display: block;
-  position: fixed;
-  bottom: 75px;
-  left: 12px;
-  right: 12px;
-  z-index: 30;
-  background: #ffffff;
-  border: 1px solid #e1eae3;
-  border-radius: 14px;
-  padding: 10px;
-  box-shadow: 0 8px 30px #10442b20;
-}
-
-.sidebar-bottom .nav-label {
-  display: block;
-}
-.nav-btn { display:flex; align-items:center; gap:10px; width:100%; padding:12px; border:0; border-radius:10px; background:transparent; color:#647369; text-align:left; margin:3px 0; }
 .nav-btn.active,.nav-btn:hover { background:var(--light); color:var(--green); font-weight:bold; }
-.sidebar-bottom { margin-top:auto; }
+.sidebar-bottom { display:block; position:static; margin-top:auto; padding:0; border:0; background:transparent; box-shadow:none; }
+#mobileAccountButton { display:none; }
+
 .main { min-width:0; padding:25px 28px 45px; }
 .topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:25px; }
 h1 { font-size:25px; margin:0 0 6px; }
@@ -100,7 +92,17 @@ p { line-height:1.65; }
 .message.success { color:var(--green); }
 .message.error { color:var(--red); }
 
-/* Modern weekly reminder checkboxes */
+/* Medicine verification checkbox */
+.verify-option { display:flex; gap:12px; align-items:flex-start; margin-top:16px; padding:14px; border:1px solid var(--border); border-radius:13px; background:#f7faf8; cursor:pointer; }
+.verify-option input { position:absolute; opacity:0; width:1px; height:1px; }
+.verify-box { width:24px; height:24px; flex:0 0 24px; border:2px solid #bdcbc0; border-radius:7px; background:white; display:grid; place-items:center; color:white; }
+.verify-option input:checked + .verify-box { background:var(--green); border-color:var(--green); }
+.verify-option input:checked + .verify-box::after { content:"✓"; font-weight:bold; }
+.verify-option input:focus-visible + .verify-box { outline:3px solid #8dc6a0; outline-offset:3px; }
+.verify-copy { line-height:1.6; }
+.verify-copy small { display:block; margin-top:3px; color:var(--muted); }
+
+/* Weekly reminder checkboxes */
 .days { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
 .day-option { position:relative; }
 .day-option input { position:absolute; opacity:0; width:1px; height:1px; }
@@ -110,22 +112,13 @@ p { line-height:1.65; }
   background:#f7faf8; cursor:pointer; transition:all .18s ease;
   color:#435449; font-size:13px; font-weight:600;
 }
-.day-check {
-  width:23px; height:23px; flex:0 0 23px; border:2px solid #bdcbc0;
-  border-radius:7px; background:white; display:grid; place-items:center;
-  color:white; font-size:15px; transition:all .18s ease;
-}
-.day-option input:checked + label {
-  background:var(--light); border-color:var(--green); color:var(--dark);
-  box-shadow:0 0 0 2px #1756380a;
-}
-.day-option input:checked + label .day-check {
-  background:var(--green); border-color:var(--green);
-}
+.day-check { width:23px; height:23px; flex:0 0 23px; border:2px solid #bdcbc0; border-radius:7px; background:white; display:grid; place-items:center; color:white; font-size:15px; transition:all .18s ease; }
+.day-option input:checked + label { background:var(--light); border-color:var(--green); color:var(--dark); }
+.day-option input:checked + label .day-check { background:var(--green); border-color:var(--green); }
 .day-option input:checked + label .day-check::after { content:"✓"; font-weight:bold; }
 .day-option input:focus-visible + label { outline:3px solid #8dc6a0; outline-offset:2px; }
 
-/* Patient connection QR scanner */
+/* Patient QR connection */
 .connection-intro { margin:0 0 16px; }
 .scanner-card { border:1px solid var(--border); background:#f7faf8; border-radius:15px; padding:14px; margin:16px 0; }
 .scanner-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
@@ -140,29 +133,46 @@ p { line-height:1.65; }
 .or-divider::before,.or-divider::after { content:""; height:1px; background:var(--border); flex:1; }
 .connection-note { background:#f7faf8; border-radius:10px; padding:12px; font-size:12px; line-height:1.7; color:var(--muted); margin-top:16px; }
 video { max-width:100%; }
-.overlay { position:fixed; inset:0; z-index:20; display:none; align-items:center; justify-content:center; padding:15px; background:#10251a77; }
+
+.overlay { position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; padding:15px; background:#10251a77; }
 .overlay.open { display:flex; }
 .modal { width:min(100%,520px); max-height:90vh; overflow:auto; background:white; border-radius:18px; padding:23px; box-shadow:0 20px 70px #10251a30; }
 .modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:15px; }
 .close { flex:0 0 auto; border:0; border-radius:9px; padding:9px 11px; background:var(--light); color:var(--green); }
+
 @media(max-width:850px) {
   .app { grid-template-columns:180px minmax(0,1fr); }
   .main { padding:20px 15px; }
   .stats { grid-template-columns:1fr; }
 }
+
 @media(max-width:650px) {
-  .app { display:block; padding-bottom:75px; }
-  .sidebar { position:fixed; z-index:10; top:auto; bottom:0; left:0; right:0; height:auto; padding:6px 4px calc(6px + env(safe-area-inset-bottom)); border:0; border-top:1px solid var(--border); display:block; }
-  .brand,.nav-label,.sidebar-bottom { display:none; }
-  .sidebar nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:2px; }
-  .nav-btn { flex-direction:column; justify-content:center; gap:4px; margin:0; padding:8px 2px; font-size:10px; text-align:center; }
+  .app { display:block; padding-bottom:85px; }
+  .sidebar {
+    position:fixed; z-index:30; top:auto; bottom:0; left:0; right:0;
+    height:auto; padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    border:0; border-top:1px solid var(--border); display:block; background:white;
+  }
+  .brand,.sidebar > .nav-label { display:none; }
+  .sidebar nav { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px; }
+  .nav-btn { flex-direction:column; justify-content:center; align-items:center; gap:4px; margin:0; padding:8px 2px; font-size:10px; text-align:center; }
+  #mobileAccountButton { display:flex; }
+  .sidebar-bottom { display:none; }
+  .sidebar-bottom.mobile-open {
+    display:block; position:fixed; left:12px; right:12px;
+    bottom:calc(78px + env(safe-area-inset-bottom)); z-index:40;
+    margin:0; padding:12px; background:white; border:1px solid var(--border);
+    border-radius:15px; box-shadow:0 8px 30px #10442b25;
+  }
+  .sidebar-bottom.mobile-open .nav-label { display:block; padding:7px 10px; }
+  .sidebar-bottom.mobile-open .nav-btn { display:flex; flex-direction:row; justify-content:flex-start; align-items:center; gap:10px; padding:13px 12px; font-size:13px; text-align:left; }
   .main { padding:17px 12px 25px; }
   .topbar h1 { font-size:21px; }
   .profile-text { display:none; }
   .welcome { padding:19px; }
   .welcome h2 { font-size:20px; }
   .welcome-icon { font-size:32px; }
-  .stats { gap:8px; }
+  .stats { grid-template-columns:1fr; gap:8px; }
   .stat { padding:14px; margin-bottom:0; }
   .panel { padding:15px; }
   .form-grid { grid-template-columns:1fr; }
@@ -175,23 +185,26 @@ video { max-width:100%; }
 }
 </style>
 </head>
-
 <body>
+
 <div class="app">
 <aside class="sidebar">
   <div class="brand"><span>✚</span>Medminder</div>
   <div class="nav-label">AUTHORIZED WORKSPACE</div>
+
   <nav>
-    <button class="nav-btn active" data-page="medicinesPage">💊 Medicines</button>
-    <button class="nav-btn" data-page="remindersPage">🔔 Reminders</button>
-    <button class="nav-btn" data-page="refillsPage">📦 Refills</button>
-    <button class="nav-btn" data-page="historyPage">📋 History</button>
+    <button class="nav-btn active" data-page="medicinesPage" type="button">💊 <span>Medicines</span></button>
+    <button class="nav-btn" data-page="remindersPage" type="button">🔔 <span>Reminders</span></button>
+    <button class="nav-btn" data-page="refillsPage" type="button">📦 <span>Refills</span></button>
+    <button class="nav-btn" data-page="historyPage" type="button">📋 <span>History</span></button>
+    <button class="nav-btn" id="mobileAccountButton" type="button" aria-expanded="false" aria-controls="accountMenu">👤 <span>Account</span></button>
   </nav>
-  <div class="sidebar-bottom">
+
+  <div class="sidebar-bottom" id="accountMenu">
     <div class="nav-label">ACCOUNT</div>
-    <button class="nav-btn" id="openConnection">🔗 Patient connection</button>
-    <button class="nav-btn" id="openNotifications">🔔 Notifications</button>
-    <button class="nav-btn" id="openProfile">👤 My profile</button>
+    <button class="nav-btn" id="openConnection" type="button">🔗 <span>Patient connection</span></button>
+    <button class="nav-btn" id="openNotifications" type="button">🔔 <span>Notifications</span></button>
+    <button class="nav-btn" id="openProfile" type="button">👤 <span>My profile</span></button>
   </div>
 </aside>
 
@@ -201,7 +214,7 @@ video { max-width:100%; }
     <h1 id="pageTitle">Authorized dashboard</h1>
     <div class="muted" id="pageSubtitle">Manage connected patient medicine schedules.</div>
   </div>
-  <button class="profile-shortcut" id="profileButton">
+  <button class="profile-shortcut" id="profileButton" type="button">
     <span class="avatar" id="avatar">A</span>
     <span class="profile-text"><b id="displayName">My account</b><br><small class="muted">My profile</small></span>
   </button>
@@ -212,7 +225,6 @@ video { max-width:100%; }
     <div><h2 id="welcomeTitle">Welcome to Medminder!</h2><p>Organize medicines, recurring reminders, and refill alerts for your connected patient.</p></div>
     <div class="welcome-icon">💊</div>
   </div>
-
   <div class="stats">
     <div class="stat"><div class="stat-label">Medicines</div><div class="stat-number" id="medicineCount">0</div><div class="muted">Saved records</div></div>
     <div class="stat"><div class="stat-label">Schedules</div><div class="stat-number" id="reminderCount">0</div><div class="muted">Reminder records</div></div>
@@ -222,9 +234,8 @@ video { max-width:100%; }
   <div class="panel">
     <div class="panel-heading">
       <div><h2>Medicine list</h2><p class="muted">Enter medicine details and verify them before saving.</p></div>
-      <button class="btn" id="toggleMedicineForm">＋ Add medicine</button>
+      <button class="btn" id="toggleMedicineForm" type="button">＋ Add medicine</button>
     </div>
-
     <div class="form-panel" id="medicineForm">
       <h3 id="medicineFormTitle">Add medicine</h3>
       <form id="medicineFormElement">
@@ -237,22 +248,17 @@ video { max-width:100%; }
           <div class="field full"><label for="medicineInstructions">Prescription instructions</label><input id="medicineInstructions" maxlength="250" placeholder="Follow the prescription or pharmacist's instructions"></div>
           <div class="field full"><label for="medicineNotes">Additional notes</label><textarea id="medicineNotes" maxlength="500" placeholder="Optional notes"></textarea></div>
         </div>
-
-        <label class="day-option" style="display:block;margin-top:16px">
+        <label class="verify-option" for="medicineDetailsVerified">
           <input type="checkbox" id="medicineDetailsVerified" required>
-          <span style="display:flex;align-items:center;gap:10px;background:#f7faf8;border:1px solid var(--border);padding:13px;border-radius:12px">
-            <span class="day-check" aria-hidden="true"></span>
-            <span><strong>I have verified these medicine details</strong><br><small class="muted">Check the name, strength, and instructions against the package or prescription.</small></span>
-          </span>
+          <span class="verify-box" aria-hidden="true"></span>
+          <span class="verify-copy"><strong>I have verified these medicine details</strong><small>Check the name, strength, and instructions against the package or prescription.</small></span>
         </label>
-
         <div class="form-actions">
           <button class="btn" id="saveMedicine" type="submit">Save medicine</button>
           <button class="btn secondary" type="button" id="cancelMedicine">Cancel</button>
         </div>
       </form>
     </div>
-
     <div id="medicineList"><div class="empty">Loading medicines...</div></div>
     <div class="message" id="pageMessage" role="status"></div>
   </div>
@@ -262,21 +268,15 @@ video { max-width:100%; }
   <div class="panel">
     <div class="panel-heading">
       <div><h2>Medicine reminders</h2><p class="muted">Set a one-time or weekly repeating schedule.</p></div>
-      <button class="btn" id="toggleReminderForm">＋ Add reminder</button>
+      <button class="btn" id="toggleReminderForm" type="button">＋ Add reminder</button>
     </div>
-
     <div class="form-panel" id="reminderForm">
       <form id="reminderFormElement">
         <input type="hidden" id="reminderEditId">
         <div class="form-grid">
           <div class="field full"><label for="reminderMedicine">Medicine *</label><select id="reminderMedicine" required><option value="">Choose medicine</option></select></div>
-
-          <div class="field full"><label for="recurrenceType">Schedule type</label>
-            <select id="recurrenceType"><option value="once">One time</option><option value="weekly">Repeat weekly</option></select>
-          </div>
-
+          <div class="field full"><label for="recurrenceType">Schedule type</label><select id="recurrenceType"><option value="once">One time</option><option value="weekly">Repeat weekly</option></select></div>
           <div class="field full" id="onceDateField"><label for="reminderDate">Date *</label><input type="date" id="reminderDate" required></div>
-
           <div class="field full" id="weeklyDaysField" style="display:none">
             <label>Repeat on</label>
             <div class="days">
@@ -289,12 +289,10 @@ video { max-width:100%; }
               <div class="day-option"><input id="day6" type="checkbox" name="weeklyDay" value="6"><label for="day6"><span class="day-check"></span>Saturday</label></div>
             </div>
           </div>
-
           <div class="field"><label for="reminderTime">Reminder time *</label><input type="time" id="reminderTime" value="08:00" required></div>
           <div class="field"><label for="reminderDose">Dose for this reminder</label><input id="reminderDose" maxlength="100" placeholder="As prescribed"></div>
           <div class="field full"><label for="reminderNotes">Notes</label><textarea id="reminderNotes" maxlength="300" placeholder="Optional reminder notes"></textarea></div>
         </div>
-
         <div class="form-actions">
           <button class="btn" id="saveReminder" type="submit">Save reminder</button>
           <button class="btn secondary" type="button" id="cancelReminder">Cancel</button>
@@ -311,28 +309,20 @@ video { max-width:100%; }
 </section>
 
 <section class="page" id="historyPage">
-  <div class="panel"><div class="panel-heading"><div><h2>Activity history</h2><p class="muted">Medicine and reminder changes.</p></div><button class="btn secondary" id="refreshHistory">↻ Refresh</button></div><div id="historyList"></div></div>
+  <div class="panel"><div class="panel-heading"><div><h2>Activity history</h2><p class="muted">Medicine and reminder changes.</p></div><button class="btn secondary" id="refreshHistory" type="button">↻ Refresh</button></div><div id="historyList"></div></div>
 </section>
 </main>
 </div>
 
-<!-- Patient connection modal -->
 <div class="overlay" id="connectionOverlay">
   <section class="modal">
-    <div class="modal-head"><h2>Connect to a patient</h2><button class="close" data-close="connectionOverlay" aria-label="Close">✕</button></div>
+    <div class="modal-head"><h2>Connect to a patient</h2><button class="close" data-close="connectionOverlay" type="button" aria-label="Close">✕</button></div>
     <p class="muted connection-intro">Scan the patient's Medminder QR code or enter the connection code manually.</p>
-
     <div class="scanner-card">
-      <div class="scanner-head">
-        <div><h3>📷 Scan patient QR code</h3><div class="muted" style="font-size:12px">Allow camera access when prompted.</div></div>
-      </div>
+      <div class="scanner-head"><div><h3>📷 Scan patient QR code</h3><div class="muted" style="font-size:12px">Allow camera access when prompted.</div></div></div>
       <div class="scanner-view" id="scannerView">
         <video id="qrVideo" playsinline muted></video>
-        <div class="scanner-placeholder">
-          <div class="scanner-icon">▦</div>
-          <strong>QR scanner ready</strong>
-          <div class="scanner-status" id="scannerStatus">Start the camera and point it at the patient's connection QR code.</div>
-        </div>
+        <div class="scanner-placeholder"><div class="scanner-icon">▦</div><strong>QR scanner ready</strong><div class="scanner-status" id="scannerStatus">Start the camera and point it at the patient's connection QR code.</div></div>
       </div>
       <div class="form-actions">
         <button class="btn" type="button" id="startQrScanner">Start camera scanner</button>
@@ -341,50 +331,74 @@ video { max-width:100%; }
         <input id="qrImageInput" type="file" accept="image/*" hidden>
       </div>
     </div>
-
     <div class="or-divider">OR ENTER CODE MANUALLY</div>
-
     <form id="connectionForm">
-      <div class="field">
-        <label for="connectionCode">Patient connection code</label>
-        <input id="connectionCode" required maxlength="120" autocomplete="off" placeholder="Enter or scan the connection code">
-      </div>
+      <div class="field"><label for="connectionCode">Patient connection code</label><input id="connectionCode" required maxlength="120" autocomplete="off" placeholder="Enter or scan the connection code"></div>
       <div class="form-actions"><button class="btn" id="connectPatientButton" type="submit">Connect patient</button></div>
       <div class="message" id="connectionMessage" role="status"></div>
     </form>
-
-    <div class="connection-note">
-      <strong>Security notice</strong><br>
-      Only use codes issued through your Medminder connection workflow. Scanning or entering a code does not grant access by itself. Your Firebase database must verify the patient and authorize the relationship.
-    </div>
+    <div class="connection-note"><strong>Security notice</strong><br>Only use codes issued through your Medminder connection workflow. Scanning or entering a code does not grant access by itself. Your Firebase database must verify the patient and authorize the relationship.</div>
   </section>
 </div>
 
 <div class="overlay" id="notificationsOverlay">
   <section class="modal">
-    <div class="modal-head"><h2>Notifications</h2><button class="close" data-close="notificationsOverlay">✕</button></div>
+    <div class="modal-head"><h2>Notifications</h2><button class="close" data-close="notificationsOverlay" type="button">✕</button></div>
     <div id="notificationList"></div>
-    <div class="form-actions"><button class="btn secondary" id="markRead">Close notifications</button></div>
+    <div class="form-actions"><button class="btn secondary" id="markRead" type="button">Close notifications</button></div>
   </section>
 </div>
 
 <div class="overlay" id="profileOverlay">
   <section class="modal">
-    <div class="modal-head"><h2>My profile</h2><button class="close" data-close="profileOverlay">✕</button></div>
+    <div class="modal-head"><h2>My profile</h2><button class="close" data-close="profileOverlay" type="button">✕</button></div>
     <p id="profileEmail" class="muted"></p>
     <h3>Change password</h3>
     <form id="passwordForm">
       <div class="field"><label for="currentPassword">Current password</label><input id="currentPassword" type="password" required autocomplete="current-password"></div>
       <div class="field" style="margin-top:12px"><label for="newPassword">New password</label><input id="newPassword" type="password" required minlength="8" autocomplete="new-password"></div>
       <div class="field" style="margin-top:12px"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" type="password" required minlength="8" autocomplete="new-password"></div>
-      <div class="message" id="passwordMessage"></div>
+      <div class="message" id="passwordMessage" role="status"></div>
       <div class="form-actions"><button class="btn" type="submit">Update password</button></div>
     </form>
     <hr style="border:0;border-top:1px solid var(--border);margin:22px 0">
-    <button class="btn danger" id="logoutButton">Log out</button>
+    <button class="btn danger" id="logoutButton" type="button">Log out</button>
   </section>
 </div>
 
-<script type="module" src="js/dashboard.js"></script>
+<script type="module">
+import "./js/dashboard.js";
+
+const accountButton = document.getElementById("mobileAccountButton");
+const accountMenu = document.getElementById("accountMenu");
+
+function closeAccountMenu() {
+  accountMenu?.classList.remove("mobile-open");
+  accountButton?.setAttribute("aria-expanded", "false");
+}
+
+accountButton?.addEventListener("click", event => {
+  event.stopPropagation();
+  const open = !accountMenu.classList.contains("mobile-open");
+  accountMenu.classList.toggle("mobile-open", open);
+  accountButton.setAttribute("aria-expanded", String(open));
+});
+
+["openConnection", "openNotifications", "openProfile"].forEach(id => {
+  document.getElementById(id)?.addEventListener("click", closeAccountMenu);
+});
+
+document.addEventListener("click", event => {
+  if (
+    accountMenu?.classList.contains("mobile-open") &&
+    !accountMenu.contains(event.target) &&
+    !accountButton?.contains(event.target)
+  ) closeAccountMenu();
+});
+
+window.addEventListener("resize", () => {
+  if (window.innerWidth > 650) closeAccountMenu();
+});
+</script>
 </body>
 </html>
