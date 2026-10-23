@@ -1,6 +1,6 @@
 
-import { auth, db } from "./firebaseConfig.js";
-
+import { auth, db, functions } from "./firebaseConfig.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
 import {
   onAuthStateChanged,
   signOut,
@@ -853,74 +853,99 @@ $("openNotifications")?.addEventListener("click", () => showPage("notificationsP
 $("openProfile")?.addEventListener("click", () => showPage("profilePage"));
 $("profileButton")?.addEventListener("click", () => showPage("profilePage"));
 
+
 /* =========================================================
    PATIENT CONNECTION
-   Lookup only — does not grant access to patient data.
+   Connect an authorized person to a patient using a code.
+   Uses Firebase Callable Cloud Functions.
    ========================================================= */
 
-$("connectionForm")?.addEventListener("submit", async event => {
+$("connectionForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  if (!state.user) {
-    showMessage("connectionMessage", "Please sign in first.", "error");
-    return;
-  }
-
-  const code = $("connectionCode")?.value.trim() || "";
-  if (!code) {
-    showMessage("connectionMessage", "Enter a patient connection code.", "error");
-    return;
-  }
-
-  const submitButton = $("connectionForm").querySelector('button[type="submit"]');
-  const originalText = submitButton?.textContent;
-
-  if (submitButton) {
-    submitButton.disabled = true;
-    submitButton.textContent = "Checking code…";
-  }
-
-  hideMessage("connectionMessage");
-
-  try {
-    const snapshot = await get(ref(db, `connectionCodes/${code}`));
-
-    if (!snapshot.exists()) {
-      showMessage("connectionMessage", "Code not found. Check the code and try again.", "error");
-      return;
-    }
-
-    const record = snapshot.val();
-    const patientUid = record?.patientUid;
-
-    if (!patientUid || typeof patientUid !== "string") {
-      showMessage("connectionMessage", "This code does not contain a valid patient reference.", "error");
-      return;
-    }
-
-    if (patientUid === state.user.uid) {
-      showMessage("connectionMessage", "You cannot connect an account to itself.", "error");
-      return;
-    }
-
+  if (!state.user || !auth.currentUser) {
     showMessage(
       "connectionMessage",
-      "The code was found, but no connection has been created. Patient consent and secure Firebase permissions must be implemented first.",
+      "Please sign in again.",
       "error"
     );
-  } catch (error) {
-    console.error("Connection code lookup failed:", error);
+    return;
+  }
+
+  const code = $("connectionCode")?.value.trim().toUpperCase() || "";
+
+  if (!code) {
+    showMessage(
+      "connectionMessage",
+      "Please enter the patient's connection code.",
+      "error"
+    );
+    return;
+  }
+
+  const form = $("connectionForm");
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  hideMessage("connectionMessage");
+  setButtonBusy(submitButton, true, "Connecting...");
+
+  try {
+    const redeemConnectionCode = httpsCallable(
+      functions,
+      "redeemConnectionCode"
+    );
+
+    const result = await redeemConnectionCode({ code });
+
+    console.log("Connection response:", result.data);
 
     showMessage(
       "connectionMessage",
-      "Unable to verify this code. Your current Firebase rules may block access to connectionCodes. The connection has not been created.",
+      result.data?.message ||
+        "Patient connection processed successfully.",
+      "success"
+    );
+
+    form.reset();
+  } catch (error) {
+    console.error("Patient connection error:", {
+      code: error.code,
+      message: error.message,
+      details: error.details
+    });
+
+    const messages = {
+      "functions/unauthenticated":
+        "Your session has expired. Please sign in again.",
+
+      "functions/permission-denied":
+        "Only an authorized person can connect to a patient. Please check your account role.",
+
+      "functions/invalid-argument":
+        "Please enter a valid six-digit patient connection code.",
+
+      "functions/not-found":
+        "The connection code is invalid, expired, or already used. Ask the patient to generate a new code.",
+
+      "functions/already-exists":
+        "This patient already has an active caregiver connection.",
+
+      "functions/failed-precondition":
+        "The patient or authorized-person profile is missing or has an incorrect role.",
+
+      "functions/unavailable":
+        "The connection service is unavailable. Check your Firebase Cloud Functions deployment."
+    };
+
+    showMessage(
+      "connectionMessage",
+      messages[error.code] ||
+        error.message ||
+        "Unable to connect to the patient. Please try again.",
       "error"
     );
   } finally {
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = originalText || "Verify code";
-    }
+    setButtonBusy(submitButton, false);
   }
 });
 

@@ -692,14 +692,22 @@
           <p class="muted">Connect to a patient using a connection code. QR scanning has been removed.</p>
           <div class="notice">Enter the code provided by the patient. A code alone must not grant access to private medicine records. The patient must approve the connection.</div>
           <form id="connectionForm">
-            <div class="field" style="margin-top:16px">
-              <label for="connectionCode">Patient connection code</label>
-              <input id="connectionCode" class="connection-code" maxlength="64" autocomplete="off" placeholder="Enter connection code" required>
-            </div>
-            <div class="form-actions">
-              <button class="btn btn-primary" type="submit">Verify code</button>
-            </div>
-          </form>
+          <label for="connectionCode">Patient connection code</label>
+
+          <input
+            type="text"
+            id="connectionCode"
+            name="connectionCode"
+            placeholder="Enter patient's code"
+            maxlength="6"
+            autocomplete="off"
+            required
+          />
+
+          <button type="submit">Connect to Patient</button>
+
+          <p id="connectionMessage" role="status"></p>
+        </form>
           <div id="connectionMessage" class="message" role="status" aria-live="polite"></div>
         </div>
       </section>
