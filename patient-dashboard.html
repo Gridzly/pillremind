@@ -2,319 +2,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Medminder | My Medicines</title>
-
-  <style>
-    :root {
-      --green: #175638;
-      --dark: #10442b;
-      --mint: #e7f4eb;
-      --bg: #f4f8f5;
-      --text: #24372b;
-      --muted: #758178;
-      --border: #e0e9e2;
-      --white: #fff;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.5;
-    }
-
-    button { font: inherit; cursor: pointer; }
-
-    header {
-      background: white;
-      border-bottom: 1px solid var(--border);
-      padding: 15px 18px;
-    }
-
-    .header-inner {
-      max-width: 850px;
-      margin: auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .brand {
-      color: var(--green);
-      font-size: 21px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-
-    .logo {
-      display: grid;
-      place-items: center;
-      background: var(--mint);
-      border-radius: 11px;
-      width: 39px;
-      height: 39px;
-      font-size: 21px;
-    }
-
-    .logout {
-      padding: 9px 13px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: white;
-      color: var(--green);
-      font-weight: 700;
-    }
-
-    main {
-      width: min(100% - 28px, 850px);
-      margin: 25px auto 100px;
-    }
-
-    .welcome { margin-bottom: 20px; }
-    h1 { font-size: 27px; color: var(--dark); }
-    .muted { color: var(--muted); font-size: 14px; }
-
-    .welcome-card {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: var(--mint);
-      border: 1px solid #d8e9dc;
-      border-radius: 15px;
-      padding: 16px;
-      margin-bottom: 22px;
-    }
-
-    .avatar {
-      background: white;
-      border-radius: 50%;
-      width: 46px;
-      height: 46px;
-      display: grid;
-      place-items: center;
-      font-size: 23px;
-      flex-shrink: 0;
-    }
-
-    .welcome-card h2 { font-size: 16px; color: var(--dark); }
-    .welcome-card p { font-size: 13px; color: #587260; }
-
-    .section { display: none; }
-    .section.active { display: block; }
-
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 11px;
-      margin-bottom: 25px;
-    }
-
-    .summary-card, .item {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-    }
-
-    .summary-card { padding: 14px; }
-    .summary-icon {
-      width: 35px;
-      height: 35px;
-      display: grid;
-      place-items: center;
-      background: var(--mint);
-      border-radius: 10px;
-      margin-bottom: 8px;
-      font-size: 18px;
-    }
-
-    .summary-number { font-size: 25px; font-weight: 800; color: var(--green); }
-    .summary-label { color: var(--muted); font-size: 12px; }
-
-    .heading {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin: 22px 0 13px;
-    }
-
-    h2 { font-size: 19px; color: var(--dark); }
-    .list { display: grid; gap: 10px; }
-    .item { padding: 14px; }
-    .item h3 { font-size: 15px; margin-bottom: 3px; }
-    .item p { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
-
-    .empty {
-      padding: 23px 14px;
-      text-align: center;
-      background: white;
-      border: 1px dashed #cbd9ce;
-      border-radius: 13px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .error {
-      display: none;
-      background: #fff0f0;
-      color: #b52d2d;
-      padding: 12px;
-      border-radius: 10px;
-      margin-bottom: 15px;
-      font-size: 14px;
-    }
-
-    .bottom-nav {
-      position: fixed;
-      z-index: 5;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      background: white;
-      border-top: 1px solid var(--border);
-      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-    }
-
-    .nav-inner {
-      max-width: 500px;
-      margin: auto;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-
-    .nav-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 3px;
-      padding: 8px 3px;
-      border: none;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .nav-btn .icon { font-size: 20px; }
-    .nav-btn.active { background: var(--mint); color: var(--green); }
-
-    @media (max-width: 480px) {
-      h1 { font-size: 24px; }
-      .summary { gap: 7px; }
-      .summary-card { padding: 10px 8px; }
-      .summary-number { font-size: 22px; }
-      .summary-label { font-size: 11px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#175638">
+<title>Medminder | Patient Dashboard</title>
+<style>
+:root{--green:#175638;--dark:#10442b;--mint:#e7f4eb;--bg:#f4f8f5;--text:#24372b;--muted:#758178;--border:#e0e9e2;--white:#fff;--red:#b52d2d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px Arial,Helvetica,sans-serif;line-height:1.5}
+button{font:inherit;cursor:pointer}
+button:disabled{opacity:.55;cursor:not-allowed}
+header{background:#fff;border-bottom:1px solid var(--border);padding:14px 18px}
+.header-inner{max-width:900px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:9px;color:var(--green);font-size:21px;font-weight:800}
+.logo{display:grid;place-items:center;width:40px;height:40px;background:var(--mint);border-radius:12px;font-size:21px}
+.logout{padding:9px 13px;background:white;color:var(--green);border:1px solid var(--border);border-radius:10px;font-weight:700}
+main{width:min(100% - 28px,900px);margin:22px auto 100px}
+h1{font-size:27px;color:var(--dark);margin:0 0 4px}
+h2{font-size:18px;color:var(--dark);margin:0}
+h3{font-size:15px;margin:0 0 5px}
+p{margin:0}
+.muted{color:var(--muted);font-size:13px;line-height:1.65}
+.welcome{display:flex;justify-content:space-between;align-items:center;gap:12px;background:linear-gradient(115deg,#175638,#287b50);color:#fff;border-radius:17px;padding:22px;margin:18px 0}
+.welcome h1{color:white;font-size:24px}
+.welcome p{color:#e2f3e8;margin-top:5px}
+.welcome-icon{font-size:40px}
+.connection-banner{display:none;margin:0 0 16px;padding:13px 15px;border-radius:12px;background:#fff4e5;border:1px solid #f0dfc4;color:#74521e;line-height:1.6}
+.error{display:none;margin-bottom:16px;padding:12px 14px;background:#fff0f0;border:1px solid #f1d1d1;color:var(--red);border-radius:11px;line-height:1.6;overflow-wrap:anywhere}
+.error.show{display:block}
+.success{display:none;margin-bottom:16px;padding:12px 14px;background:var(--mint);color:var(--green);border-radius:11px}
+.success.show{display:block}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-bottom:20px}
+.stat,.panel,.dose-card,.medicine-card{background:#fff;border:1px solid var(--border);border-radius:14px}
+.stat{padding:15px}
+.stat-icon{width:35px;height:35px;border-radius:10px;display:grid;place-items:center;background:var(--mint);font-size:18px;margin-bottom:8px}
+.stat-number{font-size:25px;font-weight:800;color:var(--green);overflow-wrap:anywhere}
+.stat-label{font-size:12px;color:var(--muted)}
+.section{display:none}
+.section.active{display:block}
+.panel{padding:17px;margin-bottom:16px}
+.panel-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:13px}
+.date-label{color:var(--muted);font-size:12px}
+.list{display:grid;gap:10px}
+.empty{padding:22px 14px;text-align:center;background:#f9fbf9;border:1px dashed #cbd9ce;border-radius:12px;color:var(--muted);line-height:1.7}
+.dose-card,.medicine-card{padding:15px}
+.dose-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.dose-title{font-size:15px;font-weight:800;color:var(--dark);overflow-wrap:anywhere}
+.dose-time{font-size:13px;font-weight:700;color:var(--green);margin-top:5px}
+.dose-detail{font-size:13px;color:var(--muted);white-space:pre-line;overflow-wrap:anywhere;margin-top:8px;line-height:1.7}
+.badge{display:inline-block;padding:5px 9px;border-radius:8px;background:var(--mint);color:var(--green);font-size:11px;font-weight:700;white-space:nowrap}
+.badge.past{background:#fff0e0;color:#8a4a10}
+.badge.done{background:#e5f5e9;color:#175638}
+.badge.missed{background:#fff0f0;color:#b52d2d}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 13px;border:1px solid transparent;border-radius:10px;background:var(--green);color:white;font-weight:700}
+.btn:hover{background:var(--dark)}
+.btn.secondary{background:white;border-color:var(--border);color:var(--green)}
+.btn.taken{background:var(--mint);color:var(--green);border-color:#d1e5d7}
+.small-note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:10px}
+.bottom-nav{position:fixed;z-index:5;bottom:0;left:0;width:100%;background:white;border-top:1px solid var(--border);padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+.nav-inner{max-width:520px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 3px;border:0;border-radius:10px;background:transparent;color:var(--muted);font-size:11px;font-weight:700}
+.nav-btn .icon{font-size:20px}
+.nav-btn.active{background:var(--mint);color:var(--green)}
+#loading{padding:18px;text-align:center;color:var(--muted)}
+@media(max-width:480px){
+ main{width:calc(100% - 20px);margin-top:15px}
+ .welcome{padding:17px}
+ .welcome h1{font-size:21px}
+ .welcome-icon{font-size:31px}
+ .stats{gap:7px}
+ .stat{padding:10px 8px}
+ .stat-number{font-size:22px}
+ .stat-label{font-size:11px}
+ .panel{padding:13px}
+ .dose-top{gap:7px}
+ .badge{font-size:10px;padding:4px 6px}
+ .actions .btn{flex:1}
+}
+</style>
 </head>
-
 <body>
-  <header>
-    <div class="header-inner">
-      <div class="brand"><span class="logo">💊</span> Medminder</div>
-      <button class="logout" id="logoutButton" type="button">Log out</button>
-    </div>
-  </header>
+<header>
+  <div class="header-inner">
+    <div class="brand"><span class="logo">💊</span>Medminder</div>
+    <button class="logout" id="logoutButton" type="button">Log out</button>
+  </div>
+</header>
 
-  <main>
-    <div id="loading" class="muted">Loading your medicines...</div>
-    <div id="error" class="error" role="alert"></div>
+<main>
+  <div id="loading" role="status">Loading your medication plan…</div>
+  <div id="error" class="error" role="alert"></div>
+  <div id="success" class="success" role="status"></div>
 
-    <div id="app" style="display:none">
-      <div class="welcome">
+  <div id="app" style="display:none">
+    <div class="welcome">
+      <div>
         <h1 id="welcomeTitle">Hello!</h1>
-        <p class="muted">Let's keep track of your daily medicines.</p>
+        <p>Your medicines and reminders, all in one place.</p>
+      </div>
+      <div class="welcome-icon">🌿</div>
+    </div>
+
+    <div id="connectionBanner" class="connection-banner"></div>
+
+    <section class="section active" id="homeSection">
+      <div class="stats">
+        <div class="stat"><div class="stat-icon">💊</div><div class="stat-number" id="medicineCount">0</div><div class="stat-label">My medicines</div></div>
+        <div class="stat"><div class="stat-icon">🔔</div><div class="stat-number" id="todayCount">0</div><div class="stat-label">Today's doses</div></div>
+        <div class="stat"><div class="stat-icon">✓</div><div class="stat-number" id="takenCount">0</div><div class="stat-label">Marked taken today</div></div>
       </div>
 
-      <div class="welcome-card">
-        <div class="avatar">🌷</div>
-        <div>
-          <h2>My medication plan</h2>
-          <p id="accountRole">Your medicines and reminders</p>
+      <div class="panel">
+        <div class="panel-heading">
+          <h2>Today's medicine schedule</h2>
+          <span class="date-label" id="todayLabel"></span>
         </div>
+        <div id="todayList" class="list"><div class="empty">Loading today's schedule…</div></div>
       </div>
 
-      <section id="medicinesSection" class="section active">
-        <div class="summary">
-          <div class="summary-card">
-            <div class="summary-icon">💊</div>
-            <div id="medicineCount" class="summary-number">0</div>
-            <div class="summary-label">My medicines</div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-icon">🔔</div>
-            <div id="reminderCount" class="summary-number">0</div>
-            <div class="summary-label">Reminders</div>
-          </div>
-          <div class="summary-card">
-            <div class="summary-icon">📅</div>
-            <div class="summary-number" id="todayLabel">Today</div>
-            <div class="summary-label">Today's plan</div>
-          </div>
-        </div>
+      <div class="panel">
+        <div class="panel-heading"><h2>My medicines</h2></div>
+        <div id="medicineList" class="list"><div class="empty">Your medicines will appear here.</div></div>
+      </div>
+    </section>
 
-        <div class="heading"><h2>My medicines</h2></div>
-        <div id="medicineList" class="list">
-          <div class="empty">Your medicines will appear here.</div>
-        </div>
-      </section>
+    <section class="section" id="remindersSection">
+      <div class="panel">
+        <div class="panel-heading"><h2>All scheduled reminders</h2></div>
+        <p class="muted" style="margin-bottom:13px">Your caregiver's one-time and repeating weekly schedules appear here.</p>
+        <div id="reminderList" class="list"><div class="empty">Loading reminders…</div></div>
+      </div>
+    </section>
 
-      <section id="remindersSection" class="section">
-        <div class="heading"><h2>My reminders</h2></div>
-        <div id="reminderList" class="list">
-          <div class="empty">Your reminders will appear here.</div>
-        </div>
-      </section>
+    <section class="section" id="historySection">
+      <div class="panel">
+        <div class="panel-heading"><h2>Medication history</h2></div>
+        <div id="historyList" class="list"><div class="empty">Your recorded doses will appear here.</div></div>
+      </div>
+    </section>
+  </div>
+</main>
 
-      <section id="historySection" class="section">
-        <div class="heading"><h2>Medication history</h2></div>
-        <div id="historyList" class="list">
-          <div class="empty">Recorded medication activity will appear here.</div>
-        </div>
-      </section>
-    </div>
-  </main>
+<nav class="bottom-nav" aria-label="Main navigation">
+  <div class="nav-inner">
+    <button class="nav-btn active" type="button" data-target="homeSection"><span class="icon">🏠</span><span>Home</span></button>
+    <button class="nav-btn" type="button" data-target="remindersSection"><span class="icon">🔔</span><span>Reminders</span></button>
+    <button class="nav-btn" type="button" data-target="historySection"><span class="icon">📋</span><span>History</span></button>
+  </div>
+</nav>
 
-  <nav class="bottom-nav" aria-label="Main navigation">
-    <div class="nav-inner">
-      <button class="nav-btn active" type="button" data-target="medicinesSection">
-        <span class="icon">🏠</span><span>Home</span>
-      </button>
-      <button class="nav-btn" type="button" data-target="remindersSection">
-        <span class="icon">🔔</span><span>Reminders</span>
-      </button>
-      <button class="nav-btn" type="button" data-target="historySection">
-        <span class="icon">📋</span><span>History</span>
-      </button>
-    </div>
-  </nav>
-
-  <script>
-    document.querySelectorAll(".nav-btn").forEach(function(button) {
-      button.addEventListener("click", function() {
-        document.querySelectorAll(".section").forEach(function(section) {
-          section.classList.toggle("active", section.id === button.dataset.target);
-        });
-        document.querySelectorAll(".nav-btn").forEach(function(nav) {
-          nav.classList.toggle("active", nav === button);
-        });
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      });
-    });
-
-    document.getElementById("todayLabel").textContent =
-      new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  </script>
-
-  <script type="module" src="js/dashboard.js"></script>
+<script type="module" src="js/patient-dashboard.js"></script>
 </body>
 </html>
