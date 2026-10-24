@@ -4,120 +4,78 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#175638">
-  <meta name="description" content="Medminder patient dashboard for medicine schedules and reminders.">
+  <meta name="description" content="Medminder patient medicine schedule and reminders">
   <title>Medminder | Patient Dashboard</title>
 
   <style>
     :root {
       --green: #175638;
-      --green-dark: #10442b;
-      --green-light: #e7f4eb;
-      --green-soft: #f2f7f3;
-      --white: #ffffff;
+      --dark: #10442b;
+      --light: #e7f4eb;
+      --bg: #f2f7f3;
+      --white: #fff;
       --text: #20352a;
       --muted: #748278;
       --border: #e3ebe5;
       --red: #c24141;
-      --orange: #b96b17;
-      --shadow: 0 8px 28px rgba(23, 86, 56, 0.07);
+      --shadow: 0 8px 28px rgba(23,86,56,.07);
       --radius: 18px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        Roboto, Arial, sans-serif;
+      background: var(--bg);
       color: var(--text);
-      background: var(--green-soft);
+      font-family: Inter, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Arial, sans-serif;
       line-height: 1.5;
     }
 
-    button, input {
-      font: inherit;
-    }
+    button { font: inherit; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: wait; }
+    .hidden { display: none !important; }
 
-    button {
-      cursor: pointer;
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .loading-screen {
+    .loading {
       min-height: 100vh;
       display: grid;
       place-items: center;
-      padding: 24px;
+      padding: 20px;
       text-align: center;
     }
 
     .loading-card {
-      width: min(100%, 360px);
-      padding: 32px 24px;
-      border-radius: var(--radius);
-      background: var(--white);
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
       box-shadow: var(--shadow);
     }
 
-    .brand-mark {
-      width: 48px;
-      height: 48px;
-      display: grid;
-      place-items: center;
-      margin: 0 auto 14px;
-      border-radius: 15px;
-      background: var(--green-light);
-      color: var(--green);
-      font-size: 26px;
-      font-weight: 800;
-    }
-
     .spinner {
-      width: 26px;
-      height: 26px;
-      margin: 20px auto 0;
-      border: 3px solid var(--green-light);
+      width: 30px;
+      height: 30px;
+      margin: 18px auto 0;
+      border: 3px solid var(--light);
       border-top-color: var(--green);
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: spin .8s linear infinite;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .app {
-      display: none;
-      min-height: 100vh;
-    }
-
-    .app.ready {
-      display: flex;
-    }
+    .app { display: none; min-height: 100vh; }
+    .app.ready { display: flex; }
 
     .sidebar {
       position: fixed;
       inset: 0 auto 0 0;
-      z-index: 20;
+      z-index: 10;
       display: flex;
       flex-direction: column;
-      width: 248px;
-      padding: 26px 18px;
-      background: var(--white);
+      width: 245px;
+      padding: 25px 17px;
+      background: white;
       border-right: 1px solid var(--border);
     }
 
@@ -125,83 +83,64 @@
       display: flex;
       align-items: center;
       gap: 11px;
-      padding: 0 10px;
-      margin-bottom: 36px;
+      margin: 0 8px 35px;
     }
 
-    .brand .brand-mark {
-      flex-shrink: 0;
-      width: 42px;
-      height: 42px;
-      margin: 0;
-      font-size: 23px;
-    }
-
-    .brand-name {
-      font-size: 20px;
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 43px;
+      height: 43px;
+      border-radius: 14px;
+      background: var(--light);
+      color: var(--green);
+      font-size: 25px;
       font-weight: 800;
-      letter-spacing: -0.6px;
-      color: var(--green-dark);
     }
 
-    .brand-caption {
-      color: var(--muted);
-      font-size: 11px;
-      margin-top: -2px;
-    }
+    .brand-name { font-size: 20px; font-weight: 800; color: var(--dark); }
+    .brand-caption { color: var(--muted); font-size: 11px; }
 
     .nav-label {
       margin: 0 12px 10px;
       color: #95a198;
       font-size: 10px;
       font-weight: 800;
-      letter-spacing: 1.3px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
     }
 
-    .nav {
-      display: grid;
-      gap: 7px;
-    }
+    .nav { display: grid; gap: 7px; }
 
     .nav-button {
       display: flex;
       align-items: center;
-      gap: 13px;
+      gap: 12px;
       width: 100%;
-      padding: 12px 14px;
+      padding: 12px;
       border: 0;
-      border-radius: 12px;
+      border-radius: 11px;
       background: transparent;
       color: #66766b;
       text-align: left;
-      font-size: 14px;
-      font-weight: 650;
-      transition: background 0.2s, color 0.2s;
+      font-size: 13px;
+      font-weight: 700;
     }
 
-    .nav-button:hover,
-    .nav-button.active {
-      background: var(--green-light);
+    .nav-button:hover, .nav-button.active {
+      background: var(--light);
       color: var(--green);
     }
 
-    .nav-icon {
-      width: 21px;
-      text-align: center;
-      font-size: 18px;
-    }
+    .nav-icon { width: 22px; text-align: center; font-size: 18px; }
 
-    .sidebar-bottom {
-      margin-top: auto;
-    }
+    .sidebar-bottom { margin-top: auto; }
 
     .user-card {
       display: flex;
       align-items: center;
-      gap: 11px;
-      padding: 15px 8px;
-      margin-bottom: 10px;
+      gap: 10px;
+      padding: 15px 7px;
       border-top: 1px solid var(--border);
     }
 
@@ -209,56 +148,42 @@
       display: grid;
       place-items: center;
       flex-shrink: 0;
-      width: 40px;
-      height: 40px;
+      width: 39px;
+      height: 39px;
       border-radius: 50%;
-      background: var(--green-light);
+      background: var(--light);
       color: var(--green);
-      font-size: 15px;
       font-weight: 800;
     }
 
-    .user-info {
-      min-width: 0;
-    }
-
-    .user-name {
-      overflow: hidden;
-      font-size: 13px;
-      font-weight: 750;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .user-role {
-      color: var(--muted);
-      font-size: 11px;
-    }
+    .user-info { min-width: 0; }
+    .user-name { overflow: hidden; font-size: 13px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .user-role { color: var(--muted); font-size: 11px; }
 
     .logout-button {
       width: 100%;
-      padding: 11px 13px;
+      padding: 11px;
       border: 1px solid var(--border);
-      border-radius: 11px;
+      border-radius: 10px;
       background: white;
       color: var(--red);
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 750;
     }
 
     .main {
-      width: calc(100% - 248px);
+      width: calc(100% - 245px);
       min-width: 0;
-      margin-left: 248px;
-      padding: 30px clamp(18px, 3vw, 42px) 42px;
+      margin-left: 245px;
+      padding: 28px clamp(16px, 3vw, 40px) 40px;
     }
 
     .topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 28px;
+      gap: 15px;
+      margin-bottom: 24px;
     }
 
     .eyebrow {
@@ -266,387 +191,96 @@
       color: var(--green);
       font-size: 11px;
       font-weight: 800;
-      letter-spacing: 1.3px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
     }
 
-    h1, h2, h3, p {
-      overflow-wrap: anywhere;
-    }
+    h1, h2, h3, p { overflow-wrap: anywhere; }
+    h1 { margin: 0; font-size: clamp(23px, 3vw, 30px); line-height: 1.25; }
+    .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
 
-    h1 {
-      margin: 0;
-      font-size: clamp(23px, 3vw, 30px);
-      letter-spacing: -0.9px;
-      line-height: 1.25;
-    }
-
-    .topbar-subtitle {
-      margin: 7px 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .topbar-avatar {
+    .top-avatar {
       display: grid;
       place-items: center;
-      width: 44px;
-      height: 44px;
+      flex-shrink: 0;
+      width: 43px;
+      height: 43px;
       border: 1px solid #d8e9dd;
       border-radius: 50%;
-      background: var(--white);
+      background: white;
       color: var(--green);
       font-weight: 800;
     }
 
     .notice {
-      padding: 13px 15px;
-      margin-bottom: 18px;
+      padding: 12px 14px;
+      margin-bottom: 15px;
       border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--white);
+      border-radius: 11px;
+      background: white;
       font-size: 13px;
       overflow-wrap: anywhere;
     }
 
-    .notice.success {
-      border-color: #b9e2c6;
-      background: #effaf2;
-      color: #17663a;
-    }
+    .notice.success { color: #17663a; background: #effaf2; border-color: #b9e2c6; }
+    .notice.error { color: #a52c2c; background: #fff2f2; border-color: #f1caca; }
+    .notice.info { color: #52685a; background: #f7faf7; }
 
-    .notice.error {
-      border-color: #f1caca;
-      background: #fff2f2;
-      color: #a52c2c;
-    }
-
-    .notice.info {
-      border-color: #d9e6dc;
-      background: #f7faf7;
-      color: #52685a;
-    }
-
-    .welcome-banner {
-      position: relative;
-      overflow: hidden;
-      padding: clamp(23px, 4vw, 35px);
-      margin-bottom: 22px;
-      border-radius: 22px;
+    .welcome {
+      padding: clamp(22px, 4vw, 34px);
+      margin-bottom: 20px;
+      border-radius: 21px;
       background: linear-gradient(120deg, #175638, #28764b);
       color: white;
     }
 
-    .welcome-banner::after {
-      position: absolute;
-      right: -25px;
-      bottom: -95px;
-      width: 230px;
-      height: 230px;
-      border: 35px solid rgba(255, 255, 255, 0.07);
-      border-radius: 50%;
-      content: "";
-      pointer-events: none;
-    }
-
-    .welcome-banner h2 {
-      position: relative;
-      z-index: 1;
-      margin: 0 0 8px;
-      font-size: clamp(21px, 3vw, 27px);
-      letter-spacing: -0.6px;
-    }
-
-    .welcome-banner p {
-      position: relative;
-      z-index: 1;
-      max-width: 560px;
-      margin: 0;
-      color: rgba(255, 255, 255, 0.83);
-      font-size: 13px;
-    }
+    .welcome h2 { margin: 0 0 8px; font-size: clamp(21px, 3vw, 27px); }
+    .welcome p { max-width: 550px; margin: 0; color: #e2eee6; font-size: 13px; }
 
     .stats {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
+      gap: 14px;
+      margin-bottom: 22px;
     }
 
-    .stat-card {
+    .stat-card, .panel {
       min-width: 0;
-      padding: 20px;
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      background: var(--white);
+      background: white;
       box-shadow: var(--shadow);
     }
 
-    .stat-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
+    .stat-card { padding: 17px; }
+    .stat-label { color: var(--muted); font-size: 12px; font-weight: 650; }
+    .stat-value { margin-top: 7px; font-size: 29px; font-weight: 800; }
+    .stat-caption { color: var(--muted); font-size: 11px; }
 
-    .stat-label {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 650;
-    }
-
-    .stat-icon {
-      display: grid;
-      place-items: center;
-      width: 34px;
-      height: 34px;
-      flex-shrink: 0;
-      border-radius: 11px;
-      background: var(--green-light);
-      font-size: 17px;
-    }
-
-    .stat-value {
-      font-size: 29px;
-      font-weight: 800;
-      letter-spacing: -1px;
-    }
-
-    .stat-caption {
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    .page {
-      display: none;
-    }
-
-    .page.active {
-      display: block;
-    }
+    .page { display: none; }
+    .page.active { display: block; }
 
     .content-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.9fr);
-      gap: 20px;
+      grid-template-columns: minmax(0, 1.3fr) minmax(260px, .9fr);
+      gap: 18px;
       align-items: start;
     }
 
-    .panel {
-      min-width: 0;
-      margin-bottom: 20px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--white);
-      box-shadow: var(--shadow);
-    }
+    .panel { margin-bottom: 18px; overflow: hidden; }
 
     .panel-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 20px 21px 16px;
+      padding: 17px 19px;
       border-bottom: 1px solid #edf1ee;
     }
 
-    .panel-header h2 {
-      margin: 0;
-      font-size: 16px;
-      letter-spacing: -0.3px;
-    }
-
-    .panel-subtitle {
-      margin: 5px 0 0;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .panel-body {
-      padding: 19px 21px;
-    }
-
-    .text-button {
-      padding: 6px 9px;
-      border: 0;
-      border-radius: 8px;
-      background: var(--green-light);
-      color: var(--green);
-      font-size: 11px;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-
-    .connection-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 9px;
-      border-radius: 20px;
-      background: #fff1d9;
-      color: #89550e;
-      font-size: 10px;
-      font-weight: 800;
-    }
-
-    .connection-status.connected {
-      background: #e3f6e9;
-      color: #17663a;
-    }
-
-    .field-label {
-      display: block;
-      margin-bottom: 7px;
-      color: #46564b;
-      font-size: 12px;
-      font-weight: 750;
-    }
-
-    .field {
-      width: 100%;
-      min-width: 0;
-      padding: 12px 13px;
-      border: 1px solid #dbe5dd;
-      border-radius: 10px;
-      outline: none;
-      background: #fbfdfb;
-      color: var(--text);
-      font-size: 13px;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .field:focus {
-      border-color: var(--green);
-      box-shadow: 0 0 0 3px rgba(23, 86, 56, 0.1);
-    }
-
-    .field-help {
-      margin: 8px 0 14px;
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    .button-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 9px;
-    }
-
-    .primary-button,
-    .secondary-button,
-    .danger-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      min-height: 40px;
-      padding: 10px 13px;
-      border: 1px solid transparent;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 750;
-      transition: background 0.2s;
-    }
-
-    .primary-button {
-      background: var(--green);
-      color: white;
-    }
-
-    .primary-button:hover {
-      background: var(--green-dark);
-    }
-
-    .secondary-button {
-      border-color: var(--border);
-      background: white;
-      color: var(--green);
-    }
-
-    .secondary-button:hover {
-      background: var(--green-light);
-    }
-
-    .danger-button {
-      border-color: #f1d5d5;
-      background: #fff7f7;
-      color: var(--red);
-    }
-
-    .connection-details {
-      margin-top: 16px;
-      padding: 13px;
-      border-radius: 11px;
-      background: #f6faf7;
-    }
-
-    .connection-details strong {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 12px;
-    }
-
-    .uid-value {
-      overflow-wrap: anywhere;
-      color: #52685a;
-      font-size: 11px;
-    }
-
-    .list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      min-width: 0;
-      padding: 13px;
-      border: 1px solid #edf1ee;
-      border-radius: 12px;
-      background: #fff;
-    }
-
-    .item-icon {
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-      width: 39px;
-      height: 39px;
-      border-radius: 12px;
-      background: var(--green-light);
-      font-size: 18px;
-    }
-
-    .item-main {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .item-title {
-      margin: 0;
-      font-size: 13px;
-      font-weight: 800;
-      overflow-wrap: anywhere;
-    }
-
-    .item-description {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 11px;
-      overflow-wrap: anywhere;
-      white-space: pre-line;
-    }
-
-    .item-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 8px;
-    }
+    .panel-header h2 { margin: 0; font-size: 15px; }
+    .panel-body { padding: 18px 19px; }
+    .panel-subtitle { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 
     .tag {
       display: inline-flex;
@@ -659,248 +293,166 @@
       font-weight: 750;
     }
 
-    .tag.green {
-      background: #e3f6e9;
-      color: #17663a;
-    }
+    .tag.green { background: #e3f6e9; color: #17663a; }
+    .tag.orange { background: #fff1d9; color: #89550e; }
 
-    .tag.orange {
+    .connection-status {
+      padding: 5px 9px;
+      border-radius: 20px;
       background: #fff1d9;
       color: #89550e;
-    }
-
-    .item-actions {
-      display: flex;
-      flex-shrink: 0;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .take-button {
-      padding: 8px 10px;
-      border: 0;
-      border-radius: 8px;
-      background: var(--green);
-      color: white;
-      font-size: 11px;
-      font-weight: 750;
+      font-size: 10px;
+      font-weight: 800;
       white-space: nowrap;
     }
 
-    .take-button.taken {
-      background: #e3f6e9;
-      color: #17663a;
+    .connection-status.connected { background: #e3f6e9; color: #17663a; }
+
+    .qr-wrap {
+      display: grid;
+      place-items: center;
+      min-height: 230px;
+      padding: 15px;
+      margin: 14px 0;
+      border: 1px dashed #cbded0;
+      border-radius: 15px;
+      background: #fbfdfb;
     }
 
-    .empty-state {
-      padding: 25px 15px;
-      color: var(--muted);
-      text-align: center;
+    #patientQrCode canvas, #patientQrCode img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .uid-value {
+      padding: 11px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #f7faf7;
+      color: #52685a;
+      font-size: 11px;
+      overflow-wrap: anywhere;
+      user-select: text;
+    }
+
+    .button-row { display: flex; flex-wrap: wrap; gap: 9px; }
+
+    .primary-button, .secondary-button, .danger-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 10px 13px;
+      border: 1px solid transparent;
+      border-radius: 10px;
       font-size: 12px;
+      font-weight: 750;
     }
 
-    .empty-state .empty-icon {
-      margin-bottom: 9px;
-      font-size: 27px;
+    .primary-button { background: var(--green); color: white; }
+    .primary-button:hover { background: var(--dark); }
+    .secondary-button { border-color: var(--border); background: white; color: var(--green); }
+    .secondary-button:hover { background: var(--light); }
+    .danger-button { background: #fff7f7; border-color: #f1d5d5; color: var(--red); }
+
+    .list { display: grid; gap: 11px; }
+
+    .item {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid #edf1ee;
+      border-radius: 12px;
+      background: white;
     }
 
-    .section-heading {
-      margin: 0 0 5px;
-      font-size: 19px;
-      letter-spacing: -0.4px;
+    .item-icon {
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      background: var(--light);
+      font-size: 17px;
     }
 
-    .section-description {
-      margin: 0 0 20px;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .item-main { flex: 1; min-width: 0; }
+    .item-title { margin: 0; font-size: 13px; font-weight: 800; }
+    .item-description { margin: 5px 0 0; color: var(--muted); font-size: 11px; white-space: pre-line; }
+    .item-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .item-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .take-button { padding: 8px 10px; border: 0; border-radius: 8px; background: var(--green); color: white; font-size: 11px; font-weight: 750; }
+    .take-button:disabled { background: var(--light); color: var(--green); }
+    .empty-state { padding: 25px 14px; color: var(--muted); text-align: center; font-size: 12px; }
+    .empty-icon { margin-bottom: 8px; font-size: 27px; }
+    .section-heading { margin: 0 0 5px; font-size: 20px; }
+    .section-description { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+    .footer-note { padding: 15px 0 5px; color: var(--muted); text-align: center; font-size: 10px; }
+    .mobile-nav { display: none; }
 
-    .footer-note {
-      padding: 8px 0 0;
-      color: var(--muted);
-      text-align: center;
-      font-size: 10px;
-    }
-
-    .mobile-nav {
-      display: none;
-    }
-
-    @media (max-width: 1050px) {
-      .sidebar {
-        width: 220px;
-      }
-
-      .main {
-        width: calc(100% - 220px);
-        margin-left: 220px;
-      }
-
-      .content-grid {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 1000px) {
+      .sidebar { width: 215px; }
+      .main { width: calc(100% - 215px); margin-left: 215px; }
+      .content-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 700px) {
-      .app.ready {
-        display: block;
-      }
-
-      .sidebar {
-        display: none;
-      }
-
-      .main {
-        width: 100%;
-        margin: 0;
-        padding: 21px 15px 100px;
-      }
-
-      .topbar {
-        margin-bottom: 20px;
-      }
-
-      .topbar-subtitle {
-        font-size: 12px;
-      }
-
-      .welcome-banner {
-        margin-bottom: 15px;
-        border-radius: 18px;
-      }
-
-      .stats {
-        gap: 9px;
-        margin-bottom: 17px;
-      }
-
-      .stat-card {
-        padding: 13px 11px;
-        border-radius: 14px;
-      }
-
-      .stat-top {
-        align-items: flex-start;
-        margin-bottom: 10px;
-      }
-
-      .stat-label {
-        font-size: 10px;
-      }
-
-      .stat-icon {
-        width: 28px;
-        height: 28px;
-        border-radius: 9px;
-        font-size: 14px;
-      }
-
-      .stat-value {
-        font-size: 24px;
-      }
-
-      .stat-caption {
-        font-size: 9px;
-      }
-
-      .panel {
-        border-radius: 15px;
-      }
-
-      .panel-header {
-        padding: 16px 15px 13px;
-      }
-
-      .panel-body {
-        padding: 15px;
-      }
-
-      .item {
-        gap: 9px;
-        padding: 11px;
-      }
-
-      .item-icon {
-        width: 34px;
-        height: 34px;
-        font-size: 16px;
-      }
-
-      .item-actions {
-        align-items: flex-end;
-      }
-
+      .app.ready { display: block; }
+      .sidebar { display: none; }
+      .main { width: 100%; margin: 0; padding: 20px 14px 95px; }
+      .stats { gap: 8px; }
+      .stat-card { padding: 12px 9px; border-radius: 13px; }
+      .stat-label { font-size: 10px; }
+      .stat-value { font-size: 23px; }
+      .stat-caption { font-size: 9px; }
+      .panel-header { padding: 15px; }
+      .panel-body { padding: 15px; }
       .mobile-nav {
         position: fixed;
         right: 0;
         bottom: 0;
         left: 0;
-        z-index: 50;
+        z-index: 30;
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        padding: 8px 5px calc(8px + env(safe-area-inset-bottom));
+        padding: 7px 5px calc(7px + env(safe-area-inset-bottom));
         border-top: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.97);
+        background: rgba(255,255,255,.97);
         backdrop-filter: blur(12px);
       }
-
       .mobile-nav .nav-button {
         flex-direction: column;
         justify-content: center;
         gap: 3px;
-        padding: 7px 2px;
-        border-radius: 10px;
+        padding: 6px 1px;
+        text-align: center;
         font-size: 10px;
       }
-
-      .mobile-nav .nav-icon {
-        font-size: 19px;
-      }
-
-      .mobile-nav .nav-button.active {
-        background: var(--green-light);
-      }
-
-      .footer-note {
-        padding-bottom: 8px;
-      }
+      .mobile-nav .nav-icon { font-size: 18px; }
     }
 
     @media (max-width: 360px) {
-      .main {
-        padding-right: 10px;
-        padding-left: 10px;
-      }
-
-      .stats {
-        gap: 6px;
-      }
-
-      .stat-card {
-        padding: 10px 8px;
-      }
-
-      .stat-value {
-        font-size: 21px;
-      }
-
-      .button-row > button {
-        flex: 1 1 auto;
-      }
+      .main { padding-right: 9px; padding-left: 9px; }
+      .stats { gap: 5px; }
+      .stat-card { padding: 10px 7px; }
+      .stat-value { font-size: 20px; }
+      .item { gap: 7px; padding: 9px; }
+      .item-icon { width: 31px; height: 31px; }
     }
   </style>
 </head>
 
 <body>
-  <div id="loading" class="loading-screen">
+  <div id="loading" class="loading">
     <div class="loading-card">
-      <div class="brand-mark">+</div>
-      <h2 style="margin:0;color:#10442b;">Medminder</h2>
-      <p style="margin:7px 0 0;color:#748278;font-size:13px;">
-        Loading your patient dashboard...
-      </p>
-      <div class="spinner" aria-label="Loading"></div>
+      <div class="brand-mark" style="margin:auto;">+</div>
+      <h2 style="color:#10442b;margin:12px 0 0;">Medminder</h2>
+      <p class="subtitle">Loading your patient dashboard...</p>
+      <div class="spinner"></div>
     </div>
   </div>
 
@@ -914,21 +466,12 @@
         </div>
       </div>
 
-      <div class="nav-label">Patient menu</div>
-
+      <p class="nav-label">Patient menu</p>
       <nav class="nav" aria-label="Main navigation">
-        <button class="nav-button active" data-page="homeSection" type="button">
-          <span class="nav-icon">⌂</span> Today's schedule
-        </button>
-        <button class="nav-button" data-page="medicinesSection" type="button">
-          <span class="nav-icon">✚</span> My medicines
-        </button>
-        <button class="nav-button" data-page="remindersSection" type="button">
-          <span class="nav-icon">◷</span> My reminders
-        </button>
-        <button class="nav-button" data-page="historySection" type="button">
-          <span class="nav-icon">▤</span> Intake history
-        </button>
+        <button class="nav-button active" data-page="homeSection" type="button"><span class="nav-icon">⌂</span> Today's schedule</button>
+        <button class="nav-button" data-page="medicinesSection" type="button"><span class="nav-icon">✚</span> My medicines</button>
+        <button class="nav-button" data-page="remindersSection" type="button"><span class="nav-icon">◷</span> My reminders</button>
+        <button class="nav-button" data-page="historySection" type="button"><span class="nav-icon">▤</span> Intake history</button>
       </nav>
 
       <div class="sidebar-bottom">
@@ -939,9 +482,7 @@
             <div class="user-role">Medicine taker</div>
           </div>
         </div>
-        <button class="logout-button" id="sidebarLogout" type="button">
-          ↪ Sign out
-        </button>
+        <button class="logout-button" id="sidebarLogout" type="button">↪ Sign out</button>
       </div>
     </aside>
 
@@ -950,66 +491,51 @@
         <div>
           <p class="eyebrow">Patient dashboard</p>
           <h1 id="welcomeTitle">Hello, welcome back!</h1>
-          <p class="topbar-subtitle" id="todayLabel">Your medicine schedule</p>
+          <p class="subtitle" id="todayLabel">Your medicine schedule</p>
         </div>
-        <div class="topbar-avatar" id="headerUserName">P</div>
+        <div class="top-avatar" id="headerUserName">P</div>
       </header>
 
       <div id="error" class="notice error hidden" role="alert"></div>
       <div id="success" class="notice success hidden" role="status"></div>
       <div id="info" class="notice info hidden" role="status"></div>
 
-      <section class="welcome-banner">
+      <section class="welcome">
         <h2>Take care of yourself 💚</h2>
-        <p>
-          Keep track of your medicines and follow the schedule shared with you
-          by your authorized caregiver.
-        </p>
+        <p>View the medicine schedule shared by your authorized caregiver and record your doses when appropriate.</p>
       </section>
 
       <section class="stats" aria-label="Dashboard summary">
         <article class="stat-card">
-          <div class="stat-top">
-            <span class="stat-label">My medicines</span>
-            <span class="stat-icon">💊</span>
-          </div>
+          <div class="stat-label">My medicines</div>
           <div class="stat-value" id="medicineCount">0</div>
-          <div class="stat-caption">Shared by your caregiver</div>
+          <div class="stat-caption">Shared by caregiver</div>
         </article>
-
         <article class="stat-card">
-          <div class="stat-top">
-            <span class="stat-label">Today's reminders</span>
-            <span class="stat-icon">⏰</span>
-          </div>
+          <div class="stat-label">Today's reminders</div>
           <div class="stat-value" id="todayCount">0</div>
           <div class="stat-caption">Scheduled for today</div>
         </article>
-
         <article class="stat-card">
-          <div class="stat-top">
-            <span class="stat-label">Taken today</span>
-            <span class="stat-icon">✓</span>
-          </div>
+          <div class="stat-label">Taken today</div>
           <div class="stat-value" id="takenCount">0</div>
-          <div class="stat-caption">Recorded in your history</div>
+          <div class="stat-caption">Recorded doses</div>
         </article>
       </section>
 
-      <!-- TODAY -->
       <section id="homeSection" class="page active">
         <div class="content-grid">
           <div class="panel">
             <div class="panel-header">
               <div>
                 <h2>Today's medicine schedule</h2>
-                <p class="panel-subtitle">Follow your prescribed schedule.</p>
+                <p class="panel-subtitle">Follow the schedule provided to you.</p>
               </div>
-              <span class="tag green" id="todayScheduleBadge">Today</span>
+              <span class="tag green">Today</span>
             </div>
             <div class="panel-body">
               <div id="todayList" class="list">
-                <div class="empty-state">Loading today's schedule...</div>
+                <div class="empty-state">Loading schedule...</div>
               </div>
             </div>
           </div>
@@ -1018,171 +544,85 @@
             <div class="panel">
               <div class="panel-header">
                 <div>
-                  <h2>Caregiver connection</h2>
-                  <p class="panel-subtitle">
-                    Connect to the person managing your medicines.
-                  </p>
+                  <h2>Your patient QR code</h2>
+                  <p class="panel-subtitle">Show this to your authorized caregiver.</p>
                 </div>
-                <span id="connectionStatusBadge" class="connection-status">
-                  Not connected
-                </span>
+                <span id="connectionStatusBadge" class="connection-status">Not connected</span>
               </div>
-
               <div class="panel-body">
-                <p id="connectionStatus" class="panel-subtitle" style="margin:0 0 15px;">
-                  Connect using the authorized person's Firebase user ID.
-                </p>
+                <p id="connectionStatus" class="panel-subtitle">Your caregiver can scan your QR code to identify your account.</p>
 
-                <label class="field-label" for="caregiverUidInput">
-                  Authorized person's user ID
-                </label>
-                <input
-                  id="caregiverUidInput"
-                  class="field"
-                  type="text"
-                  placeholder="Paste caregiver's user ID"
-                  autocomplete="off"
-                  spellcheck="false"
-                  maxlength="128"
-                >
-
-                <p class="field-help">
-                  Ask your caregiver to copy their user ID from their account.
-                  Only connect with someone you know and trust.
-                </p>
-
-                <div class="button-row">
-                  <button id="connectCaregiverButton" class="primary-button" type="button">
-                    Connect caregiver
-                  </button>
-                  <button id="copyPatientUidButton" class="secondary-button" type="button">
-                    Copy my ID
-                  </button>
-                </div>
-
-                <div class="connection-details">
-                  <strong>Your patient user ID</strong>
-                  <div id="patientUidDisplay" class="uid-value">
-                    Loading your user ID...
+                <div class="qr-wrap">
+                  <div id="patientQrCode" aria-label="Patient QR code">
+                    <p class="panel-subtitle">Preparing your QR code...</p>
                   </div>
                 </div>
 
+                <p class="panel-subtitle" style="margin-bottom:8px;">Your patient ID</p>
+                <div id="patientUidDisplay" class="uid-value">Loading...</div>
+
                 <div class="button-row" style="margin-top:12px;">
-                  <button id="disconnectCaregiverButton" class="danger-button hidden" type="button">
-                    Disconnect caregiver
-                  </button>
+                  <button id="copyPatientUidButton" class="secondary-button" type="button">Copy patient ID</button>
                 </div>
+                <p class="panel-subtitle" style="margin-top:12px;">Only share your ID with the authorized person you have verified. This code identifies your account; it is not a password.</p>
               </div>
             </div>
 
             <div class="panel">
-              <div class="panel-header">
-                <div>
-                  <h2>Helpful reminder</h2>
-                  <p class="panel-subtitle">Stay safe and consistent.</p>
-                </div>
-                <span class="stat-icon">💚</span>
-              </div>
+              <div class="panel-header"><h2>Helpful reminder 💚</h2></div>
               <div class="panel-body">
-                <p style="margin:0;color:#52685a;font-size:13px;">
-                  Follow the instructions provided by your healthcare
-                  professional. If a medicine or dose looks incorrect, contact
-                  your caregiver or pharmacist before taking it.
-                </p>
+                <p class="panel-subtitle" style="line-height:1.8;margin:0;">Follow your healthcare professional's instructions. If a medicine or dose looks incorrect, contact your caregiver or pharmacist before taking it.</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- MEDICINES -->
       <section id="medicinesSection" class="page">
         <h2 class="section-heading">My medicines</h2>
-        <p class="section-description">
-          Medicines shared with you by your authorized caregiver.
-        </p>
-
+        <p class="section-description">Medicines shared by your authorized caregiver.</p>
         <div class="panel">
-          <div class="panel-header">
-            <div>
-              <h2>Medicine list</h2>
-              <p class="panel-subtitle">View dosage and medicine instructions.</p>
-            </div>
-          </div>
+          <div class="panel-header"><h2>Medicine list</h2></div>
           <div class="panel-body">
-            <div id="medicineList" class="list">
-              <div class="empty-state">Connect to your caregiver to view medicines.</div>
-            </div>
+            <div id="medicineList" class="list"><div class="empty-state">No medicines loaded.</div></div>
           </div>
         </div>
       </section>
 
-      <!-- REMINDERS -->
       <section id="remindersSection" class="page">
         <h2 class="section-heading">My reminders</h2>
-        <p class="section-description">
-          Review your one-time and recurring medicine reminders.
-        </p>
-
+        <p class="section-description">Review upcoming scheduled doses.</p>
         <div class="panel">
-          <div class="panel-header">
-            <div>
-              <h2>Scheduled reminders</h2>
-              <p class="panel-subtitle">Schedules are managed by your caregiver.</p>
-            </div>
-          </div>
+          <div class="panel-header"><h2>Upcoming reminders</h2></div>
           <div class="panel-body">
-            <div id="reminderList" class="list">
-              <div class="empty-state">Connect to your caregiver to view reminders.</div>
-            </div>
+            <div id="reminderList" class="list"><div class="empty-state">No reminders loaded.</div></div>
           </div>
         </div>
       </section>
 
-      <!-- HISTORY -->
       <section id="historySection" class="page">
         <h2 class="section-heading">Intake history</h2>
-        <p class="section-description">
-          Review the doses you have marked as taken.
-        </p>
-
+        <p class="section-description">Review the doses you have recorded.</p>
         <div class="panel">
-          <div class="panel-header">
-            <div>
-              <h2>Recent activity</h2>
-              <p class="panel-subtitle">Your recorded medicine intake.</p>
-            </div>
-          </div>
+          <div class="panel-header"><h2>Recent activity</h2></div>
           <div class="panel-body">
-            <div id="historyList" class="list">
-              <div class="empty-state">Your intake history will appear here.</div>
-            </div>
+            <div id="historyList" class="list"><div class="empty-state">No history yet.</div></div>
           </div>
         </div>
       </section>
 
-      <p class="footer-note">
-        Medminder helps organize reminders and does not replace professional medical advice.
-      </p>
+      <p class="footer-note">Medminder helps organize reminders and does not replace professional medical advice.</p>
     </main>
 
     <nav class="mobile-nav" aria-label="Mobile navigation">
-      <button class="nav-button active" data-page="homeSection" type="button">
-        <span class="nav-icon">⌂</span><span>Today</span>
-      </button>
-      <button class="nav-button" data-page="medicinesSection" type="button">
-        <span class="nav-icon">✚</span><span>Medicines</span>
-      </button>
-      <button class="nav-button" data-page="remindersSection" type="button">
-        <span class="nav-icon">◷</span><span>Reminders</span>
-      </button>
-      <button class="nav-button" data-page="historySection" type="button">
-        <span class="nav-icon">▤</span><span>History</span>
-      </button>
+      <button class="nav-button active" data-page="homeSection" type="button"><span class="nav-icon">⌂</span><span>Today</span></button>
+      <button class="nav-button" data-page="medicinesSection" type="button"><span class="nav-icon">✚</span><span>Medicines</span></button>
+      <button class="nav-button" data-page="remindersSection" type="button"><span class="nav-icon">◷</span><span>Reminders</span></button>
+      <button class="nav-button" data-page="historySection" type="button"><span class="nav-icon">▤</span><span>History</span></button>
     </nav>
   </div>
 
-  <!-- Firebase and dashboard logic -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script type="module" src="js/patient-dashboard.js"></script>
 </body>
 </html>
