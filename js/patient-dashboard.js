@@ -1,4 +1,3 @@
-
 import { auth, db } from "./firebaseConfig.js";
 
 import {
@@ -13,7 +12,6 @@ import {
   set
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-
 const $ = (id) => document.getElementById(id);
 
 const state = {
@@ -23,404 +21,262 @@ const state = {
   medicines: {},
   reminders: {},
   logs: {},
-  unsubscribers: [],
-  recording: new Set(),
-  loggingOut: false
+  patientLogUnsubscribe: null,
+  caregiverUnsubscribers: [],
+  recording: new Set()
 };
 
-
 function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
-    "'": "&#39;"
-  })[character]);
+    "'": "&#039;"
+  })[char]);
 }
 
+function notice(type, message) {
+  ["error", "success", "info"].forEach((id) => {
+    const el = $(id);
+    if (el) {
+      el.classList.add("hidden");
+      el.textContent = "";
+    }
+  });
 
-function showNotice(message, type = "info") {
-  const notice = $("notice");
-  if (!notice) return;
-
-  notice.textContent = message;
-  notice.className = `notice show ${type}`;
+  const el = $(type);
+  if (el) {
+    el.textContent = message;
+    el.classList.remove("hidden");
+  }
 }
 
-
-function hideNotice() {
-  const notice = $("notice");
-  if (!notice) return;
-
-  notice.textContent = "";
-  notice.className = "notice";
+function clearNotices() {
+  ["error", "success", "info"].forEach((id) => {
+    const el = $(id);
+    if (el) {
+      el.classList.add("hidden");
+      el.textContent = "";
+    }
+  });
 }
 
-
-function showLoading() {
-  $("loading")?.classList.remove("hidden");
-  if ($("app")) $("app").classList.remove("ready");
+function setLoading(loading) {
+  if ($("loading")) $("loading").classList.toggle("hidden", !loading);
+  if ($("app")) $("app").classList.toggle("ready", !loading);
 }
-
-
-function hideLoading() {
-  $("loading")?.classList.add("hidden");
-  $("app")?.classList.add("ready");
-}
-
 
 function normalizeCollection(value) {
-  if (!value || typeof value !== "object") return [];
-
-  if (Array.isArray(value)) {
-    return value
-      .map((item, index) => ({
-        id: String(index),
-        ...(item && typeof item === "object" ? item : {})
-      }))
-      .filter((item) => item && Object.keys(item).length > 1);
-  }
-
-  return Object.entries(value)
-    .filter(([, item]) => item && typeof item === "object")
-    .map(([id, item]) => ({ id, ...item }));
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([, item]) =>
+      item && typeof item === "object"
+    )
+  );
 }
-
-
-function firstValue(object, keys, fallback = "") {
-  for (const key of keys) {
-    const value = object?.[key];
-
-    if (value !== undefined && value !== null && value !== "") {
-      return value;
-    }
-  }
-
-  return fallback;
-}
-
 
 function todayKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
 }
 
-
 function formatDate(value) {
-  if (!value) return "";
-
-  const date = new Date(`${String(value).slice(0, 10)}T12:00:00`);
-
+  if (!value) return "Date not specified";
+  const date = new Date(`${value}T12:00:00`);
   if (Number.isNaN(date.getTime())) return String(value);
 
   return date.toLocaleDateString(undefined, {
+    weekday: "short",
     month: "short",
     day: "numeric",
     year: "numeric"
   });
 }
 
-
 function formatTime(value) {
-  if (value === undefined || value === null || value === "") {
-    return "Time not specified";
-  }
+  if (!value) return "Time not set";
+  const match = String(value).match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return String(value);
 
-  if (typeof value === "number") {
-    if (value >= 0 && value <= 23) {
-      return new Date(2000, 0, 1, value, 0)
-        .toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    }
+  const date = new Date();
+  date.setHours(Number(match[1]), Number(match[2]), 0, 0);
 
-    return String(value);
-  }
-
-  const raw = String(value).trim();
-
-  const twelveHour = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-
-  if (twelveHour) {
-    return `${Number(twelveHour[1])}:${twelveHour[2]} ${twelveHour[3].toUpperCase()}`;
-  }
-
-  const twentyFourHour = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-
-  if (twentyFourHour) {
-    const hours = Number(twentyFourHour[1]);
-    const minutes = Number(twentyFourHour[2]);
-
-    if (hours < 24 && minutes < 60) {
-      return new Date(2000, 0, 1, hours, minutes)
-        .toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    }
-  }
-
-  return raw;
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
-
 
 function medicineName(medicine) {
-  return firstValue(
-    medicine,
-    ["name", "medicineName", "medicationName", "medicine", "drugName"],
-    "Unnamed medicine"
-  );
+  return medicine?.name ||
+    medicine?.medicineName ||
+    medicine?.medicationName ||
+    "Unnamed medicine";
 }
-
 
 function medicineDosage(medicine) {
-  return firstValue(
-    medicine,
-    ["dosage", "dose", "strength", "quantity"],
-    "Follow prescribed instructions"
-  );
+  return medicine?.dosage ||
+    medicine?.dose ||
+    medicine?.strength ||
+    "Dosage not specified";
 }
-
 
 function isActiveMedicine(medicine) {
-  if (medicine?.active === false || medicine?.isActive === false) {
-    return false;
-  }
-
-  const status = String(medicine?.status ?? "").toLowerCase();
-
-  return !["inactive", "archived", "deleted", "discontinued"].includes(status);
+  return medicine?.active !== false &&
+    medicine?.isActive !== false &&
+    medicine?.archived !== true;
 }
-
 
 function reminderMedicineId(reminder) {
-  return String(firstValue(
-    reminder,
-    ["medicineId", "medicationId", "medicine_id", "medication_id"],
-    ""
-  ));
+  return reminder?.medicineId ||
+    reminder?.medicationId ||
+    reminder?.medicineKey ||
+    "";
 }
-
 
 function reminderDate(reminder) {
-  return String(firstValue(
-    reminder,
-    ["date", "scheduledDate", "reminderDate", "day"],
-    ""
-  )).slice(0, 10);
+  return reminder?.date ||
+    reminder?.scheduledDate ||
+    reminder?.startDate ||
+    "";
 }
-
 
 function reminderTime(reminder) {
-  return firstValue(
-    reminder,
-    ["time", "scheduledTime", "reminderTime", "doseTime", "hour"],
-    ""
-  );
+  return reminder?.time ||
+    reminder?.scheduledTime ||
+    reminder?.reminderTime ||
+    "";
 }
 
+function dayName(dateString) {
+  const date = new Date(`${dateString}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return [
+    "Sunday", "Monday", "Tuesday", "Wednesday",
+    "Thursday", "Friday", "Saturday"
+  ][date.getDay()].toLowerCase();
+}
 
 function reminderDays(reminder) {
-  const value = firstValue(
-    reminder,
-    ["days", "weekdays", "repeatDays", "recurringDays", "scheduleDays"],
-    null
-  );
+  const days = reminder?.daysOfWeek ?? reminder?.days ?? [];
 
-  if (Array.isArray(value)) {
-    return value.map((day) => String(day).toLowerCase());
+  if (Array.isArray(days)) {
+    return days.map((day) => String(day).toLowerCase());
   }
 
-  if (typeof value === "string" && value.trim()) {
-    return value.split(/[,;|]/).map((day) => day.trim().toLowerCase());
+  if (typeof days === "string") {
+    return days.split(",").map((day) => day.trim().toLowerCase());
   }
 
-  if (value && typeof value === "object") {
-    return Object.entries(value)
-      .filter(([, enabled]) => enabled === true)
-      .map(([day]) => day.toLowerCase());
+  if (days && typeof days === "object") {
+    return Object.keys(days).filter((day) => days[day])
+      .map((day) => day.toLowerCase());
   }
 
   return [];
 }
 
-
-function matchesDays(reminder, date = new Date()) {
-  const days = reminderDays(reminder);
-
+function matchesDays(days, dateString) {
   if (!days.length) return true;
 
-  const weekday = date.toLocaleDateString("en-US", {
-    weekday: "long"
-  }).toLowerCase();
+  const fullDay = dayName(dateString);
+  const shortDay = fullDay.slice(0, 3);
+  const date = new Date(`${dateString}T12:00:00`);
+  const numberDay = String(date.getDay());
 
-  const shortWeekday = weekday.slice(0, 3);
-
-  return days.some((day) => {
-    const normalized = day.replace(/\.$/, "");
-
-    return normalized === weekday ||
-      normalized === shortWeekday ||
-      normalized === String(date.getDay());
-  });
+  return days.some((day) =>
+    day === fullDay ||
+    day === shortDay ||
+    day === numberDay ||
+    day.slice(0, 3) === shortDay
+  );
 }
 
-
-function isScheduled(reminder, date = new Date()) {
-  const targetDate = todayKey(date);
-  const specificDate = reminderDate(reminder);
-
-  if (specificDate) {
-    return specificDate === targetDate;
+function isScheduled(reminder, dateString) {
+  if (reminder?.active === false || reminder?.isActive === false) {
+    return false;
   }
 
-  const startDate = String(firstValue(
-    reminder,
-    ["startDate", "start_date", "effectiveDate"],
-    ""
-  )).slice(0, 10);
+  const recurrence = String(
+    reminder?.recurrence ||
+    reminder?.repeat ||
+    reminder?.frequency ||
+    "once"
+  ).toLowerCase();
 
-  const endDate = String(firstValue(
-    reminder,
-    ["endDate", "end_date", "untilDate"],
-    ""
-  )).slice(0, 10);
+  const days = reminderDays(reminder);
+  const startDate = reminderDate(reminder);
+  const endDate = reminder?.endDate || "";
 
-  if (startDate && targetDate < startDate) return false;
-  if (endDate && targetDate > endDate) return false;
+  if (startDate && dateString < startDate) return false;
+  if (endDate && dateString > endDate) return false;
 
-  if (reminder.enabled === false || reminder.active === false) return false;
+  if (["daily", "everyday", "every day"].includes(recurrence)) {
+    return true;
+  }
 
-  return matchesDays(reminder, date);
+  if (recurrence === "weekly" || days.length) {
+    return matchesDays(days, dateString);
+  }
+
+  return !startDate || startDate === dateString;
 }
-
 
 function logKey(reminderId, date) {
   return `${reminderId}_${date}`;
 }
 
-
-function getLog(reminderId, date = todayKey()) {
-  const logs = state.logs || {};
-  const key = logKey(reminderId, date);
-
-  if (logs[key]) return logs[key];
-
-  const found = Object.values(logs).find((log) => {
-    if (!log || typeof log !== "object") return false;
-
-    const logReminderId = String(firstValue(
-      log,
-      ["reminderId", "scheduleId", "doseId"],
-      ""
-    ));
-
-    const logDate = String(firstValue(
-      log,
-      ["date", "scheduledDate", "intakeDate"],
-      ""
-    )).slice(0, 10);
-
-    return logReminderId === String(reminderId) && logDate === date;
-  });
-
-  return found || null;
+function getLog(reminderId, date) {
+  return state.logs[logKey(reminderId, date)] || null;
 }
 
-
-function getStatus(reminderId, date = todayKey()) {
-  const log = getLog(reminderId, date);
-
-  if (!log) return "upcoming";
-
-  const status = String(firstValue(
-    log,
-    ["status", "state", "result"],
-    ""
-  )).toLowerCase();
-
-  if (["taken", "completed", "done"].includes(status)) return "taken";
-  if (["missed", "skipped"].includes(status)) return "missed";
-
-  return "upcoming";
+function getStatus(reminderId, date) {
+  return String(getLog(reminderId, date)?.status || "pending").toLowerCase();
 }
 
+function getReminderEntries(date) {
+  return Object.entries(state.reminders)
+    .filter(([, reminder]) => isScheduled(reminder, date))
+    .map(([id, reminder]) => ({ id, reminder, date, time: reminderTime(reminder) }))
+    .sort((a, b) => String(a.time).localeCompare(String(b.time)));
+}
 
-function getReminderEntries(date = new Date()) {
-  const medicines = normalizeCollection(state.medicines)
-    .filter(isActiveMedicine);
+function findMedicine(reminder) {
+  const id = reminderMedicineId(reminder);
 
-  const medicineMap = new Map(
-    medicines.map((medicine) => [String(medicine.id), medicine])
-  );
+  if (id && state.medicines[id]) return state.medicines[id];
 
-  const entries = [];
-
-  for (const reminder of normalizeCollection(state.reminders)) {
-    if (!isScheduled(reminder, date)) continue;
-
-    const linkedId = reminderMedicineId(reminder);
-    const linkedMedicine = medicineMap.get(linkedId);
-
-    const inlineName = firstValue(
-      reminder,
-      ["medicineName", "medicationName", "name"],
-      ""
-    );
-
-    // Some projects store all medicine information directly in a reminder.
-    const medicine = linkedMedicine || (
-      inlineName
-        ? {
-            name: inlineName,
-            dosage: firstValue(reminder, ["dosage", "dose"], "")
-          }
-        : null
-    );
-
-    if (!medicine) continue;
-
-    const id = String(reminder.id);
-    const dateKey = todayKey(date);
-
-    entries.push({
-      id,
-      reminder,
-      medicine,
-      name: medicineName(medicine),
-      dosage: medicineDosage(medicine),
-      time: reminderTime(reminder),
-      date: dateKey,
-      status: getStatus(id, dateKey)
-    });
+  if (reminder?.medicine && typeof reminder.medicine === "object") {
+    return reminder.medicine;
   }
 
-  entries.sort((a, b) => {
-    const first = String(a.time || "99:99");
-    const second = String(b.time || "99:99");
+  const name = reminder?.medicineName || reminder?.name;
+  if (name) {
+    return {
+      name,
+      dosage: reminder?.dosage || reminder?.dose || ""
+    };
+  }
 
-    return first.localeCompare(second);
-  });
-
-  return entries;
+  return null;
 }
 
+function empty(containerId, title, message) {
+  const container = $(containerId);
+  if (!container) return;
 
-function findMedicine(id) {
-  return normalizeCollection(state.medicines)
-    .find((medicine) => String(medicine.id) === String(id)) || null;
-}
-
-
-function empty(message, title = "Nothing to show yet") {
-  return `
+  container.innerHTML = `
     <div class="empty-state">
-      <div class="empty-icon">💊</div>
+      <div class="empty-icon">🌿</div>
       <strong>${escapeHTML(title)}</strong>
-      ${escapeHTML(message)}
-    </div>
-  `;
+      <p>${escapeHTML(message)}</p>
+    </div>`;
 }
-
 
 function renderQRCode(uid) {
   const container = $("patientQrCode");
@@ -428,319 +284,227 @@ function renderQRCode(uid) {
 
   container.innerHTML = "";
 
-  if (!uid) {
-    container.textContent = "Patient ID unavailable.";
+  if (typeof QRCode === "undefined") {
+    container.textContent =
+      "QR library could not load. You can still share your patient ID below.";
     return;
   }
 
-  if (typeof window.QRCode !== "function") {
-    container.textContent = "QR code could not load. Check your internet connection.";
-    return;
-  }
-
-  try {
-    new window.QRCode(container, {
-      text: uid,
-      width: 160,
-      height: 160,
-      colorDark: "#10442b",
-      colorLight: "#ffffff",
-      correctLevel: window.QRCode.CorrectLevel.M
-    });
-  } catch (error) {
-    console.error("QR code error:", error);
-    container.textContent = "Unable to generate QR code.";
-  }
+  new QRCode(container, {
+    text: uid,
+    width: 200,
+    height: 200,
+    colorDark: "#175638",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.M
+  });
 }
 
-
 function updateUserDisplay(profile, user) {
-  const fullName = [
-    profile.firstName || profile.first_name || "",
-    profile.lastName || profile.last_name || ""
-  ].filter(Boolean).join(" ").trim();
+  const name = profile.firstName ||
+    profile.fullName?.trim()?.split(/\s+/)[0] ||
+    user.displayName?.split(/\s+/)[0] ||
+    "Patient";
 
-  const displayName = firstValue(
-    profile,
-    ["displayName", "fullName", "name"],
-    fullName || user.displayName || "Patient"
-  );
+  const initial = name.charAt(0).toUpperCase();
 
-  const initial = String(displayName).trim().charAt(0).toUpperCase() || "P";
+  if ($("welcomeTitle")) $("welcomeTitle").textContent = `Hello, ${name}! 👋`;
+  if ($("sideUserName")) $("sideUserName").textContent = name;
+  if ($("userAvatar")) $("userAvatar").textContent = initial;
+  if ($("headerUserName")) {
+    $("headerUserName").textContent = initial;
+    $("headerUserName").title = name;
+  }
 
-  $("welcomeTitle").textContent = `Hello, ${displayName.split(" ")[0]}! 👋`;
-  $("sideUserName").textContent = displayName;
-  $("headerUserName").textContent = displayName;
-  $("modalUserName").textContent = displayName;
-  $("modalUserEmail").textContent = user.email || "Patient account";
-
-  $("userAvatar").textContent = initial;
-  $("sideAvatar").textContent = initial;
-  $("modalAvatar").textContent = initial;
-
-  $("patientUidDisplay").textContent = user.uid;
-  $("qrPatientId").textContent = user.uid;
+  if ($("patientUidDisplay")) $("patientUidDisplay").textContent = user.uid;
 
   renderQRCode(user.uid);
 }
 
+function updateConnectionStatus(connected, message) {
+  const badge = $("connectionStatusBadge");
 
-function updateConnectionStatus(connected, message = "") {
-  $("connectionTitle").textContent = connected
-    ? "Caregiver connected"
-    : "Waiting for caregiver";
+  if (badge) {
+    badge.textContent = connected ? "Connected" : "Not connected";
+    badge.classList.toggle("connected", connected);
+  }
 
-  $("connectionStatus").textContent = message || (
-    connected
-      ? "Your caregiver's assigned medicines and reminders are available below."
-      : "Ask your authorized caregiver to scan your patient QR code or enter your Patient ID to connect your account."
-  );
-
-  $("modalConnectionStatus").textContent = connected
-    ? "Connected"
-    : "Not connected";
+  if ($("connectionStatus")) $("connectionStatus").textContent = message;
 }
-
 
 function statusTag(status) {
-  const labels = {
-    taken: ["Taken", "status-taken"],
-    missed: ["Missed", "status-missed"],
-    upcoming: ["Upcoming", "status-upcoming"]
-  };
+  const value = String(status || "pending").toLowerCase();
 
-  const [label, className] = labels[status] || ["Upcoming", "status-neutral"];
-
-  return `<span class="status ${className}">${label}</span>`;
+  if (value === "taken") return '<span class="tag green">Taken</span>';
+  if (value === "missed") return '<span class="tag orange">Missed</span>';
+  return '<span class="tag">Pending</span>';
 }
 
+function renderReminderCard(entry) {
+  const { id, reminder, date, time } = entry;
+  const medicine = findMedicine(reminder);
 
-function renderReminderCard(entry, includeActions = true) {
-  const safeName = escapeHTML(entry.name);
-  const safeDosage = escapeHTML(entry.dosage);
-  const safeTime = escapeHTML(formatTime(entry.time));
-  const safeDate = escapeHTML(formatDate(entry.date));
+  const name = medicine
+    ? medicineName(medicine)
+    : reminder?.medicineName || reminder?.name || "Scheduled medicine";
 
-  const status = entry.status;
+  const dosage = medicine
+    ? medicineDosage(medicine)
+    : reminder?.dosage || reminder?.dose || "Dosage not specified";
 
-  let actionButtons = "";
-
-  if (includeActions && status === "upcoming") {
-    actionButtons = `
-      <button class="dose-button"
-        data-dose-action="taken"
-        data-reminder-id="${escapeHTML(entry.id)}"
-        type="button">
-        ✓ Taken
-      </button>
-      <button class="dose-button"
-        data-dose-action="missed"
-        data-reminder-id="${escapeHTML(entry.id)}"
-        type="button"
-        style="background:#fff0f0;color:#a92e2e">
-        Missed
-      </button>
-    `;
-  }
+  const instructions = reminder?.notes || reminder?.instructions || "";
+  const status = getStatus(id, date);
+  const completed = ["taken", "missed"].includes(status);
 
   return `
-    <article class="schedule-item">
-      <div class="medicine-icon">💊</div>
-
-      <div class="schedule-content">
-        <div class="schedule-name">${safeName}</div>
-        <div class="schedule-meta">
-          ${safeDosage}<br>
-          🕒 ${safeTime}<br>
-          📅 ${safeDate}
-        </div>
+    <article class="item">
+      <div class="item-icon">💊</div>
+      <div class="item-main">
+        <h3 class="item-title">${escapeHTML(name)}</h3>
+        <p class="item-description">Dosage: ${escapeHTML(dosage)}${instructions
+          ? `\nInstructions: ${escapeHTML(instructions)}` : ""}</p>
+        <div class="item-meta">${statusTag(status)}</div>
       </div>
-
-      <div class="schedule-actions">
-        ${statusTag(status)}
-        ${actionButtons}
+      <div class="item-actions">
+        <span class="tag">${escapeHTML(formatTime(time))}</span>
+        ${completed ? "" : `
+          <button class="take-button" type="button"
+            data-dose-action="taken"
+            data-reminder-id="${escapeHTML(id)}"
+            data-dose-date="${escapeHTML(date)}">✓ Taken</button>
+          <button class="secondary-button" type="button"
+            data-dose-action="missed"
+            data-reminder-id="${escapeHTML(id)}"
+            data-dose-date="${escapeHTML(date)}">Missed</button>
+        `}
       </div>
-    </article>
-  `;
+    </article>`;
 }
-
 
 function renderToday() {
-  const entries = getReminderEntries(new Date());
-  const total = entries.length;
-  const taken = entries.filter((entry) => entry.status === "taken").length;
+  const date = todayKey();
+  const entries = getReminderEntries(date);
 
-  $("todayCount").textContent = String(total);
-  $("takenCount").textContent = `${taken}/${total}`;
-  $("takenCaption").textContent = total
-    ? `${Math.round((taken / total) * 100)}% of today's doses recorded`
-    : "No scheduled doses yet";
-
-  $("todayBadge").textContent = `${total} ${total === 1 ? "dose" : "doses"}`;
-
-  $("todayLabel").textContent = new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric"
-  });
-
-  $("todayList").innerHTML = entries.length
-    ? entries.map((entry) => renderReminderCard(entry, true)).join("")
-    : empty(
-        "Your assigned caregiver can add medicines and reminders for you.",
-        "No medicines scheduled for today"
-      );
-}
-
-
-function renderMedicines() {
-  const medicines = normalizeCollection(state.medicines)
-    .filter(isActiveMedicine);
-
-  $("medicineCount").textContent =
-    `${medicines.length} ${medicines.length === 1 ? "medicine" : "medicines"}`;
-
-  if (!medicines.length) {
-    $("medicineList").innerHTML = empty(
-      "Your assigned medicines will appear here once your caregiver connects your account.",
-      "No assigned medicines"
-    );
-    return;
+  if ($("todayLabel")) {
+    $("todayLabel").textContent = new Date().toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
   }
 
-  $("medicineList").innerHTML = medicines.map((medicine) => {
-    const frequency = firstValue(
-      medicine,
-      ["frequency", "schedule", "timesPerDay"],
-      "See assigned reminders"
-    );
-
-    const notes = firstValue(
-      medicine,
-      ["notes", "instructions", "description"],
-      ""
-    );
-
-    return `
-      <article class="schedule-item">
-        <div class="medicine-icon">💊</div>
-
-        <div class="schedule-content">
-          <div class="schedule-name">${escapeHTML(medicineName(medicine))}</div>
-          <div class="schedule-meta">
-            ${escapeHTML(medicineDosage(medicine))}<br>
-            ${escapeHTML(String(frequency))}
-            ${notes ? `<br>${escapeHTML(String(notes))}` : ""}
-          </div>
-        </div>
-
-        <span class="status status-neutral">Assigned</span>
-      </article>
-    `;
-  }).join("");
-}
-
-
-function renderReminders() {
-  const entries = getReminderEntries(new Date());
-
-  $("reminderList").innerHTML = entries.length
-    ? entries.map((entry) => renderReminderCard(entry, true)).join("")
-    : empty(
-        "Your caregiver's scheduled reminders will appear here.",
-        "No reminders available for today"
-      );
-}
-
-
-function renderHistory() {
-  const entries = Object.entries(state.logs || {})
-    .filter(([, log]) => log && typeof log === "object")
-    .map(([id, log]) => {
-      const reminderId = String(firstValue(
-        log,
-        ["reminderId", "scheduleId", "doseId"],
-        id.replace(/_\d{4}-\d{2}-\d{2}$/, "")
-      ));
-
-      const medicine = findMedicine(
-        firstValue(log, ["medicineId", "medicationId"], "")
-      );
-
-      const date = String(firstValue(
-        log,
-        ["date", "scheduledDate", "intakeDate"],
-        ""
-      )).slice(0, 10);
-
-      const status = String(firstValue(
-        log,
-        ["status", "state", "result"],
-        "upcoming"
-      )).toLowerCase();
-
-      return {
-        id,
-        log,
-        reminderId,
-        medicine,
-        date,
-        status: ["completed", "done"].includes(status)
-          ? "taken"
-          : ["skipped"].includes(status)
-            ? "missed"
-            : status
-      };
-    })
-    .sort((a, b) => {
-      const dateComparison = String(b.date).localeCompare(String(a.date));
-      if (dateComparison !== 0) return dateComparison;
-
-      return String(b.log.time || b.log.timestamp || "")
-        .localeCompare(String(a.log.time || a.log.timestamp || ""));
-    });
+  if ($("todayCount")) $("todayCount").textContent = entries.length;
+  if ($("takenCount")) {
+    $("takenCount").textContent = entries.filter(
+      (entry) => getStatus(entry.id, date) === "taken"
+    ).length;
+  }
 
   if (!entries.length) {
-    $("historyList").innerHTML = empty(
-      "Your dose records will appear here after you record your medicine intake.",
-      "No medicine history yet"
+    empty(
+      "todayList",
+      "No reminders for today",
+      state.caregiverUid
+        ? "No doses are scheduled for today."
+        : "Your caregiver's schedule will appear here after the accounts are connected."
     );
     return;
   }
 
-  $("historyList").innerHTML = entries.map((entry) => {
-    const name = firstValue(
-      entry.log,
-      ["medicineName", "medicationName", "name"],
-      entry.medicine ? medicineName(entry.medicine) : "Medicine"
-    );
-
-    const dosage = firstValue(
-      entry.log,
-      ["dosage", "dose"],
-      entry.medicine ? medicineDosage(entry.medicine) : ""
-    );
-
-    return `
-      <article class="schedule-item">
-        <div class="medicine-icon">📋</div>
-
-        <div class="schedule-content">
-          <div class="schedule-name">${escapeHTML(name)}</div>
-          <div class="schedule-meta">
-            ${escapeHTML(dosage)}<br>
-            📅 ${escapeHTML(formatDate(entry.date))}<br>
-            ${entry.log.time ? `🕒 ${escapeHTML(formatTime(entry.log.time))}` : ""}
-          </div>
-        </div>
-
-        ${statusTag(entry.status)}
-      </article>
-    `;
-  }).join("");
+  if ($("todayList")) {
+    $("todayList").innerHTML = entries.map(renderReminderCard).join("");
+  }
 }
 
+function renderMedicines() {
+  const entries = Object.entries(state.medicines)
+    .filter(([, medicine]) => isActiveMedicine(medicine));
+
+  if ($("medicineCount")) $("medicineCount").textContent = entries.length;
+
+  if (!entries.length) {
+    empty(
+      "medicineList",
+      "No medicines yet",
+      "Medicines shared by your authorized caregiver will appear here."
+    );
+    return;
+  }
+
+  if ($("medicineList")) {
+    $("medicineList").innerHTML = entries.map(([, medicine]) => {
+      const frequency = medicine.frequency || medicine.recurrence || "";
+      const instructions = medicine.notes || medicine.instructions || "";
+
+      return `
+        <article class="item">
+          <div class="item-icon">💊</div>
+          <div class="item-main">
+            <h3 class="item-title">${escapeHTML(medicineName(medicine))}</h3>
+            <p class="item-description">Dosage: ${escapeHTML(medicineDosage(medicine))}${frequency
+              ? `\nSchedule: ${escapeHTML(frequency)}` : ""}${instructions
+              ? `\nInstructions: ${escapeHTML(instructions)}` : ""}</p>
+          </div>
+        </article>`;
+    }).join("");
+  }
+}
+
+function renderReminders() {
+  const dates = [];
+
+  for (let offset = 0; offset < 7; offset++) {
+    const date = new Date();
+    date.setDate(date.getDate() + offset);
+    dates.push(todayKey(date));
+  }
+
+  const today = todayKey();
+  const entries = dates.flatMap(getReminderEntries);
+
+  if (!entries.length) {
+    empty("reminderList", "No upcoming reminders", "Upcoming scheduled doses will appear here.");
+    return;
+  }
+
+  if ($("reminderList")) {
+    $("reminderList").innerHTML = entries.map((entry) => `
+      <div>
+        <p class="panel-subtitle" style="margin:4px 0 8px;">
+          ${escapeHTML(entry.date === today ? "Today" : formatDate(entry.date))}
+        </p>
+        ${renderReminderCard(entry)}
+      </div>`).join("");
+  }
+}
+
+function renderHistory() {
+  const entries = Object.entries(state.logs)
+    .filter(([, log]) => log && typeof log === "object")
+    .map(([id, log]) => ({ id, ...log }))
+    .filter((log) => ["taken", "missed"].includes(String(log.status || "").toLowerCase()))
+    .sort((a, b) => String(b.recordedAt || "").localeCompare(String(a.recordedAt || "")));
+
+  if (!entries.length) {
+    empty("historyList", "No history yet", "Doses you record will appear here.");
+    return;
+  }
+
+  if ($("historyList")) {
+    $("historyList").innerHTML = entries.map((log) => `
+      <article class="item">
+        <div class="item-icon">${String(log.status).toLowerCase() === "taken" ? "✓" : "◷"}</div>
+        <div class="item-main">
+          <h3 class="item-title">${escapeHTML(log.medicineName || log.name || "Medicine dose")}</h3>
+          <p class="item-description">Date: ${escapeHTML(formatDate(log.date))}
+            \nDosage: ${escapeHTML(log.dosage || "Not specified")}
+            ${log.recordedAt ? `\nRecorded: ${escapeHTML(new Date(log.recordedAt).toLocaleString())}` : ""}</p>
+          <div class="item-meta">${statusTag(log.status)}</div>
+        </div>
+      </article>`).join("");
+  }
+}
 
 function renderAll() {
   renderToday();
@@ -749,221 +513,162 @@ function renderAll() {
   renderHistory();
 }
 
+/* Keep the patient-history listener separate from caregiver listeners. */
+function stopPatientLogListener() {
+  if (state.patientLogUnsubscribe) {
+    state.patientLogUnsubscribe();
+    state.patientLogUnsubscribe = null;
+  }
+}
+
+function stopCaregiverListeners() {
+  state.caregiverUnsubscribers.forEach((unsubscribe) => {
+    try { unsubscribe(); } catch (error) {
+      console.warn("Could not stop caregiver listener:", error);
+    }
+  });
+
+  state.caregiverUnsubscribers = [];
+}
 
 function stopAllListeners() {
-  for (const unsubscribe of state.unsubscribers) {
-    try {
-      unsubscribe();
-    } catch (error) {
-      console.warn("Listener cleanup error:", error);
-    }
-  }
-
-  state.unsubscribers = [];
+  stopPatientLogListener();
+  stopCaregiverListeners();
 }
-
 
 function listenToPatientLogs(uid) {
-  const logsReference = ref(db, `users/${uid}/intakeLogs`);
+  stopPatientLogListener();
 
-  const unsubscribe = onValue(
-    logsReference,
+  state.patientLogUnsubscribe = onValue(
+    ref(db, `users/${uid}/intakeLogs`),
     (snapshot) => {
-      state.logs = snapshot.val() || {};
+      state.logs = normalizeCollection(snapshot.val());
       renderAll();
     },
     (error) => {
-      console.error("Patient logs error:", error);
-      showNotice(
-        "Unable to load your dose history. Check your Firebase database permissions.",
-        "error"
-      );
+      console.error("Patient history read failed:", error);
+      notice("error", "Unable to load intake history. Check your Firebase Database Rules.");
     }
   );
-
-  state.unsubscribers.push(unsubscribe);
 }
-
 
 function listenToCaregiverData(uid) {
-  const medicinesReference = ref(db, `users/${uid}/medicines`);
-  const remindersReference = ref(db, `users/${uid}/reminders`);
+  stopCaregiverListeners();
 
-  const medicinesUnsubscribe = onValue(
-    medicinesReference,
-    (snapshot) => {
-      state.medicines = snapshot.val() || {};
-      renderAll();
-    },
-    (error) => {
-      console.error("Caregiver medicines error:", error);
-      showNotice(
-        "Your caregiver connection exists, but the medicine list could not be loaded. Check your Firebase database rules.",
-        "error"
-      );
-    }
+  state.caregiverUnsubscribers.push(
+    onValue(
+      ref(db, `users/${uid}/medicines`),
+      (snapshot) => {
+        state.medicines = normalizeCollection(snapshot.val());
+        renderAll();
+      },
+      (error) => {
+        console.error("Caregiver medicines read failed:", error);
+        notice(
+          "error",
+          "Shared medicines could not be loaded. Confirm that the authorized person connected to your patient ID and that your database rules allow the shared read."
+        );
+      }
+    ),
+    onValue(
+      ref(db, `users/${uid}/reminders`),
+      (snapshot) => {
+        state.reminders = normalizeCollection(snapshot.val());
+        renderAll();
+      },
+      (error) => {
+        console.error("Caregiver reminders read failed:", error);
+        notice(
+          "error",
+          "Shared reminders could not be loaded. Check the reciprocal connection and Firebase Database Rules."
+        );
+      }
+    )
   );
-
-  const remindersUnsubscribe = onValue(
-    remindersReference,
-    (snapshot) => {
-      state.reminders = snapshot.val() || {};
-      renderAll();
-    },
-    (error) => {
-      console.error("Caregiver reminders error:", error);
-      showNotice(
-        "Unable to load reminders. Check your Firebase database permissions.",
-        "error"
-      );
-    }
-  );
-
-  state.unsubscribers.push(medicinesUnsubscribe, remindersUnsubscribe);
 }
-
 
 async function copyPatientUid() {
-  const uid = state.user?.uid;
-
-  if (!uid) {
-    showNotice("Your Patient ID is not available yet.", "error");
-    return;
-  }
+  if (!state.user) return;
 
   try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(uid);
-    } else {
-      const input = document.createElement("textarea");
-      input.value = uid;
-      input.style.position = "fixed";
-      input.style.opacity = "0";
-      document.body.appendChild(input);
-      input.select();
-
-      const copied = document.execCommand("copy");
-      input.remove();
-
-      if (!copied) throw new Error("Copy command failed");
-    }
-
-    showNotice("Patient ID copied successfully.", "success");
+    await navigator.clipboard.writeText(state.user.uid);
+    notice("success", "Patient ID copied. Share it only with your verified authorized caregiver.");
   } catch (error) {
-    console.error("Copy error:", error);
-    showNotice("Unable to copy automatically. You can select your Patient ID in the profile.", "error");
+    notice("info", `Your patient ID is ${state.user.uid}. Select and copy it from the panel.`);
   }
 }
-
 
 async function recordDose(reminderId, date, status, button) {
   if (!state.user || !state.caregiverUid) {
-    showNotice(
-      "Connect your account to an authorized caregiver before recording a dose.",
-      "error"
-    );
+    notice("error", "Your authorized caregiver has not connected your account yet.");
     return;
   }
 
-  const allowedStatuses = ["taken", "missed"];
+  if (!["taken", "missed"].includes(status)) return;
 
-  if (!allowedStatuses.includes(status)) return;
+  const reminder = state.reminders[reminderId];
+  if (!reminder) {
+    notice("error", "This reminder is no longer available.");
+    return;
+  }
 
   const key = logKey(reminderId, date);
 
+  if (getLog(reminderId, date)) {
+    notice("info", "This dose has already been recorded.");
+    return;
+  }
+
   if (state.recording.has(key)) return;
 
-  const existing = getStatus(reminderId, date);
-
-  if (existing !== "upcoming") {
-    showNotice("This dose has already been recorded.", "info");
-    return;
-  }
-
-  const entry = getReminderEntries(new Date())
-    .find((item) => String(item.id) === String(reminderId));
-
-  if (!entry) {
-    showNotice("This reminder is no longer available.", "error");
-    return;
-  }
-
   state.recording.add(key);
-
   if (button) button.disabled = true;
 
+  const medicine = findMedicine(reminder);
+
+  const log = {
+    reminderId,
+    medicineId: reminderMedicineId(reminder),
+    medicineName: medicine
+      ? medicineName(medicine)
+      : reminder.medicineName || reminder.name || "Scheduled medicine",
+    dosage: medicine
+      ? medicineDosage(medicine)
+      : reminder.dosage || reminder.dose || "Not specified",
+    date,
+    time: reminderTime(reminder),
+    status,
+    recordedAt: new Date().toISOString()
+  };
+
   try {
-    const logReference = ref(
-      db,
-      `users/${state.user.uid}/intakeLogs/${key}`
-    );
-
-    const log = {
-      reminderId: String(reminderId),
-      medicineName: entry.name,
-      dosage: entry.dosage,
-      date,
-      time: new Date().toISOString(),
-      status,
-      recordedBy: state.user.uid
-    };
-
-    await set(logReference, log);
-
-    showNotice(
-      status === "taken"
-        ? "Your medicine intake has been recorded."
-        : "Your dose has been marked as missed.",
-      status === "taken" ? "success" : "info"
-    );
+    await set(ref(db, `users/${state.user.uid}/intakeLogs/${key}`), log);
+    state.logs[key] = log;
+    renderAll();
+    notice("success", status === "taken" ? "Dose recorded as taken." : "Dose recorded as missed.");
   } catch (error) {
-    console.error("Dose recording error:", error);
-
-    showNotice(
-      "Unable to save your dose. Check your Firebase database rules and try again.",
-      "error"
-    );
+    console.error("Saving dose record failed:", error);
+    notice("error", "Unable to save this dose. Check your Firebase Database Rules.");
+    if (button) button.disabled = false;
   } finally {
     state.recording.delete(key);
-
-    if (button) button.disabled = false;
   }
 }
 
-
-function openProfile() {
-  const overlay = $("profileOverlay");
-  if (!overlay) return;
-
-  overlay.classList.add("open");
-  document.body.style.overflow = "hidden";
-  $("closeProfile")?.focus();
-}
-
-
-function closeProfile() {
-  $("profileOverlay")?.classList.remove("open");
-  document.body.style.overflow = "";
-}
-
-
 function setupNavigation() {
-  document.querySelectorAll(".nav-button[data-page]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const targetId = button.dataset.page;
-      const target = $(targetId);
+  const buttons = document.querySelectorAll(".nav-button[data-page]");
 
-      if (!target) return;
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const pageId = button.dataset.page;
+      if (!$(pageId)) return;
 
       document.querySelectorAll(".page").forEach((page) => {
-        page.classList.toggle("active", page.id === targetId);
+        page.classList.toggle("active", page.id === pageId);
       });
 
-      document.querySelectorAll(".nav-button[data-page]").forEach((navButton) => {
-        navButton.classList.toggle(
-          "active",
-          navButton.dataset.page === targetId
-        );
+      buttons.forEach((navButton) => {
+        navButton.classList.toggle("active", navButton.dataset.page === pageId);
       });
 
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -971,76 +676,34 @@ function setupNavigation() {
   });
 }
 
-
-async function handleSignOut() {
-  if (state.loggingOut) return;
-
-  state.loggingOut = true;
-
-  const logoutButton = $("profileLogout");
-
-  if (logoutButton) {
-    logoutButton.disabled = true;
-    logoutButton.textContent = "Signing out...";
-  }
-
-  try {
-    stopAllListeners();
-
-    // Sign out immediately; no confirmation modal.
-    await signOut(auth);
-
-    window.location.replace("login.html");
-  } catch (error) {
-    console.error("Sign-out error:", error);
-
-    state.loggingOut = false;
-
-    if (logoutButton) {
-      logoutButton.disabled = false;
-      logoutButton.textContent = "↪ Sign out";
-    }
-
-    showNotice("Unable to sign out. Please try again.", "error");
-    closeProfile();
-  }
-}
-
-
 function setupEvents() {
-  $("profileTrigger")?.addEventListener("click", openProfile);
-  $("sidebarProfile")?.addEventListener("click", openProfile);
-
-  $("closeProfile")?.addEventListener("click", closeProfile);
-
-  $("profileOverlay")?.addEventListener("click", (event) => {
-    if (event.target === $("profileOverlay")) {
-      closeProfile();
-    }
-  });
-
   $("copyPatientUidButton")?.addEventListener("click", copyPatientUid);
 
-  // Direct logout with one tap. No confirmation prompt.
-  $("profileLogout")?.addEventListener("click", handleSignOut);
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeProfile();
+  $("sidebarLogout")?.addEventListener("click", async () => {
+    try {
+      stopAllListeners();
+      await signOut(auth);
+      window.location.href = "login.html";
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      notice("error", "Unable to sign out. Please try again.");
+    }
   });
 
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-dose-action]");
     if (!button) return;
 
-    const status = button.dataset.doseAction;
-    const reminderId = button.dataset.reminderId;
-
-    recordDose(reminderId, todayKey(), status, button);
+    recordDose(
+      button.dataset.reminderId,
+      button.dataset.doseDate,
+      button.dataset.doseAction,
+      button
+    );
   });
 
   window.addEventListener("beforeunload", stopAllListeners);
 }
-
 
 async function startPatientDashboard(user) {
   stopAllListeners();
@@ -1052,93 +715,71 @@ async function startPatientDashboard(user) {
   state.reminders = {};
   state.logs = {};
 
-  showLoading();
-  hideNotice();
+  setLoading(true);
+  clearNotices();
 
   try {
-    const profileReference = ref(db, `users/${user.uid}`);
-    const profileSnapshot = await get(profileReference);
+    const [profileSnapshot, connectionSnapshot] = await Promise.all([
+      get(ref(db, `users/${user.uid}/profile`)),
+      get(ref(db, `users/${user.uid}/careConnection`))
+    ]);
+
     const profile = profileSnapshot.val() || {};
+    state.profile = profile;
 
-    const role = String(
-      firstValue(profile, ["role", "userRole", "accountType"], "")
-    ).toLowerCase().replace(/[\s-]+/g, "_");
+    const role = String(profile.role || "").toLowerCase().trim();
 
-    if (
-      role &&
-      !["patient", "medicine_taker", "patient_user"].includes(role)
-    ) {
-      showLoading();
-      $("loading").innerHTML = `
-        <strong>This account is not registered as a patient.</strong>
-        <p style="max-width:340px;text-align:center;line-height:1.6">
-          Please sign in using your patient account.
-        </p>
-        <button id="wrongRoleLogout" class="primary-button" type="button">
-          Return to login
-        </button>
-      `;
-
-      $("wrongRoleLogout").addEventListener("click", handleSignOut);
+    if (!["patient", "medicine taker", "medicine_taker"].includes(role)) {
+      setLoading(false);
+      notice("error", "This page is for patient accounts. Please sign in with your patient account.");
       return;
     }
 
-    state.profile = profile;
     updateUserDisplay(profile, user);
 
-    const connection = profile.careConnection || {};
-    const authorizedUid = firstValue(
-      connection,
-      ["authorizedUid", "caregiverUid", "caregiverId"],
-      ""
-    );
+    const connection = connectionSnapshot.val() || {};
+    const caregiverUid = connection.authorizedUid || null;
 
-    const connected = Boolean(
-      authorizedUid && authorizedUid !== user.uid
-    );
+    setLoading(false);
 
-    state.caregiverUid = connected ? String(authorizedUid) : null;
+    if (caregiverUid && caregiverUid !== user.uid) {
+      state.caregiverUid = caregiverUid;
 
-    updateConnectionStatus(connected);
+      updateConnectionStatus(
+        true,
+        "Your caregiver ID is saved. Loading your shared medicine schedule..."
+      );
 
-    hideLoading();
-
-    // Patient intake history belongs to the patient account.
-    listenToPatientLogs(user.uid);
-
-    if (connected) {
-      listenToCaregiverData(state.caregiverUid);
+      listenToCaregiverData(caregiverUid);
     } else {
-      state.medicines = {};
-      state.reminders = {};
+      updateConnectionStatus(
+        false,
+        "Show your QR code or patient ID to your authorized caregiver. They initiate the connection from their dashboard."
+      );
+
+      empty("todayList", "Waiting for your caregiver", "Your medicine schedule will appear here after the accounts are connected.");
+      empty("medicineList", "Waiting for your caregiver", "Shared medicines will appear here after connection.");
+      empty("reminderList", "No reminders yet", "Shared reminders will appear here after connection.");
       renderAll();
 
-      showNotice(
-        "Your account is not connected to an authorized caregiver yet. Show your Patient QR code or ID from your profile to your caregiver.",
-        "info"
-      );
+      notice("info", "Your QR code is ready. Ask your authorized caregiver to scan it from their dashboard.");
     }
+
+    listenToPatientLogs(user.uid);
   } catch (error) {
-    console.error("Dashboard loading error:", error);
-
-    hideLoading();
-
-    showNotice(
-      "Unable to load your patient dashboard. Please refresh the page and check your Firebase configuration and database permissions.",
-      "error"
-    );
+    console.error("Patient dashboard startup failed:", error);
+    setLoading(false);
+    notice("error", "Unable to load your account. Check Firebase configuration, sign-in status, and Database Rules.");
   }
 }
-
 
 setupNavigation();
 setupEvents();
 
-
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     stopAllListeners();
-    window.location.replace("login.html");
+    window.location.href = "login.html";
     return;
   }
 
