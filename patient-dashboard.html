@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -133,7 +134,6 @@
     }
 
     .nav-icon { width: 22px; text-align: center; font-size: 18px; }
-
     .sidebar-bottom { margin-top: auto; }
 
     .user-card {
@@ -144,20 +144,26 @@
       border-top: 1px solid var(--border);
     }
 
-    .avatar {
+    .avatar, .top-avatar {
       display: grid;
       place-items: center;
       flex-shrink: 0;
-      width: 39px;
-      height: 39px;
       border-radius: 50%;
       background: var(--light);
       color: var(--green);
       font-weight: 800;
     }
 
+    .avatar { width: 39px; height: 39px; }
+
     .user-info { min-width: 0; }
-    .user-name { overflow: hidden; font-size: 13px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .user-name {
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .user-role { color: var(--muted); font-size: 11px; }
 
     .logout-button {
@@ -200,16 +206,10 @@
     .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
 
     .top-avatar {
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
       width: 43px;
       height: 43px;
       border: 1px solid #d8e9dd;
-      border-radius: 50%;
       background: white;
-      color: var(--green);
-      font-weight: 800;
     }
 
     .notice {
@@ -385,14 +385,25 @@
     .item-description { margin: 5px 0 0; color: var(--muted); font-size: 11px; white-space: pre-line; }
     .item-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
     .item-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-    .take-button { padding: 8px 10px; border: 0; border-radius: 8px; background: var(--green); color: white; font-size: 11px; font-weight: 750; }
+
+    .take-button {
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--green);
+      color: white;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
     .take-button:disabled { background: var(--light); color: var(--green); }
     .empty-state { padding: 25px 14px; color: var(--muted); text-align: center; font-size: 12px; }
     .empty-icon { margin-bottom: 8px; font-size: 27px; }
     .section-heading { margin: 0 0 5px; font-size: 20px; }
     .section-description { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
     .footer-note { padding: 15px 0 5px; color: var(--muted); text-align: center; font-size: 10px; }
-    .mobile-nav { display: none; }
+
+    .mobile-nav, .mobile-logout { display: none; }
 
     @media (max-width: 1000px) {
       .sidebar { width: 215px; }
@@ -403,7 +414,7 @@
     @media (max-width: 700px) {
       .app.ready { display: block; }
       .sidebar { display: none; }
-      .main { width: 100%; margin: 0; padding: 20px 14px 95px; }
+      .main { width: 100%; margin: 0; padding: 20px 14px 30px; }
       .stats { gap: 8px; }
       .stat-card { padding: 12px 9px; border-radius: 13px; }
       .stat-label { font-size: 10px; }
@@ -411,6 +422,7 @@
       .stat-caption { font-size: 9px; }
       .panel-header { padding: 15px; }
       .panel-body { padding: 15px; }
+
       .mobile-nav {
         position: fixed;
         right: 0;
@@ -424,6 +436,7 @@
         background: rgba(255,255,255,.97);
         backdrop-filter: blur(12px);
       }
+
       .mobile-nav .nav-button {
         flex-direction: column;
         justify-content: center;
@@ -432,7 +445,40 @@
         text-align: center;
         font-size: 10px;
       }
-      .mobile-nav .nav-icon { font-size: 18px; }
+
+      .mobile-nav .nav-icon { width: auto; font-size: 18px; }
+
+      .mobile-logout {
+        display: block;
+        padding: 16px 14px calc(95px + env(safe-area-inset-bottom));
+        text-align: center;
+      }
+
+      .mobile-logout button {
+        width: 100%;
+        max-width: 360px;
+        min-height: 44px;
+        padding: 12px 16px;
+        border: 1px solid #f1d5d5;
+        border-radius: 11px;
+        background: #fff7f7;
+        color: var(--red);
+        font-size: 13px;
+        font-weight: 750;
+      }
+
+      .mobile-logout button:hover { background: #fff0f0; }
+    }
+
+    @media (max-width: 420px) {
+      .item { flex-wrap: wrap; }
+      .item-actions {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        width: 100%;
+        margin-left: 49px;
+      }
     }
 
     @media (max-width: 360px) {
@@ -549,6 +595,7 @@
                 </div>
                 <span id="connectionStatusBadge" class="connection-status">Not connected</span>
               </div>
+
               <div class="panel-body">
                 <p id="connectionStatus" class="panel-subtitle">Your caregiver can scan your QR code to identify your account.</p>
 
@@ -564,14 +611,19 @@
                 <div class="button-row" style="margin-top:12px;">
                   <button id="copyPatientUidButton" class="secondary-button" type="button">Copy patient ID</button>
                 </div>
-                <p class="panel-subtitle" style="margin-top:12px;">Only share your ID with the authorized person you have verified. This code identifies your account; it is not a password.</p>
+
+                <p class="panel-subtitle" style="margin-top:12px;">
+                  Only share your ID with the authorized person you have verified. This code identifies your account; it is not a password.
+                </p>
               </div>
             </div>
 
             <div class="panel">
               <div class="panel-header"><h2>Helpful reminder 💚</h2></div>
               <div class="panel-body">
-                <p class="panel-subtitle" style="line-height:1.8;margin:0;">Follow your healthcare professional's instructions. If a medicine or dose looks incorrect, contact your caregiver or pharmacist before taking it.</p>
+                <p class="panel-subtitle" style="line-height:1.8;margin:0;">
+                  Follow your healthcare professional's instructions. If a medicine or dose looks incorrect, contact your caregiver or pharmacist before taking it.
+                </p>
               </div>
             </div>
           </div>
@@ -614,11 +666,16 @@
       <p class="footer-note">Medminder helps organize reminders and does not replace professional medical advice.</p>
     </main>
 
+    <!-- Visible on mobile; users can scroll down to sign out. -->
+    <div class="mobile-logout">
+      <button id="mobileLogout" type="button">↪ Sign out</button>
+    </div>
+
     <nav class="mobile-nav" aria-label="Mobile navigation">
-      <button class="nav-button active" data-page="homeSection" type="button"><span class="nav-icon">⌂</span><span>Today</span></button>
-      <button class="nav-button" data-page="medicinesSection" type="button"><span class="nav-icon">✚</span><span>Medicines</span></button>
-      <button class="nav-button" data-page="remindersSection" type="button"><span class="nav-icon">◷</span><span>Reminders</span></button>
-      <button class="nav-button" data-page="historySection" type="button"><span class="nav-icon">▤</span><span>History</span></button>
+      <button class="nav-button active" data-page="homeSection" type="button"><span class="nav-icon">🏠</span><span>Today</span></button>
+      <button class="nav-button" data-page="medicinesSection" type="button"><span class="nav-icon">💊</span><span>Medicines</span></button>
+      <button class="nav-button" data-page="remindersSection" type="button"><span class="nav-icon">🔔</span><span>Reminders</span></button>
+      <button class="nav-button" data-page="historySection" type="button"><span class="nav-icon">📋</span><span>History</span></button>
     </nav>
   </div>
 
