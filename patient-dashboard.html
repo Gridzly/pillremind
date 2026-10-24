@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,45 +5,49 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#175638">
   <title>Medminder | Patient Dashboard</title>
+
   <style>
     :root {
-      --green: #175638;
-      --dark: #10442b;
-      --light: #e7f4eb;
-      --bg: #f2f7f3;
-      --white: #fff;
-      --text: #20352a;
-      --muted: #718078;
-      --border: #e2ebe4;
-      --red: #c94747;
-      --orange: #916215;
-      --shadow: 0 8px 25px rgba(23,86,56,.07);
+      -green: #175638;
+      -dark: #10442b;
+      -light: #e7f4eb;
+      -bg: #f2f7f3;
+      -white: #fff;
+      -text: #20352a;
+      -muted: #718078;
+      -border: #e2ebe4;
+      -red: #c94747;
+      -orange: #916215;
+      -shadow: 0 8px 25px rgba(23,86,56,.07);
     }
 
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      background: var(--bg);
-      color: var(--text);
+      background: var(bg);
+      color: var(text);
       font: 14px Inter, -apple-system, BlinkMacSystemFont,
         "Segoe UI", Roboto, Arial, sans-serif;
     }
-    button { font: inherit; cursor: pointer; }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
     button:disabled { opacity: .55; cursor: not-allowed; }
     [hidden] { display: none !important; }
 
-    .layout { min-height: 100vh; }
     .sidebar {
       position: fixed;
       inset: 0 auto 0 0;
       z-index: 10;
       width: 245px;
       padding: 25px 17px;
-      background: var(--white);
-      border-right: 1px solid var(--border);
+      background: var(white);
+      border-right: 1px solid var(border);
       display: flex;
       flex-direction: column;
     }
+
     .brand {
       display: flex;
       align-items: center;
@@ -54,6 +57,7 @@
       font-size: 21px;
       font-weight: 850;
     }
+
     .brand-icon {
       width: 40px;
       height: 40px;
@@ -63,6 +67,7 @@
       background: var(--light);
       font-size: 22px;
     }
+
     .nav-label {
       padding: 0 12px;
       margin: 7px 0 10px;
@@ -72,7 +77,9 @@
       letter-spacing: 1.3px;
       text-transform: uppercase;
     }
+
     .nav-list { display: grid; gap: 6px; }
+
     .nav-btn {
       width: 100%;
       border: 0;
@@ -86,10 +93,16 @@
       text-align: left;
       font-weight: 700;
     }
-    .nav-btn:hover { background: var(--bg); color: var(--green); }
-    .nav-btn.active { background: var(--light); color: var(--green); }
+
+    .nav-btn:hover,
+    .nav-btn.active {
+      background: var(--light);
+      color: var(--green);
+    }
+
     .nav-icon { width: 22px; text-align: center; font-size: 18px; }
     .sidebar-bottom { margin-top: auto; }
+
     .account-card {
       padding: 13px;
       margin: 20px 0 12px;
@@ -97,10 +110,12 @@
       border-radius: 13px;
       overflow-wrap: anywhere;
     }
+
     .account-card strong { display: block; margin-bottom: 5px; }
     .account-card span { color: var(--muted); font-size: 12px; }
 
     .main { margin-left: 245px; min-width: 0; }
+
     .topbar {
       position: sticky;
       top: 0;
@@ -115,14 +130,17 @@
       gap: 15px;
       backdrop-filter: blur(10px);
     }
+
     .topbar h2 { margin: 0 0 4px; font-size: 19px; }
     .topbar p { margin: 0; color: var(--muted); font-size: 12px; }
+
     .user-chip {
       display: flex;
       align-items: center;
       gap: 10px;
       font-weight: 700;
     }
+
     .avatar {
       width: 38px;
       height: 38px;
@@ -133,93 +151,201 @@
       background: var(--light);
       font-weight: 800;
     }
-    .content { max-width: 1250px; margin: auto; padding: 28px 30px 50px; }
+
+    .content {
+      max-width: 1250px;
+      margin: auto;
+      padding: 28px 30px 50px;
+    }
+
     .welcome { margin-bottom: 24px; }
-    .welcome h1 { margin: 0 0 7px; font-size: clamp(24px,3vw,31px); letter-spacing: -.6px; }
+    .welcome h1 {
+      margin: 0 0 7px;
+      font-size: clamp(24px,3vw,31px);
+      letter-spacing: -.6px;
+    }
+
     .welcome p { margin: 0; color: var(--muted); line-height: 1.6; }
-    .stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 15px; margin-bottom: 22px; }
-    .stat-card,.panel {
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3,minmax(0,1fr));
+      gap: 15px;
+      margin-bottom: 22px;
+    }
+
+    .stat-card, .panel {
       background: var(--white);
       border: 1px solid var(--border);
       border-radius: 16px;
       box-shadow: var(--shadow);
     }
+
     .stat-card { padding: 19px; }
+
     .stat-icon {
-      width: 40px; height: 40px; margin-bottom: 13px;
-      display: grid; place-items: center;
-      border-radius: 12px; background: var(--light); font-size: 20px;
+      width: 40px;
+      height: 40px;
+      margin-bottom: 13px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--light);
+      font-size: 20px;
     }
-    .stat-number { color: var(--green); font-size: 27px; font-weight: 850; margin-bottom: 5px; }
+
+    .stat-number {
+      color: var(--green);
+      font-size: 27px;
+      font-weight: 850;
+      margin-bottom: 5px;
+    }
+
     .stat-label { color: var(--muted); font-size: 12px; }
     .panel { padding: 21px; margin-bottom: 18px; min-width: 0; }
+
     .panel-heading {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
     }
+
     .panel-heading h2 { margin: 0; font-size: 17px; }
     .muted { color: var(--muted); line-height: 1.7; }
-    .small-note { color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
-    .btn {
-      border: 0; border-radius: 10px; padding: 11px 15px;
-      color: #fff; background: var(--green); font-weight: 750;
-      transition: background .2s;
+
+    .small-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
     }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 15px;
+      color: #fff;
+      background: var(--green);
+      font-weight: 750;
+    }
+
     .btn:hover { background: var(--dark); }
     .btn.secondary { background: var(--light); color: var(--green); }
     .btn.secondary:hover { background: #d7ebdd; }
     .btn.danger { background: #fff0f0; color: var(--red); }
     .btn.small { padding: 8px 10px; font-size: 12px; }
-    .notice {
-      display: none; margin-bottom: 17px; padding: 13px 15px;
-      border-radius: 11px; line-height: 1.55; overflow-wrap: anywhere;
+
+    .field { display: grid; gap: 7px; margin: 12px 0; }
+    .field label { font-size: 12px; font-weight: 750; }
+
+    .field input {
+      width: 100%;
+      min-height: 43px;
+      padding: 11px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+      color: var(--text);
+      outline: none;
     }
+
+    .field input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(23,86,56,.08);
+    }
+
+    .notice {
+      display: none;
+      margin-bottom: 17px;
+      padding: 13px 15px;
+      border-radius: 11px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
     .notice.show { display: block; }
     .notice.error { color: #9d2929; background: #fff0f0; border: 1px solid #f5d4d4; }
     .notice.success { color: var(--green); background: var(--light); border: 1px solid #d4e9d9; }
     .notice.info { color: #74531a; background: #fff8e8; border: 1px solid #f0e2bd; }
+
     .badge {
-      display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 30px; padding: 6px 10px; font-size: 11px;
-      font-weight: 800; white-space: nowrap; background: var(--light); color: var(--green);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 30px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+      background: var(--light);
+      color: var(--green);
     }
+
     .badge.pending { background: #fff3d8; color: var(--orange); }
     .badge.taken { background: #e1f5e7; color: #176b36; }
     .badge.missed { background: #ffebeb; color: #a62d2d; }
+
     .section { display: none; }
     .section.active { display: block; }
+
     .section-title { margin: 0 0 7px; font-size: 24px; }
     .section-description { color: var(--muted); margin: 0 0 20px; line-height: 1.6; }
     .item-list { display: grid; gap: 12px; }
+
     .item-card {
-      padding: 16px; border: 1px solid var(--border); border-radius: 13px;
-      display: flex; align-items: flex-start; justify-content: space-between;
-      gap: 14px; min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      min-width: 0;
     }
+
     .item-main { min-width: 0; flex: 1; }
     .item-title { font-size: 15px; margin: 0 0 7px; overflow-wrap: anywhere; }
     .item-details { color: var(--muted); font-size: 12px; line-height: 1.75; overflow-wrap: anywhere; }
-    .item-side { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; flex-shrink: 0; }
+
+    .item-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 9px;
+      flex-shrink: 0;
+    }
+
     .item-time { color: var(--green); font-weight: 800; }
     .item-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+
     .empty-state {
-      text-align: center; padding: 28px 14px; border: 1px dashed #d6e3d9;
-      border-radius: 13px; color: var(--muted); line-height: 1.7;
+      text-align: center;
+      padding: 28px 14px;
+      border: 1px dashed #d6e3d9;
+      border-radius: 13px;
+      color: var(--muted);
+      line-height: 1.7;
     }
+
     .empty-icon { font-size: 29px; margin-bottom: 8px; }
     .empty-state strong { display: block; color: var(--text); margin-bottom: 4px; }
-    .connection-code {
-      margin: 14px 0; color: var(--green); font-size: clamp(26px,4vw,36px);
-      font-weight: 850; letter-spacing: 5px; overflow-wrap: anywhere;
-    }
-    .connection-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+
     .loading-screen { padding: 70px 20px; text-align: center; color: var(--muted); }
+
     .spinner {
-      width: 32px; height: 32px; border: 3px solid #dbe9df;
-      border-top-color: var(--green); border-radius: 50%;
-      margin: 0 auto 15px; animation: spin .8s linear infinite;
+      width: 32px;
+      height: 32px;
+      border: 3px solid #dbe9df;
+      border-top-color: var(--green);
+      border-radius: 50%;
+      margin: 0 auto 15px;
+      animation: spin .8s linear infinite;
     }
+
     @keyframes spin { to { transform: rotate(360deg); } }
+
     .mobile-nav { display: none; }
 
     @media (max-width: 850px) {
@@ -228,6 +354,7 @@
       .content { padding: 23px 20px 35px; }
       .topbar { padding: 14px 20px; }
     }
+
     @media (max-width: 650px) {
       .sidebar { display: none; }
       .main { margin-left: 0; }
@@ -243,109 +370,214 @@
       .item-side { max-width: 42%; }
       .item-actions .btn { padding: 8px 9px; font-size: 11px; }
       .user-chip .user-name { display: none; }
+
       .mobile-nav {
-        position: fixed; inset: auto 0 0; z-index: 20;
-        display: block; padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
-        background: rgba(255,255,255,.97); border-top: 1px solid var(--border);
+        position: fixed;
+        inset: auto 0 0;
+        z-index: 20;
+        display: block;
+        padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+        background: rgba(255,255,255,.97);
+        border-top: 1px solid var(--border);
         backdrop-filter: blur(12px);
       }
+
       .mobile-nav .nav-list {
-        max-width: 560px; margin: auto;
-        display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px;
+        max-width: 560px;
+        margin: auto;
+        display: grid;
+        grid-template-columns: repeat(3,minmax(0,1fr));
+        gap: 5px;
       }
+
       .mobile-nav .nav-btn {
-        padding: 7px 4px; flex-direction: column; gap: 4px;
-        justify-content: center; text-align: center; font-size: 10px;
+        padding: 7px 4px;
+        flex-direction: column;
+        gap: 4px;
+        justify-content: center;
+        text-align: center;
+        font-size: 10px;
       }
+
       .mobile-nav .nav-icon { font-size: 20px; }
     }
+
     @media (max-width: 380px) {
       .stats { grid-template-columns: 1fr; }
       .stat-card { display: flex; align-items: center; gap: 12px; }
       .stat-icon { margin: 0; flex-shrink: 0; }
       .item-card { flex-direction: column; }
-      .item-side { width: 100%; max-width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
+      .item-side {
+        width: 100%;
+        max-width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
     }
   </style>
 </head>
+
 <body>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="brand"><div class="brand-icon">💊</div><span>Medminder</span></div>
-      <div class="nav-label">Patient menu</div>
-      <nav class="nav-list" aria-label="Main navigation">
-        <button class="nav-btn active" data-target="homeSection"><span class="nav-icon">🏠</span>Home</button>
-        <button class="nav-btn" data-target="remindersSection"><span class="nav-icon">🔔</span>My reminders</button>
-        <button class="nav-btn" data-target="historySection"><span class="nav-icon">📋</span>Medicine history</button>
-      </nav>
-      <div class="sidebar-bottom">
-        <div class="account-card"><strong id="sideUserName">Patient account</strong><span>Medicine taker</span></div>
-        <button class="nav-btn" id="sidebarLogout"><span class="nav-icon">↪</span>Log out</button>
-      </div>
-    </aside>
-
-    <div class="main">
-      <header class="topbar">
-        <div><h2 id="pageTitle">Patient dashboard</h2><p>Manage your daily medicine routine</p></div>
-        <div class="user-chip"><div class="avatar" id="userAvatar">P</div><span class="user-name" id="headerUserName">Patient</span></div>
-      </header>
-
-      <main class="content">
-        <div id="loading" class="loading-screen"><div class="spinner"></div>Loading your dashboard...</div>
-        <div id="error" class="notice error" role="alert"></div>
-        <div id="success" class="notice success" role="status"></div>
-        <div id="info" class="notice info" role="status"></div>
-
-        <div id="app" hidden>
-          <div class="welcome">
-            <h1 id="welcomeTitle">Hello! 👋</h1>
-            <p>Your medicine schedule and reminders, all in one place.</p>
-          </div>
-
-          <div class="stats">
-            <div class="stat-card"><div class="stat-icon">💊</div><div><div class="stat-number" id="medicineCount">0</div><div class="stat-label">My medicines</div></div></div>
-            <div class="stat-card"><div class="stat-icon">⏰</div><div><div class="stat-number" id="todayCount">0</div><div class="stat-label">Today's reminders</div></div></div>
-            <div class="stat-card"><div class="stat-icon">✓</div><div><div class="stat-number" id="takenCount">0</div><div class="stat-label">Taken today</div></div></div>
-          </div>
-
-          <section class="section active" id="homeSection">
-            <div class="panel">
-              <div class="panel-heading"><h2>Caregiver connection</h2><span class="badge pending" id="connectionStatusBadge">Not connected</span></div>
-              <p class="muted">Your authorized caregiver manages your medicines and reminders. Once your accounts are securely connected, their schedule will appear here.</p>
-              <p class="small-note" id="connectionStatus" role="status">Checking connection status...</p>
-              <div id="connectionCodeArea" hidden>
-                <p class="small-note">Your temporary connection code</p>
-                <div class="connection-code" id="connectionCodeText"></div>
-                <p class="small-note" id="connectionExpiry"></p>
-                <div class="connection-actions">
-                  <button class="btn secondary" id="copyConnectionCode" type="button">Copy code</button>
-                  <button class="btn secondary" id="hideConnectionCode" type="button">Hide code</button>
-                </div>
-              </div>
-              <div class="connection-actions"><button class="btn" id="generateConnectionCode" type="button">Generate connection code</button></div>
-              <p class="small-note">Connection codes require a trusted backend to securely link accounts. Do not share your password or Firebase credentials.</p>
-            </div>
-            <div class="panel">
-              <div class="panel-heading"><h2>Today's schedule</h2><span class="badge" id="todayLabel"></span></div>
-              <div class="item-list" id="todayList"></div>
-            </div>
-            <div class="panel"><div class="panel-heading"><h2>My medicines</h2></div><div class="item-list" id="medicineList"></div></div>
-          </section>
-
-          <section class="section" id="remindersSection">
-            <h2 class="section-title">My reminders</h2>
-            <p class="section-description">Review your upcoming doses and record whether you took your medicine.</p>
-            <div class="panel"><div class="item-list" id="reminderList"></div></div>
-          </section>
-
-          <section class="section" id="historySection">
-            <h2 class="section-title">Medicine history</h2>
-            <p class="section-description">Review the doses you have marked as taken or missed.</p>
-            <div class="panel"><div class="item-list" id="historyList"></div></div>
-          </section>
-        </div>
-      </main>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">💊</div>
+      <span>Medminder</span>
     </div>
+
+    <div class="nav-label">Patient menu</div>
+
+    <nav class="nav-list" aria-label="Main navigation">
+      <button class="nav-btn active" data-target="homeSection"><span class="nav-icon">🏠</span>Home</button>
+      <button class="nav-btn" data-target="remindersSection"><span class="nav-icon">🔔</span>My reminders</button>
+      <button class="nav-btn" data-target="historySection"><span class="nav-icon">📋</span>Medicine history</button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="account-card">
+        <strong id="sideUserName">Patient account</strong>
+        <span>Medicine taker</span>
+      </div>
+      <button class="nav-btn" id="sidebarLogout"><span class="nav-icon">↪</span>Log out</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h2 id="pageTitle">Patient dashboard</h2>
+        <p>Manage your daily medicine routine</p>
+      </div>
+      <div class="user-chip">
+        <div class="avatar" id="userAvatar">P</div>
+        <span class="user-name" id="headerUserName">Patient</span>
+      </div>
+    </header>
+
+    <main class="content">
+      <div id="loading" class="loading-screen">
+        <div class="spinner"></div>
+        Loading your dashboard...
+      </div>
+
+      <div id="error" class="notice error" role="alert"></div>
+      <div id="success" class="notice success" role="status"></div>
+      <div id="info" class="notice info" role="status"></div>
+
+      <div id="app" hidden>
+        <div class="welcome">
+          <h1 id="welcomeTitle">Hello! 👋</h1>
+          <p>Your medicine schedule and reminders, all in one place.</p>
+        </div>
+
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-icon">💊</div>
+            <div>
+              <div class="stat-number" id="medicineCount">0</div>
+              <div class="stat-label">My medicines</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">⏰</div>
+            <div>
+              <div class="stat-number" id="todayCount">0</div>
+              <div class="stat-label">Today's reminders</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">✓</div>
+            <div>
+              <div class="stat-number" id="takenCount">0</div>
+              <div class="stat-label">Taken today</div>
+            </div>
+          </div>
+        </div>
+
+        <section class="section active" id="homeSection">
+          <div class="panel">
+            <div class="panel-heading">
+              <h2>Caregiver connection</h2>
+              <span class="badge pending" id="connectionStatusBadge">Not connected</span>
+            </div>
+
+            <p class="muted">
+              Enter your authorized caregiver's Firebase UID to request a connection.
+              Your caregiver must also enter your patient UID. The accounts connect
+              only when both connection records match.
+            </p>
+
+            <p class="small-note" id="connectionStatus" role="status">
+              Checking connection status...
+            </p>
+
+            <div class="field">
+              <label for="caregiverUidInput">Authorized caregiver Firebase UID</label>
+              <input
+                id="caregiverUidInput"
+                type="text"
+                maxlength="128"
+                autocomplete="off"
+                placeholder="Paste caregiver Firebase UID"
+              >
+            </div>
+
+            <div class="connection-actions">
+              <button class="btn" id="connectCaregiverButton" type="button">
+                Connect caregiver
+              </button>
+              <button class="btn secondary" id="copyPatientUidButton" type="button">
+                Copy my patient UID
+              </button>
+              <button class="btn danger" id="disconnectCaregiverButton" type="button" hidden>
+                Disconnect
+              </button>
+            </div>
+
+            <p class="small-note">
+              Share your UID only with the caregiver you trust. Never share your password
+              or Firebase credentials. UID pairing is an MVP workflow, not identity
+              verification by itself.
+            </p>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <h2>Today's schedule</h2>
+              <span class="badge" id="todayLabel"></span>
+            </div>
+            <div class="item-list" id="todayList"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading"><h2>My medicines</h2></div>
+            <div class="item-list" id="medicineList"></div>
+          </div>
+        </section>
+
+        <section class="section" id="remindersSection">
+          <h2 class="section-title">My reminders</h2>
+          <p class="section-description">
+            Review your upcoming doses and record whether you took your medicine.
+          </p>
+          <div class="panel">
+            <div class="item-list" id="reminderList"></div>
+          </div>
+        </section>
+
+        <section class="section" id="historySection">
+          <h2 class="section-title">Medicine history</h2>
+          <p class="section-description">
+            Review the doses you have marked as taken or missed.
+          </p>
+          <div class="panel">
+            <div class="item-list" id="historyList"></div>
+          </div>
+        </section>
+      </div>
+    </main>
   </div>
 
   <nav class="mobile-nav" aria-label="Mobile navigation">
