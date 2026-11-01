@@ -40,24 +40,27 @@ function escapeHTML(value) {
 function notice(type, message) {
   ["error", "success", "info"].forEach((id) => {
     const el = $(id);
+
     if (el) {
-      el.classList.add("hidden");
+      el.classList.remove("show");
       el.textContent = "";
     }
   });
 
   const el = $(type);
+
   if (el) {
     el.textContent = message;
-    el.classList.remove("hidden");
+    el.classList.add("show");
   }
 }
 
 function clearNotices() {
   ["error", "success", "info"].forEach((id) => {
     const el = $(id);
+
     if (el) {
-      el.classList.add("hidden");
+      el.classList.remove("show");
       el.textContent = "";
     }
   });
@@ -349,9 +352,10 @@ function renderReminderCard(entry) {
     ? medicineName(medicine)
     : reminder?.medicineName || reminder?.name || "Scheduled medicine";
 
-  const dosage = medicine
-    ? medicineDosage(medicine)
-    : reminder?.dosage || reminder?.dose || "Dosage not specified";
+  const dosage = reminder?.dose ||
+  (medicine ? medicineDosage(medicine) : "") ||
+  reminder?.dosage ||
+  "Dosage not specified";
 
   const instructions = reminder?.notes || reminder?.instructions || "";
   const status = getStatus(id, date);
@@ -655,6 +659,7 @@ async function recordDose(reminderId, date, status, button) {
   if (!["taken", "missed"].includes(status)) return;
 
   const reminder = state.reminders[reminderId];
+
   if (!reminder) {
     notice("error", "This reminder is no longer available.");
     return;
@@ -670,6 +675,7 @@ async function recordDose(reminderId, date, status, button) {
   if (state.recording.has(key)) return;
 
   state.recording.add(key);
+
   if (button) button.disabled = true;
 
   const medicine = findMedicine(reminder);
@@ -677,12 +683,16 @@ async function recordDose(reminderId, date, status, button) {
   const log = {
     reminderId,
     medicineId: reminderMedicineId(reminder),
+
     medicineName: medicine
       ? medicineName(medicine)
       : reminder.medicineName || reminder.name || "Scheduled medicine",
-    dosage: medicine
-      ? medicineDosage(medicine)
-      : reminder.dosage || reminder.dose || "Not specified",
+
+    dosage:
+      reminder.dose ||
+      reminder.dosage ||
+      (medicine ? medicineDosage(medicine) : "Not specified"),
+
     date,
     time: reminderTime(reminder),
     status,
@@ -690,25 +700,43 @@ async function recordDose(reminderId, date, status, button) {
   };
 
   try {
-    await set(ref(db, `users/${state.user.uid}/intakeLogs/${key}`), log);
+    await set(
+      ref(db, `users/${state.user.uid}/intakeLogs/${key}`),
+      log
+    );
+
     state.logs[key] = log;
     renderAll();
-    notice("success", status === "taken" ? "Dose recorded as taken." : "Dose recorded as missed.");
+
+    notice(
+      "success",
+      status === "taken"
+        ? "Dose recorded as taken."
+        : "Dose recorded as missed."
+    );
+
   } catch (error) {
     console.error("Saving dose record failed:", error);
-    notice("error", "Unable to save this dose. Check your Firebase Database Rules.");
+
+    notice(
+      "error",
+      "Unable to save this dose. Check your Firebase Database Rules."
+    );
+
     if (button) button.disabled = false;
+
   } finally {
     state.recording.delete(key);
   }
 }
 
 function setupNavigation() {
-  const buttons = document.querySelectorAll(".nav-button[data-page]");
+  const buttons = document.querySelectorAll(".nav-btn[data-page]");
 
   buttons.forEach((button) => {
     button.addEventListener("click", () => {
       const pageId = button.dataset.page;
+
       if (!$(pageId)) return;
 
       document.querySelectorAll(".page").forEach((page) => {
@@ -716,10 +744,16 @@ function setupNavigation() {
       });
 
       buttons.forEach((navButton) => {
-        navButton.classList.toggle("active", navButton.dataset.page === pageId);
+        navButton.classList.toggle(
+          "active",
+          navButton.dataset.page === pageId
+        );
       });
 
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      $("mainContent")?.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
     });
   });
 }
@@ -778,6 +812,9 @@ function setupEvents() {
     );
   });
 
+  $("mobileLogoutButton")?.addEventListener("click", () => {
+  $("sidebarLogout")?.click();
+});
   window.addEventListener("beforeunload", stopAllListeners);
 }
 

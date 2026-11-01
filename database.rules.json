@@ -1,25 +1,15 @@
+
 {
   "rules": {
     "users": {
       "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid",
-        "profile": {
-          ".read": "auth != null && auth.uid === $uid"
-        },
         "medicines": {
-          ".read": "auth != null && (auth.uid === $uid || root.child('connectionsByPatient').child($uid).child(auth.uid).child('status').val() === 'active')"
+          ".read": "auth != null && (auth.uid === $uid || root.child('connectionsByPatient').child(auth.uid).child($uid).child('status').val() === 'active')"
         },
         "reminders": {
-          ".read": "auth != null && (auth.uid === $uid || root.child('connectionsByPatient').child($uid).child(auth.uid).child('status').val() === 'active')"
-        },
-        "careConnection": {
-          ".read": "auth != null && auth.uid === $uid"
-        },
-        "intakeLogs": {
-          ".read": "auth != null && auth.uid === $uid"
-        },
-        "activity": {
-          ".read": "auth != null && auth.uid === $uid"
+          ".read": "auth != null && (auth.uid === $uid || root.child('connectionsByPatient').child(auth.uid).child($uid).child('status').val() === 'active')"
         }
       }
     },

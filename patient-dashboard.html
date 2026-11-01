@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,6 +8,10 @@
   <meta name="description" content="Medminder patient medicine schedule and reminders">
   <title>Medminder | Patient Dashboard</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
     :root {
       --green: #175638;
@@ -14,42 +19,74 @@
       --light: #e7f4eb;
       --bg: #f2f7f3;
       --white: #fff;
-      --text: #20352a;
-      --muted: #748278;
-      --border: #e3ebe5;
-      --red: #c24141;
-      --shadow: 0 8px 28px rgba(23,86,56,.07);
-      --radius: 18px;
+      --text: #24352b;
+      --muted: #718078;
+      --border: #dce8df;
+      --danger: #b42318;
     }
 
     * { box-sizing: border-box; }
 
-    body {
+    html, body {
+      width: 100%;
+      height: 100%;
       margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: Inter, -apple-system, BlinkMacSystemFont,
-        "Segoe UI", Arial, sans-serif;
-      line-height: 1.5;
     }
 
-    button { font: inherit; cursor: pointer; }
+    html { overflow: hidden; }
+
+    body {
+      font-family: Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
     button:disabled { opacity: .55; cursor: wait; }
-    .hidden { display: none !important; }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--green);
+      outline-offset: 2px;
+    }
+
+    [hidden],
+    .hidden {
+      display: none !important;
+    }
 
     .loading {
-      min-height: 100vh;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
       display: grid;
       place-items: center;
       padding: 20px;
+      background: var(--bg);
       text-align: center;
     }
 
     .loading-card {
-      background: white;
-      border-radius: 20px;
+      width: min(100%, 350px);
       padding: 30px;
-      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: white;
+    }
+
+    .loading-mark {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      margin: auto;
+      border-radius: 13px;
+      background: var(--light);
+      color: var(--green);
+      font-size: 25px;
+      font-weight: 800;
     }
 
     .spinner {
@@ -62,77 +99,92 @@
       animation: spin .8s linear infinite;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
-    .app { display: none; min-height: 100vh; }
-    .app.ready { display: flex; }
+    .app {
+      display: none;
+      grid-template-columns: 240px minmax(0, 1fr);
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    .app.ready { display: grid; }
+
+    /* SIDEBAR */
 
     .sidebar {
-      position: fixed;
-      inset: 0 auto 0 0;
-      z-index: 10;
       display: flex;
       flex-direction: column;
-      width: 245px;
-      padding: 25px 17px;
-      background: white;
+      gap: 20px;
+      min-height: 0;
+      padding: 24px 16px;
+      overflow-y: auto;
+      background: var(--white);
       border-right: 1px solid var(--border);
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 11px;
-      margin: 0 8px 35px;
+      gap: 10px;
+      padding: 4px 10px 18px;
     }
 
     .brand-mark {
       display: grid;
+      flex: 0 0 42px;
       place-items: center;
-      width: 43px;
-      height: 43px;
-      border-radius: 14px;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
       background: var(--light);
       color: var(--green);
-      font-size: 25px;
+      font-size: 23px;
       font-weight: 800;
     }
 
-    .brand-name { font-size: 20px; font-weight: 800; color: var(--dark); }
-    .brand-caption { color: var(--muted); font-size: 11px; }
+    .brand-name {
+      color: var(--green);
+      font-size: 21px;
+      font-weight: 800;
+    }
+
+    .brand-caption {
+      color: var(--muted);
+      font-size: 10px;
+    }
 
     .nav-label {
-      margin: 0 12px 10px;
-      color: #95a198;
-      font-size: 10px;
+      margin: 12px 10px;
+      color: var(--muted);
+      font-size: 11px;
       font-weight: 800;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
-    .nav { display: grid; gap: 7px; }
+    nav { display: grid; gap: 7px; }
 
-    .nav-button {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    .nav-btn {
       width: 100%;
-      padding: 12px;
+      padding: 13px;
       border: 0;
-      border-radius: 11px;
+      border-radius: 10px;
       background: transparent;
-      color: #66766b;
+      color: var(--text);
       text-align: left;
-      font-size: 13px;
-      font-weight: 700;
+      transition: background .18s, color .18s;
     }
 
-    .nav-button:hover, .nav-button.active {
+    .nav-btn:hover,
+    .nav-btn.active {
       background: var(--light);
       color: var(--green);
+      font-weight: 700;
     }
-
-    .nav-icon { width: 22px; text-align: center; font-size: 18px; }
 
     .sidebar-bottom { margin-top: auto; }
 
@@ -140,16 +192,16 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 15px 7px;
+      padding: 12px 8px;
       border-top: 1px solid var(--border);
     }
 
     .avatar {
       display: grid;
+      flex: 0 0 40px;
       place-items: center;
-      flex-shrink: 0;
-      width: 39px;
-      height: 39px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: var(--light);
       color: var(--green);
@@ -157,108 +209,284 @@
     }
 
     .user-info { min-width: 0; }
-    .user-name { overflow: hidden; font-size: 13px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
-    .user-role { color: var(--muted); font-size: 11px; }
+
+    .user-name {
+      overflow: hidden;
+      font-size: 13px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .user-role {
+      color: var(--muted);
+      font-size: 11px;
+    }
 
     .logout-button {
       width: 100%;
-      padding: 11px;
-      border: 1px solid var(--border);
+      padding: 12px;
+      border: 0;
       border-radius: 10px;
-      background: white;
-      color: var(--red);
-      font-size: 13px;
-      font-weight: 750;
+      background: #fff0ef;
+      color: var(--danger);
+      text-align: left;
+      font-weight: 700;
     }
 
+    .logout-button:hover { background: #ffe4e2; }
+
+    /* MAIN LAYOUT */
+
     .main {
-      width: calc(100% - 245px);
+      display: flex;
+      flex-direction: column;
       min-width: 0;
-      margin-left: 245px;
-      padding: 28px clamp(16px, 3vw, 40px) 40px;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
     }
 
     .topbar {
+      position: relative;
+      z-index: 5;
       display: flex;
+      flex: 0 0 auto;
       align-items: center;
       justify-content: space-between;
-      gap: 15px;
-      margin-bottom: 24px;
+      gap: 16px;
+      min-height: 88px;
+      padding: 18px 28px;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
     }
 
-    .eyebrow {
-      margin: 0 0 5px;
-      color: var(--green);
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
     }
 
-    h1, h2, h3, p { overflow-wrap: anywhere; }
-    h1 { margin: 0; font-size: clamp(23px, 3vw, 30px); line-height: 1.25; }
-    .subtitle { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+    h2 {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+
+    h3 { margin-top: 0; }
+
+    p { line-height: 1.5; }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .profile-shortcut {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 0;
+      background: transparent;
+      text-align: left;
+    }
 
     .top-avatar {
       display: grid;
+      flex: 0 0 40px;
       place-items: center;
-      flex-shrink: 0;
-      width: 43px;
-      height: 43px;
-      border: 1px solid #d8e9dd;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      background: white;
+      background: var(--light);
       color: var(--green);
       font-weight: 800;
     }
 
+    .content {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 26px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-gutter: stable;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* NOTICES */
+
     .notice {
-      padding: 12px 14px;
-      margin-bottom: 15px;
-      border: 1px solid var(--border);
-      border-radius: 11px;
-      background: white;
+      display: none;
+      margin: 12px 0;
+      padding: 13px;
+      border-radius: 10px;
       font-size: 13px;
+      line-height: 1.6;
       overflow-wrap: anywhere;
     }
 
-    .notice.success { color: #17663a; background: #effaf2; border-color: #b9e2c6; }
-    .notice.error { color: #a52c2c; background: #fff2f2; border-color: #f1caca; }
-    .notice.info { color: #52685a; background: #f7faf7; }
+    .notice.show { display: block; }
+    .notice.success { background: #effaf2; color: #17663a; }
+    .notice.error { background: #fff0ef; color: var(--danger); }
+    .notice.info { background: var(--light); color: var(--dark); }
+
+    /* WELCOME */
 
     .welcome {
-      padding: clamp(22px, 4vw, 34px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
       margin-bottom: 20px;
-      border-radius: 21px;
-      background: linear-gradient(120deg, #175638, #28764b);
+      padding: 26px;
+      border-radius: 18px;
+      background: linear-gradient(120deg, var(--green), #28794d);
       color: white;
     }
 
-    .welcome h2 { margin: 0 0 8px; font-size: clamp(21px, 3vw, 27px); }
-    .welcome p { max-width: 550px; margin: 0; color: #e2eee6; font-size: 13px; }
+    .welcome h2 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+
+    .welcome p {
+      max-width: 600px;
+      margin: 0;
+      color: #e2eee6;
+      font-size: 13px;
+    }
+
+    .welcome-icon {
+      flex: 0 0 auto;
+      font-size: 45px;
+    }
+
+    /* STATISTICS */
 
     .stats {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
-      margin-bottom: 22px;
+      margin-bottom: 20px;
     }
 
-    .stat-card, .panel {
+    .stat {
       min-width: 0;
+      padding: 20px;
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: white;
-      box-shadow: var(--shadow);
+      border-radius: 15px;
+      background: var(--white);
     }
 
-    .stat-card { padding: 17px; }
-    .stat-label { color: var(--muted); font-size: 12px; font-weight: 650; }
-    .stat-value { margin-top: 7px; font-size: 29px; font-weight: 800; }
-    .stat-caption { color: var(--muted); font-size: 11px; }
+    .stat-label {
+      color: var(--muted);
+      font-size: 13px;
+    }
 
-    .page { display: none; }
-    .page.active { display: block; }
+    .stat-number {
+      margin: 10px 0;
+      font-size: 29px;
+      font-weight: 800;
+    }
+
+    .stat-caption {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    /* PANELS */
+
+    .panel {
+      min-width: 0;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: var(--white);
+      overflow: hidden;
+    }
+
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px;
+      border-bottom: 1px solid #edf1ee;
+    }
+
+    .panel-heading h2 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .panel-heading p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .panel-body { padding: 18px 20px; }
+
+    .panel-description {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .section-heading {
+      margin: 0 0 6px;
+      font-size: 20px;
+    }
+
+    .section-description {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* BUTTONS */
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 11px 15px;
+      border: 0;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: white;
+    }
+
+    .btn-primary:hover { background: var(--dark); }
+
+    .btn-secondary {
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--green);
+    }
+
+    .btn-secondary:hover { background: var(--light); }
+
+    .btn-danger {
+      background: #fff0ef;
+      color: var(--danger);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+    }
+
+    /* PATIENT SCHEDULE */
 
     .content-grid {
       display: grid;
@@ -267,25 +495,10 @@
       align-items: start;
     }
 
-    .panel { margin-bottom: 18px; overflow: hidden; }
-
-    .panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 17px 19px;
-      border-bottom: 1px solid #edf1ee;
-    }
-
-    .panel-header h2 { margin: 0; font-size: 15px; }
-    .panel-body { padding: 18px 19px; }
-    .panel-subtitle { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
-
     .tag {
       display: inline-flex;
       align-items: center;
-      padding: 4px 8px;
+      padding: 5px 9px;
       border-radius: 20px;
       background: #f0f5f1;
       color: #52685a;
@@ -293,11 +506,18 @@
       font-weight: 750;
     }
 
-    .tag.green { background: #e3f6e9; color: #17663a; }
-    .tag.orange { background: #fff1d9; color: #89550e; }
+    .tag.green {
+      background: #e3f6e9;
+      color: #17663a;
+    }
+
+    .tag.orange {
+      background: #fff1d9;
+      color: #89550e;
+    }
 
     .connection-status {
-      padding: 5px 9px;
+      padding: 6px 10px;
       border-radius: 20px;
       background: #fff1d9;
       color: #89550e;
@@ -306,7 +526,59 @@
       white-space: nowrap;
     }
 
-    .connection-status.connected { background: #e3f6e9; color: #17663a; }
+    .connection-status.connected {
+      background: #e3f6e9;
+      color: #17663a;
+    }
+
+    .record-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .record {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      min-width: 0;
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: white;
+    }
+
+    .record-main { min-width: 0; }
+
+    .record h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+
+    .record p {
+      margin: 4px 0;
+      font-size: 12px;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+      white-space: pre-line;
+    }
+
+    .record-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .empty-state {
+      padding: 28px 12px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 12px;
+    }
+
+    /* QR CODE AND CONNECTION */
 
     .qr-wrap {
       display: grid;
@@ -315,20 +587,21 @@
       padding: 15px;
       margin: 14px 0;
       border: 1px dashed #cbded0;
-      border-radius: 15px;
+      border-radius: 12px;
       background: #fbfdfb;
     }
 
-    #patientQrCode canvas, #patientQrCode img {
+    #patientQrCode canvas,
+    #patientQrCode img {
       display: block;
       max-width: 100%;
       height: auto;
     }
 
     .uid-value {
-      padding: 11px;
+      padding: 12px;
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 9px;
       background: #f7faf7;
       color: #52685a;
       font-size: 11px;
@@ -336,145 +609,221 @@
       user-select: text;
     }
 
-    .button-row { display: flex; flex-wrap: wrap; gap: 9px; }
-
-    .primary-button, .secondary-button, .danger-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 40px;
-      padding: 10px 13px;
-      border: 1px solid transparent;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 750;
+    .connection-permission {
+      margin-top: 18px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg);
     }
 
-    .primary-button { background: var(--green); color: white; }
-    .primary-button:hover { background: var(--dark); }
-    .secondary-button { border-color: var(--border); background: white; color: var(--green); }
-    .secondary-button:hover { background: var(--light); }
-    .danger-button { background: #fff7f7; border-color: #f1d5d5; color: var(--red); }
-
-    .list { display: grid; gap: 11px; }
-
-    .item {
+    .connection-permission label {
       display: flex;
       align-items: flex-start;
-      gap: 11px;
-      min-width: 0;
-      padding: 12px;
-      border: 1px solid #edf1ee;
-      border-radius: 12px;
-      background: white;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 700;
     }
 
-    .item-icon {
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-      width: 38px;
-      height: 38px;
-      border-radius: 11px;
-      background: var(--light);
-      font-size: 17px;
+    .connection-permission input {
+      flex: 0 0 auto;
+      width: auto;
+      margin-top: 3px;
+      accent-color: var(--green);
     }
 
-    .item-main { flex: 1; min-width: 0; }
-    .item-title { margin: 0; font-size: 13px; font-weight: 800; }
-    .item-description { margin: 5px 0 0; color: var(--muted); font-size: 11px; white-space: pre-line; }
-    .item-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .item-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-    .take-button { padding: 8px 10px; border: 0; border-radius: 8px; background: var(--green); color: white; font-size: 11px; font-weight: 750; }
-    .take-button:disabled { background: var(--light); color: var(--green); }
-    .empty-state { padding: 25px 14px; color: var(--muted); text-align: center; font-size: 12px; }
-    .empty-icon { margin-bottom: 8px; font-size: 27px; }
-    .section-heading { margin: 0 0 5px; font-size: 20px; }
-    .section-description { margin: 0 0 18px; color: var(--muted); font-size: 13px; }
-    .footer-note { padding: 15px 0 5px; color: var(--muted); text-align: center; font-size: 10px; }
-    .mobile-nav { display: none; }
-
-    @media (max-width: 1000px) {
-      .sidebar { width: 215px; }
-      .main { width: calc(100% - 215px); margin-left: 215px; }
-      .content-grid { grid-template-columns: 1fr; }
+    .connection-permission p {
+      margin: 8px 0 0 26px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
     }
 
-    @media (max-width: 700px) {
+    /* MOBILE NAV */
+
+    .bottom-nav { display: none; }
+
+    .footer-note {
+      padding: 10px 0;
+      color: var(--muted);
+      text-align: center;
+      font-size: 10px;
+    }
+
+    @media (max-width: 850px) {
+      .app {
+        display: block;
+        height: 100vh;
+        height: 100dvh;
+      }
+
       .app.ready { display: block; }
+
       .sidebar { display: none; }
-      .main { width: 100%; margin: 0; padding: 20px 14px 95px; }
-      .stats { gap: 8px; }
-      .stat-card { padding: 12px 9px; border-radius: 13px; }
-      .stat-label { font-size: 10px; }
-      .stat-value { font-size: 23px; }
-      .stat-caption { font-size: 9px; }
-      .panel-header { padding: 15px; }
-      .panel-body { padding: 15px; }
-      .mobile-nav {
+
+      .main {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+      }
+
+      .topbar {
+        min-height: 76px;
+        padding: 14px 16px;
+      }
+
+      .content {
+        padding: 16px;
+        padding-bottom: 105px;
+        scrollbar-gutter: auto;
+      }
+
+      .bottom-nav {
         position: fixed;
+        z-index: 30;
         right: 0;
         bottom: 0;
         left: 0;
-        z-index: 30;
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        padding: 7px 5px calc(7px + env(safe-area-inset-bottom));
+        display: flex;
+        align-items: stretch;
+        justify-content: space-around;
+        gap: 3px;
+        padding: 7px 4px;
+        padding-bottom: max(7px, env(safe-area-inset-bottom));
         border-top: 1px solid var(--border);
         background: rgba(255,255,255,.97);
         backdrop-filter: blur(12px);
       }
-      .mobile-nav .nav-button {
-        flex-direction: column;
-        justify-content: center;
-        gap: 3px;
-        padding: 6px 1px;
-        text-align: center;
+
+      .bottom-nav .nav-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 8px 2px;
+        border-radius: 8px;
         font-size: 10px;
+        line-height: 1.5;
+        text-align: center;
       }
-      .mobile-nav .nav-icon { font-size: 18px; }
+
+      .bottom-nav .nav-btn.active {
+        background: var(--light);
+        color: var(--green);
+      }
+
+      .stats { gap: 8px; }
+      .stat { padding: 13px; }
+      .stat-number { font-size: 23px; }
+
+      .profile-text { display: none; }
+
+      .content-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 520px) {
+      .welcome {
+        padding: 18px;
+        border-radius: 14px;
+      }
+
+      .welcome h2 { font-size: 20px; }
+      .welcome-icon { font-size: 32px; }
+
+      .stats { grid-template-columns: 1fr; }
+
+      .stat {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .stat-number {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      .stat-caption { display: none; }
+
+      .record { flex-direction: column; }
+
+      .record-actions { width: 100%; }
+      .record-actions button { flex: 1; }
+
+      .panel { border-radius: 12px; }
+      .panel-heading { padding: 15px; }
+      .panel-body { padding: 15px; }
+
+      .topbar h1 { font-size: 19px; }
     }
 
     @media (max-width: 360px) {
-      .main { padding-right: 9px; padding-left: 9px; }
-      .stats { gap: 5px; }
-      .stat-card { padding: 10px 7px; }
-      .stat-value { font-size: 20px; }
-      .item { gap: 7px; padding: 9px; }
-      .item-icon { width: 31px; height: 31px; }
+      .content { padding-right: 10px; padding-left: 10px; }
+
+      .bottom-nav .nav-btn {
+        font-size: 9px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
     }
   </style>
 </head>
 
 <body>
+
+  <!-- LOADING SCREEN -->
   <div id="loading" class="loading">
     <div class="loading-card">
-      <div class="brand-mark" style="margin:auto;">+</div>
+      <div class="loading-mark">💊</div>
       <h2 style="color:#10442b;margin:12px 0 0;">Medminder</h2>
-      <p class="subtitle">Loading your patient dashboard...</p>
+      <p class="muted">Loading your patient dashboard...</p>
       <div class="spinner"></div>
     </div>
   </div>
 
+  <!-- APPLICATION -->
   <div id="app" class="app">
+
+    <!-- DESKTOP SIDEBAR -->
     <aside class="sidebar">
+
       <div class="brand">
-        <div class="brand-mark">+</div>
+        <div class="brand-mark">💊</div>
         <div>
           <div class="brand-name">Medminder</div>
-          <div class="brand-caption">Your health companion</div>
+          <div class="brand-caption">Patient workspace</div>
         </div>
       </div>
 
-      <p class="nav-label">Patient menu</p>
-      <nav class="nav" aria-label="Main navigation">
-        <button class="nav-button active" data-page="homeSection" type="button"><span class="nav-icon">⌂</span> Today's schedule</button>
-        <button class="nav-button" data-page="medicinesSection" type="button"><span class="nav-icon">✚</span> My medicines</button>
-        <button class="nav-button" data-page="remindersSection" type="button"><span class="nav-icon">◷</span> My reminders</button>
-        <button class="nav-button" data-page="historySection" type="button"><span class="nav-icon">▤</span> Intake history</button>
-      </nav>
+      <div>
+        <div class="nav-label">PATIENT WORKSPACE</div>
+
+        <nav aria-label="Main navigation">
+          <button class="nav-btn active" data-page="homeSection" type="button">
+            🏠 Today's schedule
+          </button>
+
+          <button class="nav-btn" data-page="medicinesSection" type="button">
+            💊 My medicines
+          </button>
+
+          <button class="nav-btn" data-page="remindersSection" type="button">
+            🔔 My reminders
+          </button>
+
+          <button class="nav-btn" data-page="historySection" type="button">
+            📋 Intake history
+          </button>
+        </nav>
+      </div>
 
       <div class="sidebar-bottom">
+        <div class="nav-label">ACCOUNT</div>
+
         <div class="user-card">
           <div class="avatar" id="userAvatar">P</div>
           <div class="user-info">
@@ -482,156 +831,320 @@
             <div class="user-role">Medicine taker</div>
           </div>
         </div>
-        <button class="logout-button" id="sidebarLogout" type="button">↪ Sign out</button>
+
+        <button class="logout-button" id="sidebarLogout" type="button">
+          ↪ Sign out
+        </button>
       </div>
     </aside>
 
+    <!-- MAIN CONTENT -->
     <main class="main">
+
+      <!-- HEADER -->
       <header class="topbar">
         <div>
-          <p class="eyebrow">Patient dashboard</p>
           <h1 id="welcomeTitle">Hello, welcome back!</h1>
-          <p class="subtitle" id="todayLabel">Your medicine schedule</p>
+          <div class="muted" id="todayLabel">Your medicine schedule</div>
         </div>
-        <div class="top-avatar" id="headerUserName">P</div>
+
+        <div class="profile-shortcut">
+          <span class="top-avatar" id="headerUserName">P</span>
+          <span class="profile-text">
+            <b id="headerAccountName">Patient account</b><br>
+            <small class="muted">Medicine taker</small>
+          </span>
+        </div>
       </header>
 
-      <div id="error" class="notice error hidden" role="alert"></div>
-      <div id="success" class="notice success hidden" role="status"></div>
-      <div id="info" class="notice info hidden" role="status"></div>
+      <!-- MESSAGES -->
+      <div class="content" id="mainContent">
 
-      <section class="welcome">
-        <h2>Take care of yourself 💚</h2>
-        <p>View the medicine schedule shared by your authorized caregiver and record your doses when appropriate.</p>
-      </section>
+        <div id="error" class="notice error" role="alert"></div>
+        <div id="success" class="notice success" role="status"></div>
+        <div id="info" class="notice info" role="status"></div>
 
-      <section class="stats" aria-label="Dashboard summary">
-        <article class="stat-card">
-          <div class="stat-label">My medicines</div>
-          <div class="stat-value" id="medicineCount">0</div>
-          <div class="stat-caption">Shared by caregiver</div>
-        </article>
-        <article class="stat-card">
-          <div class="stat-label">Today's reminders</div>
-          <div class="stat-value" id="todayCount">0</div>
-          <div class="stat-caption">Scheduled for today</div>
-        </article>
-        <article class="stat-card">
-          <div class="stat-label">Taken today</div>
-          <div class="stat-value" id="takenCount">0</div>
-          <div class="stat-caption">Recorded doses</div>
-        </article>
-      </section>
+        <!-- TODAY'S SCHEDULE -->
+        <section id="homeSection" class="page active">
 
-      <section id="homeSection" class="page active">
-        <div class="content-grid">
-          <div class="panel">
-            <div class="panel-header">
+          <div class="welcome">
+            <div>
+              <h2>Take care of yourself 💚</h2>
+              <p>
+                View your medicine schedule shared by your authorized caregiver
+                and record your doses when appropriate.
+              </p>
+            </div>
+            <div class="welcome-icon">💊</div>
+          </div>
+
+          <!-- STATISTICS -->
+          <div class="stats">
+            <div class="stat">
               <div>
-                <h2>Today's medicine schedule</h2>
-                <p class="panel-subtitle">Follow the schedule provided to you.</p>
+                <div class="stat-label">My medicines</div>
+                <div class="stat-caption">Shared by caregiver</div>
               </div>
-              <span class="tag green">Today</span>
+              <div class="stat-number" id="medicineCount">0</div>
             </div>
-            <div class="panel-body">
-              <div id="todayList" class="list">
-                <div class="empty-state">Loading schedule...</div>
+
+            <div class="stat">
+              <div>
+                <div class="stat-label">Today's reminders</div>
+                <div class="stat-caption">Scheduled for today</div>
               </div>
+              <div class="stat-number" id="todayCount">0</div>
+            </div>
+
+            <div class="stat">
+              <div>
+                <div class="stat-label">Taken today</div>
+                <div class="stat-caption">Recorded doses</div>
+              </div>
+              <div class="stat-number" id="takenCount">0</div>
             </div>
           </div>
 
-          <div>
+          <div class="content-grid">
+
+            <!-- DAILY SCHEDULE -->
             <div class="panel">
-              <div class="panel-header">
+              <div class="panel-heading">
                 <div>
-                  <h2>Your patient QR code</h2>
-                  <p class="panel-subtitle">Show this to your authorized caregiver.</p>
+                  <h2>Today's medicine schedule</h2>
+                  <p>Follow the schedule provided to you.</p>
                 </div>
-                <span id="connectionStatusBadge" class="connection-status">Not connected</span>
+                <span class="tag green">Today</span>
               </div>
-              <div class="panel-body">
-                <p id="connectionStatus" class="panel-subtitle">Your caregiver can scan your QR code to identify your account.</p>
 
-                <div class="qr-wrap">
-                  <div id="patientQrCode" aria-label="Patient QR code">
-                    <p class="panel-subtitle">Preparing your QR code...</p>
+              <div class="panel-body">
+                <div id="todayList" class="record-list">
+                  <div class="empty-state">Loading schedule...</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PATIENT QR -->
+            <div>
+
+              <div class="panel">
+                <div class="panel-heading">
+                  <div>
+                    <h2>Your patient QR code</h2>
+                    <p>Show this to your authorized caregiver.</p>
                   </div>
+                  <span id="connectionStatusBadge" class="connection-status">
+                    Not connected
+                  </span>
                 </div>
 
-                <p class="panel-subtitle" style="margin-bottom:8px;">Your patient ID</p>
-                <div id="patientUidDisplay" class="uid-value">Loading...</div>
+                <div class="panel-body">
 
-                <div class="button-row" style="margin-top:12px;">
-                  <button id="copyPatientUidButton" class="secondary-button" type="button">Copy patient ID</button>
+                  <p id="connectionStatus" class="muted">
+                    Your caregiver can scan your QR code to identify your account.
+                  </p>
+
+                  <div class="qr-wrap">
+                    <div id="patientQrCode" aria-label="Patient QR code">
+                      <p class="muted">Preparing your QR code...</p>
+                    </div>
+                  </div>
+
+                  <p class="muted" style="margin-bottom:8px;">Your patient ID</p>
+
+                  <div id="patientUidDisplay" class="uid-value">
+                    Loading...
+                  </div>
+
+                  <div class="button-row" style="margin-top:12px;">
+                    <button
+                      id="copyPatientUidButton"
+                      class="btn btn-secondary"
+                      type="button"
+                    >
+                      📋 Copy patient ID
+                    </button>
+                  </div>
+
+                  <div class="connection-permission">
+                    <label for="allowCaregiverConnections">
+                      <input
+                        id="allowCaregiverConnections"
+                        type="checkbox"
+                      >
+                      <span>Allow automatic caregiver connections</span>
+                    </label>
+
+                    <p>
+                      Turn this on to allow an authorized caregiver you trust
+                      to connect using your UID or QR code. Your UID alone
+                      cannot connect an account while this permission is off.
+                    </p>
+                  </div>
+
+                  <p class="muted" style="margin-top:12px;line-height:1.6;">
+                    Only share your ID with an authorized person you trust.
+                    This ID identifies your account; it is not a password.
+                  </p>
+
                 </div>
+              </div>
 
-                <div class="connection-permission" style="margin-top:18px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);">
-                  <label for="allowCaregiverConnections" style="display:flex;gap:10px;align-items:flex-start;font-weight:600;">
-                    <input id="allowCaregiverConnections" type="checkbox" style="margin-top:3px;accent-color:#175638;">
-                    <span>Allow automatic caregiver connections</span>
-                  </label>
-                  <p class="panel-subtitle" style="margin:8px 0 0 26px;">Turn this on once to let a caregiver you share your UID/QR with connect without asking you to approve each connection. Your UID alone cannot connect an account while this is off.</p>
+              <div class="panel">
+                <div class="panel-heading">
+                  <h2>Helpful reminder 💚</h2>
                 </div>
+                <div class="panel-body">
+                  <p class="muted" style="line-height:1.8;margin:0;">
+                    Follow your healthcare professional's instructions.
+                    If a medicine or dose looks incorrect, contact your
+                    caregiver or pharmacist before taking it.
+                  </p>
+                </div>
+              </div>
 
-                <p class="panel-subtitle" style="margin-top:12px;">Only share your ID with an authorized person you trust. This ID identifies your account; it is not a password.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- MEDICINES -->
+        <section id="medicinesSection" class="page">
+          <h2 class="section-heading">My medicines</h2>
+          <p class="section-description">
+            Medicines shared by your authorized caregiver.
+          </p>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Medicine list</h2>
+                <p>Review your current medicine information.</p>
               </div>
             </div>
 
-            <div class="panel">
-              <div class="panel-header"><h2>Helpful reminder 💚</h2></div>
-              <div class="panel-body">
-                <p class="panel-subtitle" style="line-height:1.8;margin:0;">Follow your healthcare professional's instructions. If a medicine or dose looks incorrect, contact your caregiver or pharmacist before taking it.</p>
+            <div class="panel-body">
+              <div id="medicineList" class="record-list">
+                <div class="empty-state">No medicines loaded.</div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="medicinesSection" class="page">
-        <h2 class="section-heading">My medicines</h2>
-        <p class="section-description">Medicines shared by your authorized caregiver.</p>
-        <div class="panel">
-          <div class="panel-header"><h2>Medicine list</h2></div>
-          <div class="panel-body">
-            <div id="medicineList" class="list"><div class="empty-state">No medicines loaded.</div></div>
+        <!-- REMINDERS -->
+        <section id="remindersSection" class="page">
+          <h2 class="section-heading">My reminders</h2>
+          <p class="section-description">
+            Review your upcoming scheduled doses.
+          </p>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Upcoming reminders</h2>
+                <p>Your caregiver's scheduled reminders.</p>
+              </div>
+            </div>
+
+            <div class="panel-body">
+              <div id="reminderList" class="record-list">
+                <div class="empty-state">No reminders loaded.</div>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="remindersSection" class="page">
-        <h2 class="section-heading">My reminders</h2>
-        <p class="section-description">Review upcoming scheduled doses.</p>
-        <div class="panel">
-          <div class="panel-header"><h2>Upcoming reminders</h2></div>
-          <div class="panel-body">
-            <div id="reminderList" class="list"><div class="empty-state">No reminders loaded.</div></div>
+        <!-- INTAKE HISTORY -->
+        <section id="historySection" class="page">
+          <h2 class="section-heading">Intake history</h2>
+          <p class="section-description">
+            Review the doses you have recorded.
+          </p>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Recent activity</h2>
+                <p>Your recorded medicine doses.</p>
+              </div>
+            </div>
+
+            <div class="panel-body">
+              <div id="historyList" class="record-list">
+                <div class="empty-state">No history yet.</div>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="historySection" class="page">
-        <h2 class="section-heading">Intake history</h2>
-        <p class="section-description">Review the doses you have recorded.</p>
-        <div class="panel">
-          <div class="panel-header"><h2>Recent activity</h2></div>
-          <div class="panel-body">
-            <div id="historyList" class="list"><div class="empty-state">No history yet.</div></div>
-          </div>
-        </div>
-      </section>
+        <p class="footer-note">
+          Medminder helps organize medicine reminders and does not replace
+          professional medical advice.
+        </p>
 
-      <p class="footer-note">Medminder helps organize reminders and does not replace professional medical advice.</p>
+      </div>
     </main>
-
-    <nav class="mobile-nav" aria-label="Mobile navigation">
-      <button class="nav-button active" data-page="homeSection" type="button"><span class="nav-icon">⌂</span><span>Today</span></button>
-      <button class="nav-button" data-page="medicinesSection" type="button"><span class="nav-icon">✚</span><span>Medicines</span></button>
-      <button class="nav-button" data-page="remindersSection" type="button"><span class="nav-icon">◷</span><span>Reminders</span></button>
-      <button class="nav-button" data-page="historySection" type="button"><span class="nav-icon">▤</span><span>History</span></button>
-    </nav>
   </div>
 
+  <!-- MOBILE BOTTOM NAVIGATION -->
+  <nav class="bottom-nav" aria-label="Mobile navigation">
+
+    <button class="nav-btn active" data-page="homeSection" type="button">
+      🏠<br>Today
+    </button>
+
+    <button class="nav-btn" data-page="medicinesSection" type="button">
+      💊<br>Medicines
+    </button>
+
+    <button class="nav-btn" data-page="remindersSection" type="button">
+      🔔<br>Reminders
+    </button>
+
+    <button class="nav-btn" data-page="historySection" type="button">
+      📋<br>History
+    </button>
+
+    <button class="nav-btn" id="mobileLogoutButton" type="button">
+      ↪<br>Sign out
+    </button>
+
+  </nav>
+
+  <!-- QR CODE GENERATOR -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script type="module" src="js/patient-dashboard.js"></script>
+
+  <!-- PATIENT DASHBOARD JAVASCRIPT -->
+  <script type="module" src="./js/patient-dashboard.js"></script>
+
+  <!-- MOBILE SIGN OUT -->
+  <script type="module">
+    import { auth } from "./js/firebaseConfig.js";
+    import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const mobileLogoutButton = document.getElementById("mobileLogoutButton");
+    const sidebarLogout = document.getElementById("sidebarLogout");
+
+    async function logoutPatient() {
+      if (!auth.currentUser) {
+        window.location.replace("login.html");
+        return;
+      }
+
+      const confirmed = window.confirm("Are you sure you want to sign out?");
+      if (!confirmed) return;
+
+      try {
+        await signOut(auth);
+        window.location.replace("login.html");
+      } catch (error) {
+        console.error("Sign out failed:", error);
+        alert("Unable to sign out. Please try again.");
+      }
+    }
+
+    mobileLogoutButton?.addEventListener("click", logoutPatient);
+    sidebarLogout?.addEventListener("click", logoutPatient);
+  </script>
+
 </body>
 </html>

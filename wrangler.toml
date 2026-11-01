@@ -1,0 +1,7 @@
+name = "medminder-connection-api"
+main = "src/index.js"
+compatibility_date = "2026-10-24"
+
+[vars]
+FIREBASE_PROJECT_ID = "pillremind-e6294"
+FIREBASE_DATABASE_URL = "https://pillremind-e6294-default-rtdb.firebaseio.com"

@@ -1,9 +1,6 @@
 
-import { auth, db, functions } from "./firebaseConfig.js";
-
-import {
-  httpsCallable
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js";
+import { auth, db } from "./firebaseConfig.js";
+import { callConnectionApi } from "./connection-api.js";
 
 import {
   onAuthStateChanged,
@@ -958,33 +955,24 @@ $("connectionForm")?.addEventListener("submit", async event => {
   setButtonBusy(submitButton, true, "Connecting…");
 
   try {
-    const connectPatientByUid = httpsCallable(functions, "connectPatientByUid");
-    const result = await connectPatientByUid({ patientUid });
+    const result = await callConnectionApi("connectPatientByUid", { patientUid });
 
     showMessage(
       "connectionMessage",
-      result.data?.message || "Patient connected successfully. Their schedule will sync automatically."
+      result?.message || "Patient connected successfully. Their schedule will sync automatically."
     );
 
     form.reset();
   } catch (error) {
     console.error("Patient connection failed:", error);
 
-    const messages = {
-      "functions/unauthenticated": "Your session has expired. Please sign in again.",
-      "functions/permission-denied": error.message || "The patient must enable automatic caregiver connections first.",
-      "functions/invalid-argument": "Please enter or scan a valid Firebase patient UID.",
-      "functions/not-found": "No Medminder account was found for that patient UID.",
-      "functions/already-exists": "This patient already has an active caregiver connection.",
-      "functions/failed-precondition": error.message || "The UID does not belong to a patient account.",
-      "functions/unavailable": "The connection service is unavailable. Deploy the Firebase Cloud Functions and check the region."
-    };
+    let message = error.message || "Unable to connect. Please try again.";
+    if (error.status === 401) message = "Your session has expired. Please sign in again.";
+    if (error.status === 403) message = error.message || "The patient must enable automatic caregiver connections first.";
+    if (error.status === 404) message = "No Medminder account was found for that patient UID.";
+    if (error.status === 409) message = error.message || "This patient already has an active caregiver connection.";
 
-    showMessage(
-      "connectionMessage",
-      messages[error.code] || error.message || "Unable to connect. Please try again.",
-      "error"
-    );
+    showMessage("connectionMessage", message, "error");
   } finally {
     setButtonBusy(submitButton, false);
   }
@@ -1168,6 +1156,20 @@ onAuthStateChanged(auth, async authenticatedUser => {
   try {
     const profileSnapshot = await get(ref(db, accountPath("profile")));
     const profile = profileSnapshot.val() || {};
+    const role = String(profile.role || "").toLowerCase().trim();
+
+if (!["authorized", "caregiver", "authorized_person"].includes(role)) {
+  state.initializedUid = null;
+
+  showMessage(
+    "pageMessage",
+    "This dashboard is only for authorized person accounts.",
+    "error"
+  );
+
+  window.location.replace("login.html");
+  return;
+}
 
     const name = authenticatedUser.displayName ||
       profile.displayName ||

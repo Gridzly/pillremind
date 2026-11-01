@@ -707,34 +707,35 @@
           <p class="muted">Connect your authorized-person account to a patient account.</p>
 
           <div class="notice">
-            Enter the connection code provided by the patient. The code must be validated by the server, and private medicine records should only be shared after the connection is authorized.
+            Scan the patient's QR code or enter their Firebase patient ID. The patient must enable automatic caregiver connections in their dashboard first. A UID identifies an account; it is not a password.
           </div>
 
           <form id="connectionForm" class="connection-form">
             <div class="field">
-              <label for="connectionCode">Patient connection code *</label>
+              <label for="connectionCode">Patient Firebase UID *</label>
               <input
                 class="connection-code"
                 type="text"
                 id="connectionCode"
                 name="connectionCode"
-                placeholder="Enter connection code"
-                maxlength="6"
-                minlength="6"
-                pattern="[A-Za-z0-9]{6}"
-                title="Enter the six-character connection code."
+                placeholder="Paste or scan the patient's UID"
+                maxlength="128"
                 autocomplete="off"
-                autocapitalize="characters"
+                autocapitalize="none"
                 spellcheck="false"
                 required
               >
             </div>
 
-            <div id="connectionMessage" class="message" role="status" aria-live="polite"></div>
-
-            <div>
+            <div class="form-actions" style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn-secondary" id="startPatientScanner" type="button">Scan patient QR</button>
               <button class="btn btn-primary" type="submit">Connect to patient</button>
             </div>
+
+            <div id="patientQrReader" style="width:100%;max-width:420px;margin-top:14px;" hidden></div>
+            <button class="btn btn-secondary" id="stopPatientScanner" type="button" hidden>Stop scanner</button>
+
+            <div id="connectionMessage" class="message" role="status" aria-live="polite"></div>
           </form>
         </div>
       </section>
@@ -809,6 +810,7 @@
   <button class="nav-btn" id="mobileConnectionButton" type="button">🔗<br>Connect</button>
 </nav>
 
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script type="module" src="./js/dashboard.js"></script>
 </body>
 </html>

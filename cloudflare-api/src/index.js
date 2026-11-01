@@ -6,17 +6,36 @@ const ALLOWED_ORIGINS = new Set([
   "https://3yk2g3.csb.app"
 ]);
 
+function isAllowedOrigin(origin, env) {
+  if (!origin) return false;
+  const configured = String(env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map(value => value.trim())
+    .filter(Boolean);
+  if (ALLOWED_ORIGINS.has(origin) || configured.includes(origin)) return true;
+
+  try {
+    const hostname = new URL(origin).hostname;
+    return new URL(origin).protocol === "https:" && (
+      /^[a-z0-9-]+-\d+\.app\.github\.dev$/i.test(hostname) ||
+      /^[a-z0-9-]+\.netlify\.app$/i.test(hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 const CODE_LIFETIME_MS = 10 * 60 * 1000;
 const MAX_CODE_ATTEMPTS = 5;
 
-function json(data, status, origin) {
+function json(data, status, origin, env) {
   const headers = {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
     "Vary": "Origin"
   };
 
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
+  if (origin && isAllowedOrigin(origin, env)) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
     headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization";
@@ -97,6 +116,7 @@ async function getGoogleAccessToken(env) {
 
   const account = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
   const now = Math.floor(Date.now() / 1000);
+
   const privateKey = await importPKCS8(account.private_key, "RS256");
 
   const assertion = await new SignJWT({
@@ -108,7 +128,6 @@ async function getGoogleAccessToken(env) {
       kid: account.private_key_id
     })
     .setIssuer(account.client_email)
-    .setSubject(account.client_email)
     .setAudience("https://oauth2.googleapis.com/token")
     .setIssuedAt(now)
     .setExpirationTime(now + 3600)
@@ -116,7 +135,9 @@ async function getGoogleAccessToken(env) {
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
     body: new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion
@@ -126,14 +147,22 @@ async function getGoogleAccessToken(env) {
   const result = await response.json();
 
   if (!response.ok || !result.access_token) {
+    console.error("[GOOGLE TOKEN ERROR]", {
+      status: response.status,
+      error: result.error,
+      description: result.error_description
+    });
+
     throw new Error("Database authorization failed.");
   }
 
   return result.access_token;
 }
 
+
 async function databaseRequest(env, path, options = {}) {
   const accessToken = await getGoogleAccessToken(env);
+
   const base = env.FIREBASE_DATABASE_URL.replace(/\/+$/, "");
   const cleanPath = path ? `${path}.json` : ".json";
   const url = `${base}/${cleanPath}`;
@@ -148,7 +177,20 @@ async function databaseRequest(env, path, options = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`Database request failed (${response.status}).`);
+    const errorDetails = await response.text();
+
+    console.error("[FIREBASE DATABASE ERROR]", {
+      status: response.status,
+      path,
+      response: errorDetails.slice(0, 1500)
+    });
+
+    const error = new Error(
+      `Firebase database request failed (${response.status}): ${errorDetails.slice(0, 500)}`
+    );
+
+    error.status = 500;
+    throw error;
   }
 
   return {
@@ -156,6 +198,7 @@ async function databaseRequest(env, path, options = {}) {
     etag: response.headers.get("ETag")
   };
 }
+
 
 async function database(env, path, options = {}) {
   const result = await databaseRequest(env, path, options);
@@ -351,6 +394,92 @@ async function redeemCode(env, caregiverUid, rawCode) {
   };
 }
 
+async function connectPatientByUid(env, caregiverUid, rawPatientUid) {
+  const { role: caregiverRole } = await getUser(env, caregiverUid);
+  if (!isAuthorized(caregiverRole)) {
+    throw safeError("Only an authorized caregiver account can connect to a patient.", 403);
+  }
+
+  const patientUid = String(rawPatientUid || "").trim();
+  if (!patientUid || patientUid.length < 20 || patientUid.length > 128 || !/^[A-Za-z0-9_-]+$/.test(patientUid)) {
+    throw safeError("Enter or scan a valid Firebase patient UID.", 400);
+  }
+  if (patientUid === caregiverUid) {
+    throw safeError("You cannot connect an account to itself.", 403);
+  }
+
+  const { user: patient, role: patientRole } = await getUser(env, patientUid);
+  if (!isPatient(patientRole)) {
+    throw safeError("This UID does not belong to a patient account.", 409);
+  }
+  if (patient.profile?.allowCaregiverConnections !== true) {
+    throw safeError("The patient has not enabled automatic caregiver connections. Ask them to enable this setting first.", 403);
+  }
+
+  const path = `connectionsByPatient/${patientUid}`;
+  const first = await databaseRequest(env, path, {
+    headers: { "X-Firebase-ETag": "true" }
+  });
+  const links = first.value || {};
+  const active = Object.values(links).find(item => item?.status === "active");
+
+  if (active && active.caregiverUid !== caregiverUid) {
+    throw safeError("This patient already has an active caregiver connection.", 409);
+  }
+
+  const connectedAt = active?.connectedAt || Date.now();
+  const connection = {
+    patientUid,
+    caregiverUid,
+    connectedAt,
+    status: "active"
+  };
+
+  if (!active) {
+    const accessToken = await getGoogleAccessToken(env);
+    const base = env.FIREBASE_DATABASE_URL.replace(/\/+$/, "");
+    const claimResponse = await fetch(`${base}/${path}.json`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "If-Match": first.etag || "null_etag"
+      },
+      body: JSON.stringify({ ...links, [caregiverUid]: connection })
+    });
+
+    if (claimResponse.status === 412) {
+      throw safeError("This patient was connected to another caregiver just now. Refresh and try again.", 409);
+    }
+    if (!claimResponse.ok) {
+      throw new Error("Could not safely claim this patient connection.");
+    }
+  }
+
+  // The Worker uses its private service credential for this server-side write.
+  // Browser clients cannot write another user's careConnection or connection indexes.
+  await database(env, "", {
+    method: "PATCH",
+    body: JSON.stringify({
+      [`users/${patientUid}/careConnection`]: {
+        authorizedUid: caregiverUid,
+        connectedAt,
+        status: "active"
+      },
+      [`connectionsByPatient/${patientUid}/${caregiverUid}`]: connection,
+      [`connectionsByCaregiver/${caregiverUid}/${patientUid}`]: connection
+    })
+  });
+
+  return {
+    success: true,
+    patientUid,
+    message: active
+      ? "This patient is already connected to your account. The connection has been refreshed."
+      : "Patient connected successfully. Their medicines and reminders will now sync."
+  };
+}
+
 async function getConnections(env, uid) {
   const { role } = await getUser(env, uid);
   let path;
@@ -371,7 +500,7 @@ export default {
     const origin = request.headers.get("Origin") || "";
 
     if (request.method === "OPTIONS") {
-      if (!ALLOWED_ORIGINS.has(origin)) {
+      if (!isAllowedOrigin(origin, env)) {
         return new Response(null, { status: 403 });
       }
 
@@ -387,12 +516,12 @@ export default {
       });
     }
 
-    if (!ALLOWED_ORIGINS.has(origin)) {
-      return json({ error: "Origin not allowed." }, 403, "");
+    if (!isAllowedOrigin(origin, env)) {
+      return json({ error: "Origin not allowed." }, 403, "", env);
     }
 
     if (request.method !== "POST") {
-      return json({ error: "POST required." }, 405, origin);
+      return json({ error: "POST required." }, 405, origin, env);
     }
 
     try {
@@ -402,7 +531,7 @@ export default {
         : "";
 
       if (!token) {
-        return json({ error: "Please sign in first." }, 401, origin);
+        return json({ error: "Please sign in first." }, 401, origin, env);
       }
 
       const uid = await verifyFirebaseToken(token, env);
@@ -411,6 +540,9 @@ export default {
       let result;
 
       switch (body.action) {
+        case "connectPatientByUid":
+          result = await connectPatientByUid(env, uid, body.patientUid);
+          break;
         case "createConnectionCode":
           result = await createCode(env, uid);
           break;
@@ -421,19 +553,27 @@ export default {
           result = await getConnections(env, uid);
           break;
         default:
-          return json({ error: "Unknown action." }, 400, origin);
+          return json({ error: "Unknown action." }, 400, origin, env);
       }
 
-      return json({ success: true, data: result }, 200, origin);
-    } catch (error) {
+      return json({ success: true, data: result }, 200, origin, env);
+        } catch (error) {
       const status = Number.isInteger(error?.status) ? error.status : 500;
 
-      // Avoid exposing database or private-key details to the browser.
+      // Log diagnostic information in Cloudflare, never credentials or tokens.
+      console.error("[MEDMINDER CONNECTION ERROR]", {
+        name: error?.name || "UnknownError",
+        message: error?.message || "Unknown error",
+        stack: error?.stack || "No stack trace available",
+        status
+      });
+
       const message = status === 500
         ? "The connection service encountered an error. Please try again."
         : error.message;
 
-      return json({ error: message }, status, origin);
+      return json({ error: message }, status, origin, env);
     }
-  }
+    }
+
 };
