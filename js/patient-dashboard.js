@@ -1,3 +1,4 @@
+
 import { auth, db } from "./firebaseConfig.js";
 
 import {
@@ -9,7 +10,8 @@ import {
   ref,
   get,
   onValue,
-  set
+  set,
+  remove
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const $ = (id) => document.getElementById(id);
@@ -18,14 +20,24 @@ const state = {
   user: null,
   profile: {},
   caregiverUid: null,
+  connectionInfo: {},
   medicines: {},
   reminders: {},
   logs: {},
+  connectionRequests: {},
   patientLogUnsubscribe: null,
   connectionUnsubscribe: null,
+  requestUnsubscribe: null,
   caregiverUnsubscribers: [],
-  recording: new Set()
+  recording: new Set(),
+  processingRequests: new Set()
 };
+
+
+
+/* =======================================================
+   GENERAL HELPERS
+======================================================= */
 
 function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -39,40 +51,46 @@ function escapeHTML(value) {
 
 function notice(type, message) {
   ["error", "success", "info"].forEach((id) => {
-    const el = $(id);
+    const element = $(id);
 
-    if (el) {
-      el.classList.remove("show");
-      el.textContent = "";
+    if (element) {
+      element.classList.remove("show");
+      element.textContent = "";
     }
   });
 
-  const el = $(type);
+  const element = $(type);
 
-  if (el) {
-    el.textContent = message;
-    el.classList.add("show");
+  if (element) {
+    element.textContent = message;
+    element.classList.add("show");
   }
 }
 
 function clearNotices() {
   ["error", "success", "info"].forEach((id) => {
-    const el = $(id);
+    const element = $(id);
 
-    if (el) {
-      el.classList.remove("show");
-      el.textContent = "";
+    if (element) {
+      element.classList.remove("show");
+      element.textContent = "";
     }
   });
 }
 
 function setLoading(loading) {
-  if ($("loading")) $("loading").classList.toggle("hidden", !loading);
-  if ($("app")) $("app").classList.toggle("ready", !loading);
+  if ($("loading")) {
+    $("loading").classList.toggle("hidden", !loading);
+  }
+
+  if ($("app")) {
+    $("app").classList.toggle("ready", !loading);
+  }
 }
 
 function normalizeCollection(value) {
   if (!value || typeof value !== "object") return {};
+
   return Object.fromEntries(
     Object.entries(value).filter(([, item]) =>
       item && typeof item === "object"
@@ -90,8 +108,12 @@ function todayKey(date = new Date()) {
 
 function formatDate(value) {
   if (!value) return "Date not specified";
+
   const date = new Date(`${value}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return String(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
 
   return date.toLocaleDateString(undefined, {
     weekday: "short",
@@ -103,10 +125,13 @@ function formatDate(value) {
 
 function formatTime(value) {
   if (!value) return "Time not set";
+
   const match = String(value).match(/^(\d{1,2}):(\d{2})$/);
+
   if (!match) return String(value);
 
   const date = new Date();
+
   date.setHours(Number(match[1]), Number(match[2]), 0, 0);
 
   return date.toLocaleTimeString(undefined, {
@@ -158,11 +183,17 @@ function reminderTime(reminder) {
 
 function dayName(dateString) {
   const date = new Date(`${dateString}T12:00:00`);
+
   if (Number.isNaN(date.getTime())) return "";
 
   return [
-    "Sunday", "Monday", "Tuesday", "Wednesday",
-    "Thursday", "Friday", "Saturday"
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday"
   ][date.getDay()].toLowerCase();
 }
 
@@ -178,7 +209,8 @@ function reminderDays(reminder) {
   }
 
   if (days && typeof days === "object") {
-    return Object.keys(days).filter((day) => days[day])
+    return Object.keys(days)
+      .filter((day) => days[day])
       .map((day) => day.toLowerCase());
   }
 
@@ -240,26 +272,38 @@ function getLog(reminderId, date) {
 }
 
 function getStatus(reminderId, date) {
-  return String(getLog(reminderId, date)?.status || "pending").toLowerCase();
+  return String(
+    getLog(reminderId, date)?.status || "pending"
+  ).toLowerCase();
 }
 
 function getReminderEntries(date) {
   return Object.entries(state.reminders)
     .filter(([, reminder]) => isScheduled(reminder, date))
-    .map(([id, reminder]) => ({ id, reminder, date, time: reminderTime(reminder) }))
-    .sort((a, b) => String(a.time).localeCompare(String(b.time)));
+    .map(([id, reminder]) => ({
+      id,
+      reminder,
+      date,
+      time: reminderTime(reminder)
+    }))
+    .sort((a, b) =>
+      String(a.time).localeCompare(String(b.time))
+    );
 }
 
 function findMedicine(reminder) {
   const id = reminderMedicineId(reminder);
 
-  if (id && state.medicines[id]) return state.medicines[id];
+  if (id && state.medicines[id]) {
+    return state.medicines[id];
+  }
 
   if (reminder?.medicine && typeof reminder.medicine === "object") {
     return reminder.medicine;
   }
 
   const name = reminder?.medicineName || reminder?.name;
+
   if (name) {
     return {
       name,
@@ -272,6 +316,7 @@ function findMedicine(reminder) {
 
 function empty(containerId, title, message) {
   const container = $(containerId);
+
   if (!container) return;
 
   container.innerHTML = `
@@ -279,11 +324,17 @@ function empty(containerId, title, message) {
       <div class="empty-icon">🌿</div>
       <strong>${escapeHTML(title)}</strong>
       <p>${escapeHTML(message)}</p>
-    </div>`;
+    </div>
+  `;
 }
+
+/* =======================================================
+   PATIENT PROFILE AND QR CODE
+======================================================= */
 
 function renderQRCode(uid) {
   const container = $("patientQrCode");
+
   if (!container) return;
 
   container.innerHTML = "";
@@ -312,15 +363,26 @@ function updateUserDisplay(profile, user) {
 
   const initial = name.charAt(0).toUpperCase();
 
-  if ($("welcomeTitle")) $("welcomeTitle").textContent = `Hello, ${name}! 👋`;
-  if ($("sideUserName")) $("sideUserName").textContent = name;
-  if ($("userAvatar")) $("userAvatar").textContent = initial;
+  if ($("welcomeTitle")) {
+    $("welcomeTitle").textContent = `Hello, ${name}! 👋`;
+  }
+
+  if ($("sideUserName")) {
+    $("sideUserName").textContent = name;
+  }
+
+  if ($("userAvatar")) {
+    $("userAvatar").textContent = initial;
+  }
+
   if ($("headerUserName")) {
     $("headerUserName").textContent = initial;
     $("headerUserName").title = name;
   }
 
-  if ($("patientUidDisplay")) $("patientUidDisplay").textContent = user.uid;
+  if ($("patientUidDisplay")) {
+    $("patientUidDisplay").textContent = user.uid;
+  }
 
   renderQRCode(user.uid);
 }
@@ -333,15 +395,1024 @@ function updateConnectionStatus(connected, message) {
     badge.classList.toggle("connected", connected);
   }
 
-  if ($("connectionStatus")) $("connectionStatus").textContent = message;
+  if ($("connectionStatus")) {
+    $("connectionStatus").textContent = message;
+  }
 }
+
+
+/* =======================================================
+   CONNECTION REQUEST PANEL
+======================================================= */
+
+function ensureConnectionRequestPanel() {
+  let panel = $("connectionRequestsPanel");
+
+  if (panel) return panel;
+
+  const qrContainer = $("patientQrCode");
+
+  if (!qrContainer) {
+    console.warn("Patient QR code container not found.");
+    return null;
+  }
+
+  const anchor =
+    qrContainer.closest(".panel, .card, section") || qrContainer;
+
+  panel = document.createElement("section");
+  panel.id = "connectionRequestsPanel";
+  panel.className = "panel";
+
+  panel.style.cssText = `
+    margin-top:20px;
+    padding:22px;
+    background:#ffffff;
+    border:1px solid #e2ebe4;
+    border-radius:18px;
+    box-shadow:0 5px 18px rgba(23,86,56,.04);
+  `;
+
+  panel.innerHTML = `
+    <div style="margin-bottom:20px;">
+      <h2 style="margin:0;color:#175638;font-size:19px;font-weight:800;">
+        Caregiver Connections
+      </h2>
+
+      <p style="margin:6px 0 0;color:#718078;font-size:13px;line-height:1.5;">
+        Manage your connected caregiver and review new connection requests.
+      </p>
+    </div>
+
+    <div id="activeCaregiverCard"></div>
+
+    <div style="
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top:22px;
+      padding-top:18px;
+      border-top:1px solid #edf1ee;
+    ">
+      <div>
+        <h3 style="margin:0;color:#175638;font-size:16px;">
+          Connection Requests
+        </h3>
+
+        <p style="margin:5px 0 0;color:#718078;font-size:12px;">
+          Approve or reject caregiver requests.
+        </p>
+      </div>
+
+      <span id="connectionRequestCount" style="
+        background:#e7f4eb;
+        color:#175638;
+        padding:7px 12px;
+        border-radius:20px;
+        font-size:12px;
+        font-weight:800;
+      ">0 Pending</span>
+    </div>
+
+    <div id="connectionRequestsList" style="margin-top:15px;">
+      <p style="color:#718078;font-size:14px;">
+        Checking for connection requests...
+      </p>
+    </div>
+  `;
+
+  anchor.insertAdjacentElement("afterend", panel);
+
+  return panel;
+}
+
+function renderConnectionRequests() {
+  const panel = ensureConnectionRequestPanel();
+
+  if (!panel) return;
+
+  const list = $("connectionRequestsList");
+  const count = $("connectionRequestCount");
+
+  if (!list) return;
+
+  const entries = Object.entries(state.connectionRequests)
+    .filter(([, request]) =>
+      request &&
+      String(request.status || "").toLowerCase() === "pending"
+    );
+
+  if (count) {
+    count.textContent = `${entries.length} Pending`;
+  }
+
+  if (!entries.length) {
+    list.innerHTML = `
+      <div style="
+        padding:15px;
+        background:#f6faf7;
+        border-radius:12px;
+        text-align:center;
+      ">
+        <div style="font-size:25px;margin-bottom:8px;">📭</div>
+
+        <strong style="color:#175638;">
+          No pending requests
+        </strong>
+
+        <p style="margin:6px 0 0;color:#718078;font-size:13px;">
+          When an authorized caregiver sends you a request, it will appear here.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = entries.map(([caregiverUid, request]) => {
+    const caregiverName =
+      request.caregiverName || "Authorized caregiver";
+
+    const caregiverEmail =
+      request.caregiverEmail || "Email not provided";
+
+    const createdAt = request.createdAt
+      ? new Date(request.createdAt).toLocaleString()
+      : "Date not available";
+
+    const busy = state.processingRequests.has(caregiverUid);
+
+    return `
+      <article style="
+        padding:16px;
+        margin-bottom:12px;
+        border:1px solid #e2ebe4;
+        border-radius:13px;
+        background:#ffffff;
+      ">
+        <div style="
+          display:flex;
+          align-items:flex-start;
+          gap:12px;
+        ">
+          <div style="
+            width:44px;
+            height:44px;
+            flex-shrink:0;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#e7f4eb;
+            color:#175638;
+            border-radius:50%;
+            font-size:20px;
+          ">👤</div>
+
+          <div style="flex:1;min-width:0;">
+            <strong style="
+              display:block;
+              color:#175638;
+              font-size:15px;
+              overflow-wrap:anywhere;
+            ">
+              ${escapeHTML(caregiverName)}
+            </strong>
+
+            <p style="
+              margin:5px 0;
+              color:#64736a;
+              font-size:13px;
+              overflow-wrap:anywhere;
+            ">
+              ${escapeHTML(caregiverEmail)}
+            </p>
+
+            <p style="margin:5px 0;color:#89958d;font-size:11px;">
+              Request received: ${escapeHTML(createdAt)}
+            </p>
+
+            <p style="
+              margin:7px 0 0;
+              color:#89958d;
+              font-size:11px;
+              overflow-wrap:anywhere;
+            ">
+              Caregiver ID: ${escapeHTML(caregiverUid)}
+            </p>
+          </div>
+        </div>
+
+        <div style="
+          display:flex;
+          flex-wrap:wrap;
+          gap:10px;
+          margin-top:15px;
+        ">
+          <button
+            type="button"
+            data-connection-action="approve"
+            data-caregiver-uid="${escapeHTML(caregiverUid)}"
+            ${busy ? "disabled" : ""}
+            style="
+              flex:1 1 120px;
+              min-height:44px;
+              border:0;
+              border-radius:9px;
+              padding:11px;
+              background:#175638;
+              color:#ffffff;
+              font-weight:700;
+              cursor:pointer;
+              opacity:${busy ? "0.6" : "1"};
+            ">
+            ${busy ? "Please wait..." : "✓ Approve"}
+          </button>
+
+          <button
+            type="button"
+            data-connection-action="reject"
+            data-caregiver-uid="${escapeHTML(caregiverUid)}"
+            ${busy ? "disabled" : ""}
+            style="
+              flex:1 1 120px;
+              min-height:44px;
+              border:1px solid #e2d7d7;
+              border-radius:9px;
+              padding:11px;
+              background:#ffffff;
+              color:#b33b3b;
+              font-weight:700;
+              cursor:pointer;
+              opacity:${busy ? "0.6" : "1"};
+            ">
+            ✕ Reject
+          </button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+/* =======================================================
+   ACTIVE CAREGIVER CONNECTION
+======================================================= */
+
+function renderActiveCaregiver() {
+  const container = $("activeCaregiverCard");
+
+  if (!container) return;
+
+  if (!state.caregiverUid) {
+    container.innerHTML = `
+      <div style="
+        padding:18px;
+        background:#f6faf7;
+        border:1px dashed #cbdccf;
+        border-radius:14px;
+        text-align:center;
+      ">
+        <div style="font-size:30px;margin-bottom:9px;">🔗</div>
+
+        <strong style="
+          display:block;
+          color:#175638;
+          font-size:15px;
+        ">
+          No caregiver connected
+        </strong>
+
+        <p style="
+          margin:6px 0 0;
+          color:#718078;
+          font-size:13px;
+          line-height:1.5;
+        ">
+          Share your patient QR code or UID with your authorized caregiver.
+          Their request will appear below.
+        </p>
+      </div>
+    `;
+
+    return;
+  }
+
+  const connection = state.connectionInfo || {};
+
+  const caregiverName =
+    connection.caregiverName || "Authorized Caregiver";
+
+  const caregiverEmail =
+    connection.caregiverEmail || "Email not available";
+
+  const caregiverUid = state.caregiverUid;
+
+  container.innerHTML = `
+    <div style="
+      padding:18px;
+      background:#f1f8f3;
+      border:1px solid #d7e9dc;
+      border-radius:15px;
+    ">
+      <div style="
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        flex-wrap:wrap;
+        margin-bottom:15px;
+      ">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="
+            width:10px;
+            height:10px;
+            background:#22965a;
+            border-radius:50%;
+            display:inline-block;
+          "></span>
+
+          <strong style="color:#175638;font-size:13px;">
+            Active Connection
+          </strong>
+        </div>
+
+        <span style="
+          padding:5px 10px;
+          border-radius:20px;
+          background:#dff2e5;
+          color:#17643b;
+          font-size:11px;
+          font-weight:800;
+        ">CONNECTED</span>
+      </div>
+
+      <div style="
+        display:flex;
+        align-items:center;
+        gap:13px;
+      ">
+        <div style="
+          width:48px;
+          height:48px;
+          flex-shrink:0;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          border-radius:50%;
+          background:#175638;
+          color:white;
+          font-size:20px;
+          font-weight:800;
+        ">
+          ${escapeHTML(caregiverName.charAt(0).toUpperCase())}
+        </div>
+
+        <div style="min-width:0;flex:1;">
+          <strong style="
+            display:block;
+            color:#175638;
+            font-size:16px;
+            overflow-wrap:anywhere;
+          ">
+            ${escapeHTML(caregiverName)}
+          </strong>
+
+          <p style="
+            margin:4px 0 0;
+            color:#64736a;
+            font-size:13px;
+            overflow-wrap:anywhere;
+          ">
+            ${escapeHTML(caregiverEmail)}
+          </p>
+        </div>
+      </div>
+
+      <div style="
+        margin-top:15px;
+        padding:12px;
+        background:#ffffff;
+        border-radius:10px;
+      ">
+        <p style="
+          margin:0 0 5px;
+          color:#89958d;
+          font-size:11px;
+          font-weight:700;
+        ">
+          CAREGIVER ID
+        </p>
+
+        <p style="
+          margin:0;
+          color:#526259;
+          font-size:12px;
+          overflow-wrap:anywhere;
+        ">
+          ${escapeHTML(caregiverUid)}
+        </p>
+      </div>
+
+      <p style="
+        margin:13px 0;
+        color:#64736a;
+        font-size:12px;
+        line-height:1.5;
+      ">
+        This caregiver can share medicines and reminders with your account
+        while this connection is active.
+      </p>
+
+      <button
+        type="button"
+        id="disconnectCaregiverButton"
+        style="
+          width:100%;
+          min-height:44px;
+          padding:12px;
+          border:1px solid #efcaca;
+          border-radius:10px;
+          background:#fff5f5;
+          color:#b42323;
+          font-size:13px;
+          font-weight:800;
+          cursor:pointer;
+        ">
+        ✕ Disconnect Caregiver
+      </button>
+    </div>
+  `;
+
+  $("disconnectCaregiverButton")?.addEventListener(
+    "click",
+    disconnectCaregiver
+  );
+}
+
+async function disconnectCaregiver() {
+  if (!state.user || !state.caregiverUid) {
+    notice("info", "There is no active caregiver connection.");
+    return;
+  }
+
+  const caregiverName =
+    state.connectionInfo?.caregiverName || "this caregiver";
+
+  const confirmed = window.confirm(
+    `Are you sure you want to disconnect ${caregiverName}?\n\n` +
+    "You will no longer receive this caregiver's shared medicines and reminders. " +
+    "Your existing dose history will remain in your account."
+  );
+
+  if (!confirmed) return;
+
+  const button = $("disconnectCaregiverButton");
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Disconnecting...";
+  }
+
+  try {
+    await remove(
+      ref(db, `users/${state.user.uid}/careConnection`)
+    );
+
+    state.caregiverUid = null;
+    state.connectionInfo = {};
+    state.medicines = {};
+    state.reminders = {};
+
+    stopCaregiverListeners();
+
+    renderActiveCaregiver();
+    renderAll();
+
+    updateConnectionStatus(
+      false,
+      "Your caregiver has been disconnected. You can connect with another caregiver by approving a new request."
+    );
+
+    notice(
+      "success",
+      "Caregiver disconnected successfully. Your existing dose history has been kept."
+    );
+
+  } catch (error) {
+    console.error("Disconnect caregiver failed:", error);
+
+    notice(
+      "error",
+      "Unable to disconnect your caregiver. Please check your Firebase Database Rules and try again."
+    );
+
+    renderActiveCaregiver();
+  }
+}
+
+/* =======================================================
+   APPROVE OR REJECT CONNECTION REQUESTS
+======================================================= */
+
+async function approveConnectionRequest(caregiverUid) {
+  if (!state.user || !caregiverUid) return;
+
+  if (state.processingRequests.has(caregiverUid)) return;
+
+  if (
+    state.caregiverUid &&
+    state.caregiverUid !== caregiverUid
+  ) {
+    notice(
+      "error",
+      "You already have an active caregiver. Disconnect the current caregiver before approving another request."
+    );
+
+    return;
+  }
+
+  const request = state.connectionRequests[caregiverUid];
+
+  if (!request || request.status !== "pending") {
+    notice("error", "This connection request is no longer pending.");
+    return;
+  }
+
+  state.processingRequests.add(caregiverUid);
+  renderConnectionRequests();
+
+  try {
+    const patientUid = state.user.uid;
+
+    const connectionRef = ref(
+      db,
+      `users/${patientUid}/careConnection`
+    );
+
+    const currentConnectionSnapshot = await get(connectionRef);
+    const currentConnection = currentConnectionSnapshot.val();
+
+    if (
+      currentConnection?.status === "active" &&
+      currentConnection?.authorizedUid &&
+      currentConnection.authorizedUid !== caregiverUid
+    ) {
+      throw new Error(
+        "You already have another active caregiver. Disconnect that caregiver first."
+      );
+    }
+
+    await set(connectionRef, {
+      authorizedUid: caregiverUid,
+      caregiverName: request.caregiverName || "Authorized Caregiver",
+      caregiverEmail: request.caregiverEmail || "",
+      status: "active",
+      connectedAt: Date.now()
+    });
+
+    await remove(
+      ref(
+        db,
+        `users/${patientUid}/connectionRequests/${caregiverUid}`
+      )
+    );
+
+    delete state.connectionRequests[caregiverUid];
+
+    renderConnectionRequests();
+
+    notice(
+      "success",
+      "Connection approved! Your caregiver can now share medicines and reminders with you."
+    );
+
+  } catch (error) {
+    console.error("Approving caregiver request failed:", error);
+
+    notice(
+      "error",
+      error.message ||
+      "Unable to approve this request. Check your Firebase Database Rules."
+    );
+
+  } finally {
+    state.processingRequests.delete(caregiverUid);
+    renderConnectionRequests();
+  }
+}
+
+async function rejectConnectionRequest(caregiverUid) {
+  if (!state.user || !caregiverUid) return;
+
+  if (state.processingRequests.has(caregiverUid)) return;
+
+  const request = state.connectionRequests[caregiverUid];
+
+  if (!request) {
+    notice("info", "This connection request is no longer available.");
+    return;
+  }
+
+  state.processingRequests.add(caregiverUid);
+  renderConnectionRequests();
+
+  try {
+    await remove(
+      ref(
+        db,
+        `users/${state.user.uid}/connectionRequests/${caregiverUid}`
+      )
+    );
+
+    delete state.connectionRequests[caregiverUid];
+
+    renderConnectionRequests();
+
+    notice(
+      "success",
+      "The caregiver connection request has been rejected."
+    );
+
+  } catch (error) {
+    console.error("Rejecting caregiver request failed:", error);
+
+    notice(
+      "error",
+      "Unable to reject this request. Check your Firebase Database Rules."
+    );
+
+  } finally {
+    state.processingRequests.delete(caregiverUid);
+    renderConnectionRequests();
+  }
+}
+
+/* =======================================================
+   MEDICINE REMINDER MODAL + SOUND + SCHEDULER
+======================================================= */
+
+let reminderAudioContext = null;
+let reminderSoundInterval = null;
+let reminderCheckInterval = null;
+let reminderSnoozeTimeout = null;
+
+let activeReminder = null;
+const reminderQueue = [];
+const triggeredReminders = new Set();
+
+function playReminderSound() {
+  try {
+    const AudioContext =
+      window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioContext) return;
+
+    if (!reminderAudioContext) {
+      reminderAudioContext = new AudioContext();
+    }
+
+    if (reminderAudioContext.state === "suspended") {
+      reminderAudioContext.resume();
+    }
+
+    const oscillator = reminderAudioContext.createOscillator();
+    const gain = reminderAudioContext.createGain();
+
+    oscillator.type = "sine";
+
+    oscillator.frequency.setValueAtTime(
+      880,
+      reminderAudioContext.currentTime
+    );
+
+    gain.gain.setValueAtTime(
+      0.001,
+      reminderAudioContext.currentTime
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.15,
+      reminderAudioContext.currentTime + 0.05
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      reminderAudioContext.currentTime + 0.6
+    );
+
+    oscillator.connect(gain);
+    gain.connect(reminderAudioContext.destination);
+
+    oscillator.start();
+    oscillator.stop(reminderAudioContext.currentTime + 0.6);
+
+  } catch (error) {
+    console.error("Reminder sound error:", error);
+  }
+}
+
+function unlockReminderAudio() {
+  const AudioContext =
+    window.AudioContext || window.webkitAudioContext;
+
+  if (!AudioContext) return;
+
+  try {
+    if (!reminderAudioContext) {
+      reminderAudioContext = new AudioContext();
+    }
+
+    if (reminderAudioContext.state === "suspended") {
+      reminderAudioContext.resume();
+    }
+  } catch (error) {
+    console.warn("Could not enable reminder audio:", error);
+  }
+}
+
+// Browsers generally require a user interaction before audio can play.
+document.addEventListener("pointerdown", unlockReminderAudio, {
+  once: true
+});
+
+function startReminderSound() {
+  stopReminderSound();
+
+  playReminderSound();
+
+  reminderSoundInterval = setInterval(() => {
+    if (activeReminder) {
+      playReminderSound();
+    }
+  }, 3000);
+}
+
+function stopReminderSound() {
+  if (reminderSoundInterval) {
+    clearInterval(reminderSoundInterval);
+    reminderSoundInterval = null;
+  }
+}
+
+function getReminderDetails(entry) {
+  const medicine = findMedicine(entry.reminder);
+
+  return {
+    medicineName: medicine
+      ? medicineName(medicine)
+      : entry.reminder?.medicineName ||
+        entry.reminder?.name ||
+        "Scheduled medicine",
+
+    dosage: entry.reminder?.dose ||
+      entry.reminder?.dosage ||
+      (medicine ? medicineDosage(medicine) : "") ||
+      "Dosage not specified"
+  };
+}
+
+function enqueueMedicineReminder(entry) {
+  const alreadyQueued = reminderQueue.some(
+    (item) =>
+      item.id === entry.id &&
+      item.date === entry.date
+  );
+
+  const alreadyActive =
+    activeReminder?.id === entry.id &&
+    activeReminder?.date === entry.date;
+
+  if (alreadyQueued || alreadyActive) return;
+
+  reminderQueue.push(entry);
+  showNextMedicineReminder();
+}
+
+function showNextMedicineReminder() {
+  if (activeReminder || !reminderQueue.length) return;
+
+  const entry = reminderQueue.shift();
+
+  if (!entry) return;
+
+  // Do not show a dose that has already been recorded.
+  if (getLog(entry.id, entry.date)) {
+    showNextMedicineReminder();
+    return;
+  }
+
+  activeReminder = entry;
+
+  const details = getReminderDetails(entry);
+
+  const modal = $("medicineReminderModal");
+
+  if (!modal) {
+    console.error(
+      "Medicine reminder modal not found. Add the modal HTML to patients-dashboard.html."
+    );
+
+    activeReminder = null;
+    return;
+  }
+
+  if ($("modalMedicineName")) {
+    $("modalMedicineName").textContent = details.medicineName;
+  }
+
+  if ($("modalMedicineDosage")) {
+    $("modalMedicineDosage").textContent = details.dosage;
+  }
+
+  if ($("modalMedicineTime")) {
+    $("modalMedicineTime").textContent =
+      `Scheduled: ${formatTime(entry.time)}`;
+  }
+
+  modal.hidden = false;
+
+  startReminderSound();
+}
+
+function closeMedicineReminder() {
+  stopReminderSound();
+
+  if ($("medicineReminderModal")) {
+    $("medicineReminderModal").hidden = true;
+  }
+
+  activeReminder = null;
+
+  // Display another due medicine if one is waiting.
+  showNextMedicineReminder();
+}
+
+function checkDueMedicineReminders() {
+  if (!state.user || !state.caregiverUid) return;
+
+  const now = new Date();
+  const date = todayKey(now);
+
+  const currentTime =
+    `${String(now.getHours()).padStart(2, "0")}:` +
+    `${String(now.getMinutes()).padStart(2, "0")}`;
+
+  const entries = getReminderEntries(date);
+
+  entries.forEach((entry) => {
+    const scheduledTime = String(entry.time || "").slice(0, 5);
+
+    if (scheduledTime !== currentTime) return;
+
+    const key = `${entry.id}_${date}_${scheduledTime}`;
+
+    if (triggeredReminders.has(key)) return;
+
+    if (getLog(entry.id, date)) {
+      triggeredReminders.add(key);
+      return;
+    }
+
+    triggeredReminders.add(key);
+
+    enqueueMedicineReminder(entry);
+  });
+}
+
+function startReminderChecker() {
+  if (reminderCheckInterval) {
+    clearInterval(reminderCheckInterval);
+  }
+
+  // Check every five seconds to avoid missing the scheduled minute.
+  checkDueMedicineReminders();
+
+  reminderCheckInterval = setInterval(
+    checkDueMedicineReminders,
+    5000
+  );
+}
+
+function stopReminderChecker() {
+  if (reminderCheckInterval) {
+    clearInterval(reminderCheckInterval);
+    reminderCheckInterval = null;
+  }
+
+  if (reminderSnoozeTimeout) {
+    clearTimeout(reminderSnoozeTimeout);
+    reminderSnoozeTimeout = null;
+  }
+
+  stopReminderSound();
+
+  reminderQueue.length = 0;
+  activeReminder = null;
+
+  if ($("medicineReminderModal")) {
+    $("medicineReminderModal").hidden = true;
+  }
+}
+
+// Stop the repeating sound without closing the reminder.
+$("stopReminderSound")?.addEventListener(
+  "click",
+  stopReminderSound
+);
+
+// Mark the current scheduled dose as taken.
+$("modalTakenButton")?.addEventListener(
+  "click",
+  async () => {
+    if (!activeReminder) return;
+
+    const entry = activeReminder;
+
+    const saved = await recordDose(
+      entry.id,
+      entry.date,
+      "taken",
+      null
+    );
+
+    if (saved) {
+      closeMedicineReminder();
+    }
+  }
+);
+
+// Remind the patient again after five minutes.
+$("modalSnoozeButton")?.addEventListener(
+  "click",
+  () => {
+    if (!activeReminder) return;
+
+    const snoozedEntry = activeReminder;
+
+    stopReminderSound();
+
+    if ($("medicineReminderModal")) {
+      $("medicineReminderModal").hidden = true;
+    }
+
+    activeReminder = null;
+
+    reminderSnoozeTimeout = setTimeout(() => {
+      reminderSnoozeTimeout = null;
+
+      if (!state.user || !state.caregiverUid) return;
+
+      // Do not remind again if the dose was recorded meanwhile.
+      if (getLog(snoozedEntry.id, snoozedEntry.date)) {
+        showNextMedicineReminder();
+        return;
+      }
+
+      enqueueMedicineReminder(snoozedEntry);
+
+    }, 5 * 60 * 1000);
+
+    showNextMedicineReminder();
+
+    notice(
+      "info",
+      "Reminder postponed. Medminder will remind you again in 5 minutes."
+    );
+  }
+);
+
+/* =======================================================
+   MEDICINE AND REMINDER DISPLAY
+======================================================= */
+
 
 function statusTag(status) {
   const value = String(status || "pending").toLowerCase();
 
-  if (value === "taken") return '<span class="tag green">Taken</span>';
-  if (value === "missed") return '<span class="tag orange">Missed</span>';
-  return '<span class="tag">Pending</span>';
+  if (value === "taken") {
+    return `
+      <span class="dose-status dose-taken">
+        <span class="status-icon">✓</span>
+        Dose Taken
+      </span>
+    `;
+  }
+
+  if (value === "missed") {
+    return `
+      <span class="dose-status dose-missed">
+        <span class="status-icon">!</span>
+        Dose Missed
+      </span>
+    `;
+  }
+
+  return `
+    <span class="dose-status dose-pending">
+      <span class="status-icon">◷</span>
+      Pending
+    </span>
+  `;
 }
 
 function renderReminderCard(entry) {
@@ -353,53 +1424,112 @@ function renderReminderCard(entry) {
     : reminder?.medicineName || reminder?.name || "Scheduled medicine";
 
   const dosage = reminder?.dose ||
-  (medicine ? medicineDosage(medicine) : "") ||
-  reminder?.dosage ||
-  "Dosage not specified";
+    (medicine ? medicineDosage(medicine) : "") ||
+    reminder?.dosage ||
+    "Dosage not specified";
 
-  const instructions = reminder?.notes || reminder?.instructions || "";
+  const instructions =
+    reminder?.notes || reminder?.instructions || "";
+
   const status = getStatus(id, date);
   const completed = ["taken", "missed"].includes(status);
 
   return `
-    <article class="item">
-      <div class="item-icon">💊</div>
+    <article class="item reminder-item ${completed ? "dose-completed" : ""}">
+
+      <div class="item-icon medicine-icon">
+        💊
+      </div>
+
       <div class="item-main">
-        <h3 class="item-title">${escapeHTML(name)}</h3>
-        <p class="item-description">Dosage: ${escapeHTML(dosage)}${instructions
-          ? `\nInstructions: ${escapeHTML(instructions)}` : ""}</p>
-        <div class="item-meta">${statusTag(status)}</div>
-      </div>
-      <div class="item-actions">
-        <span class="tag">${escapeHTML(formatTime(time))}</span>
-        ${completed ? "" : `
-          <button class="take-button" type="button"
-            data-dose-action="taken"
-            data-reminder-id="${escapeHTML(id)}"
-            data-dose-date="${escapeHTML(date)}">✓ Taken</button>
-          <button class="secondary-button" type="button"
-            data-dose-action="missed"
-            data-reminder-id="${escapeHTML(id)}"
-            data-dose-date="${escapeHTML(date)}">Missed</button>
+
+        <div class="reminder-heading">
+          <h3 class="item-title">
+            ${escapeHTML(name)}
+          </h3>
+
+          ${statusTag(status)}
+        </div>
+
+        <p class="item-description">
+          ${escapeHTML(dosage)}
+        </p>
+
+        ${instructions ? `
+          <p class="reminder-instructions">
+            ${escapeHTML(instructions)}
+          </p>
+        ` : ""}
+
+        <div class="reminder-time">
+          <span>◷</span>
+          ${escapeHTML(formatTime(time))}
+        </div>
+
+        ${!completed ? `
+          <div class="dose-actions">
+
+            <button
+              class="dose-action-button taken-button"
+              type="button"
+              data-dose-action="taken"
+              data-reminder-id="${escapeHTML(id)}"
+              data-dose-date="${escapeHTML(date)}"
+            >
+              <span>✓</span>
+              Mark as Taken
+            </button>
+
+            <button
+              class="dose-action-button missed-button"
+              type="button"
+              data-dose-action="missed"
+              data-reminder-id="${escapeHTML(id)}"
+              data-dose-date="${escapeHTML(date)}"
+            >
+              <span>!</span>
+              Mark as Missed
+            </button>
+
+          </div>
+        ` : `
+          <div class="dose-completion-message ${
+            status === "taken" ? "completion-taken" : "completion-missed"
+          }">
+            ${
+              status === "taken"
+                ? "✓ This dose has been recorded as taken."
+                : "! This dose has been recorded as missed."
+            }
+          </div>
         `}
+
       </div>
-    </article>`;
+    </article>
+  `;
 }
 
 function renderToday() {
   const date = todayKey();
+
   const entries = getReminderEntries(date);
 
   if ($("todayLabel")) {
-    $("todayLabel").textContent = new Date().toLocaleDateString(undefined, {
-      weekday: "long",
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    });
+    $("todayLabel").textContent = new Date().toLocaleDateString(
+      undefined,
+      {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      }
+    );
   }
 
-  if ($("todayCount")) $("todayCount").textContent = entries.length;
+  if ($("todayCount")) {
+    $("todayCount").textContent = entries.length;
+  }
+
   if ($("takenCount")) {
     $("takenCount").textContent = entries.filter(
       (entry) => getStatus(entry.id, date) === "taken"
@@ -414,11 +1544,14 @@ function renderToday() {
         ? "No doses are scheduled for today."
         : "Your caregiver's schedule will appear here after the accounts are connected."
     );
+
     return;
   }
 
   if ($("todayList")) {
-    $("todayList").innerHTML = entries.map(renderReminderCard).join("");
+    $("todayList").innerHTML = entries
+      .map(renderReminderCard)
+      .join("");
   }
 }
 
@@ -426,7 +1559,9 @@ function renderMedicines() {
   const entries = Object.entries(state.medicines)
     .filter(([, medicine]) => isActiveMedicine(medicine));
 
-  if ($("medicineCount")) $("medicineCount").textContent = entries.length;
+  if ($("medicineCount")) {
+    $("medicineCount").textContent = entries.length;
+  }
 
   if (!entries.length) {
     empty(
@@ -434,24 +1569,37 @@ function renderMedicines() {
       "No medicines yet",
       "Medicines shared by your authorized caregiver will appear here."
     );
+
     return;
   }
 
   if ($("medicineList")) {
     $("medicineList").innerHTML = entries.map(([, medicine]) => {
-      const frequency = medicine.frequency || medicine.recurrence || "";
-      const instructions = medicine.notes || medicine.instructions || "";
+      const frequency =
+        medicine.frequency || medicine.recurrence || "";
+
+      const instructions =
+        medicine.notes || medicine.instructions || "";
 
       return `
         <article class="item">
           <div class="item-icon">💊</div>
+
           <div class="item-main">
-            <h3 class="item-title">${escapeHTML(medicineName(medicine))}</h3>
-            <p class="item-description">Dosage: ${escapeHTML(medicineDosage(medicine))}${frequency
-              ? `\nSchedule: ${escapeHTML(frequency)}` : ""}${instructions
-              ? `\nInstructions: ${escapeHTML(instructions)}` : ""}</p>
+            <h3 class="item-title">
+              ${escapeHTML(medicineName(medicine))}
+            </h3>
+
+            <p class="item-description">
+              Dosage: ${escapeHTML(medicineDosage(medicine))}${frequency
+                ? `\nSchedule: ${escapeHTML(frequency)}`
+                : ""}${instructions
+                ? `\nInstructions: ${escapeHTML(instructions)}`
+                : ""}
+            </p>
           </div>
-        </article>`;
+        </article>
+      `;
     }).join("");
   }
 }
@@ -461,15 +1609,23 @@ function renderReminders() {
 
   for (let offset = 0; offset < 7; offset++) {
     const date = new Date();
+
     date.setDate(date.getDate() + offset);
+
     dates.push(todayKey(date));
   }
 
   const today = todayKey();
+
   const entries = dates.flatMap(getReminderEntries);
 
   if (!entries.length) {
-    empty("reminderList", "No upcoming reminders", "Upcoming scheduled doses will appear here.");
+    empty(
+      "reminderList",
+      "No upcoming reminders",
+      "Upcoming scheduled doses will appear here."
+    );
+
     return;
   }
 
@@ -477,10 +1633,14 @@ function renderReminders() {
     $("reminderList").innerHTML = entries.map((entry) => `
       <div>
         <p class="panel-subtitle" style="margin:4px 0 8px;">
-          ${escapeHTML(entry.date === today ? "Today" : formatDate(entry.date))}
+          ${escapeHTML(
+            entry.date === today ? "Today" : formatDate(entry.date)
+          )}
         </p>
+
         ${renderReminderCard(entry)}
-      </div>`).join("");
+      </div>
+    `).join("");
   }
 }
 
@@ -488,26 +1648,55 @@ function renderHistory() {
   const entries = Object.entries(state.logs)
     .filter(([, log]) => log && typeof log === "object")
     .map(([id, log]) => ({ id, ...log }))
-    .filter((log) => ["taken", "missed"].includes(String(log.status || "").toLowerCase()))
-    .sort((a, b) => String(b.recordedAt || "").localeCompare(String(a.recordedAt || "")));
+    .filter((log) =>
+      ["taken", "missed"].includes(
+        String(log.status || "").toLowerCase()
+      )
+    )
+    .sort((a, b) =>
+      String(b.recordedAt || "").localeCompare(
+        String(a.recordedAt || "")
+      )
+    );
 
   if (!entries.length) {
-    empty("historyList", "No history yet", "Doses you record will appear here.");
+    empty(
+      "historyList",
+      "No history yet",
+      "Doses you record will appear here."
+    );
+
     return;
   }
 
   if ($("historyList")) {
     $("historyList").innerHTML = entries.map((log) => `
       <article class="item">
-        <div class="item-icon">${String(log.status).toLowerCase() === "taken" ? "✓" : "◷"}</div>
-        <div class="item-main">
-          <h3 class="item-title">${escapeHTML(log.medicineName || log.name || "Medicine dose")}</h3>
-          <p class="item-description">Date: ${escapeHTML(formatDate(log.date))}
-            \nDosage: ${escapeHTML(log.dosage || "Not specified")}
-            ${log.recordedAt ? `\nRecorded: ${escapeHTML(new Date(log.recordedAt).toLocaleString())}` : ""}</p>
-          <div class="item-meta">${statusTag(log.status)}</div>
+        <div class="item-icon">
+          ${String(log.status).toLowerCase() === "taken" ? "✓" : "◷"}
         </div>
-      </article>`).join("");
+
+        <div class="item-main">
+          <h3 class="item-title">
+            ${escapeHTML(log.medicineName || log.name || "Medicine dose")}
+          </h3>
+
+          <p class="item-description">
+            Date: ${escapeHTML(formatDate(log.date))}
+            \nDosage: ${escapeHTML(log.dosage || "Not specified")}
+            ${log.recordedAt
+              ? `\nRecorded: ${escapeHTML(
+                  new Date(log.recordedAt).toLocaleString()
+                )}`
+              : ""}
+          </p>
+
+          <div class="item-meta">
+            ${statusTag(log.status)}
+          </div>
+        </div>
+      </article>
+    `).join("");
   }
 }
 
@@ -518,7 +1707,10 @@ function renderAll() {
   renderHistory();
 }
 
-/* Keep the patient-history listener separate from caregiver listeners. */
+/* =======================================================
+   FIREBASE LISTENER CLEANUP
+======================================================= */
+
 function stopPatientLogListener() {
   if (state.patientLogUnsubscribe) {
     state.patientLogUnsubscribe();
@@ -526,9 +1718,18 @@ function stopPatientLogListener() {
   }
 }
 
+function stopRequestListener() {
+  if (state.requestUnsubscribe) {
+    state.requestUnsubscribe();
+    state.requestUnsubscribe = null;
+  }
+}
+
 function stopCaregiverListeners() {
   state.caregiverUnsubscribers.forEach((unsubscribe) => {
-    try { unsubscribe(); } catch (error) {
+    try {
+      unsubscribe();
+    } catch (error) {
       console.warn("Could not stop caregiver listener:", error);
     }
   });
@@ -539,28 +1740,72 @@ function stopCaregiverListeners() {
 function stopAllListeners() {
   stopPatientLogListener();
   stopCaregiverListeners();
+  stopRequestListener();
 
   if (state.connectionUnsubscribe) {
     state.connectionUnsubscribe();
     state.connectionUnsubscribe = null;
   }
+
+  // Stop reminder checking, sound, and any open reminder modal.
+  stopReminderChecker();
 }
+
+/* =======================================================
+   LISTEN FOR PATIENT HISTORY
+======================================================= */
 
 function listenToPatientLogs(uid) {
   stopPatientLogListener();
 
   state.patientLogUnsubscribe = onValue(
     ref(db, `users/${uid}/intakeLogs`),
+
     (snapshot) => {
       state.logs = normalizeCollection(snapshot.val());
       renderAll();
     },
+
     (error) => {
       console.error("Patient history read failed:", error);
-      notice("error", "Unable to load intake history. Check your Firebase Database Rules.");
+
+      notice(
+        "error",
+        "Unable to load intake history. Check your Firebase Database Rules."
+      );
     }
   );
 }
+
+/* =======================================================
+   LISTEN FOR CONNECTION REQUESTS
+======================================================= */
+
+function listenToConnectionRequests(uid) {
+  stopRequestListener();
+
+  state.requestUnsubscribe = onValue(
+    ref(db, `users/${uid}/connectionRequests`),
+
+    (snapshot) => {
+      state.connectionRequests = normalizeCollection(snapshot.val());
+      renderConnectionRequests();
+    },
+
+    (error) => {
+      console.error("Connection requests listener failed:", error);
+
+      notice(
+        "error",
+        "Unable to load caregiver requests. Check your Firebase Database Rules."
+      );
+    }
+  );
+}
+
+/* =======================================================
+   LISTEN FOR ACTIVE CAREGIVER CONNECTION
+======================================================= */
 
 function listenToConnection(uid) {
   if (state.connectionUnsubscribe) {
@@ -570,113 +1815,168 @@ function listenToConnection(uid) {
 
   state.connectionUnsubscribe = onValue(
     ref(db, `users/${uid}/careConnection`),
-    snapshot => {
+
+    (snapshot) => {
       const connection = snapshot.val() || {};
+
       const caregiverUid =
-        connection.status === "active" ? connection.authorizedUid : null;
+        connection.status === "active"
+          ? connection.authorizedUid
+          : null;
 
       if (caregiverUid && caregiverUid !== uid) {
         state.caregiverUid = caregiverUid;
+        state.connectionInfo = connection;
+
         updateConnectionStatus(
           true,
           "Connected. Your caregiver's medicines and reminders are syncing live."
         );
+
+        renderActiveCaregiver();
         listenToCaregiverData(caregiverUid);
+
       } else {
         state.caregiverUid = null;
+        state.connectionInfo = {};
+
         stopCaregiverListeners();
+
         state.medicines = {};
         state.reminders = {};
+
         updateConnectionStatus(
           false,
-          "Show your QR code or patient ID to your authorized caregiver. Enable automatic connections above before they connect."
+          "Share your QR code or patient ID with your authorized caregiver. Approve their request below to connect."
         );
-        empty("todayList", "Waiting for your caregiver", "Your medicine schedule will appear here after the accounts are connected.");
-        empty("medicineList", "Waiting for your caregiver", "Shared medicines will appear here after connection.");
-        empty("reminderList", "No reminders yet", "Shared reminders will appear here after connection.");
+
+        renderActiveCaregiver();
         renderAll();
       }
     },
-    error => {
+
+    (error) => {
       console.error("Patient connection listener failed:", error);
-      notice("error", "Unable to check your caregiver connection. Check your Firebase Database Rules.");
+
+      notice(
+        "error",
+        "Unable to check your caregiver connection. Check your Firebase Database Rules."
+      );
     }
   );
 }
 
+/* =======================================================
+   LISTEN FOR CAREGIVER MEDICINES AND REMINDERS
+======================================================= */
+
 function listenToCaregiverData(uid) {
   stopCaregiverListeners();
 
+  const medicinesUnsubscribe = onValue(
+    ref(db, `users/${uid}/medicines`),
+
+    (snapshot) => {
+      state.medicines = normalizeCollection(snapshot.val());
+      renderAll();
+    },
+
+    (error) => {
+      console.error("Caregiver medicines read failed:", error);
+
+      notice(
+        "error",
+        "Shared medicines could not be loaded. Confirm the connection and Firebase Database Rules."
+      );
+    }
+  );
+
+  const remindersUnsubscribe = onValue(
+    ref(db, `users/${uid}/reminders`),
+
+    (snapshot) => {
+      state.reminders = normalizeCollection(snapshot.val());
+      renderAll();
+    },
+
+    (error) => {
+      console.error("Caregiver reminders read failed:", error);
+
+      notice(
+        "error",
+        "Shared reminders could not be loaded. Check the connection and Firebase Database Rules."
+      );
+    }
+  );
+
   state.caregiverUnsubscribers.push(
-    onValue(
-      ref(db, `users/${uid}/medicines`),
-      (snapshot) => {
-        state.medicines = normalizeCollection(snapshot.val());
-        renderAll();
-      },
-      (error) => {
-        console.error("Caregiver medicines read failed:", error);
-        notice(
-          "error",
-          "Shared medicines could not be loaded. Confirm that the authorized person connected to your patient ID and that your database rules allow the shared read."
-        );
-      }
-    ),
-    onValue(
-      ref(db, `users/${uid}/reminders`),
-      (snapshot) => {
-        state.reminders = normalizeCollection(snapshot.val());
-        renderAll();
-      },
-      (error) => {
-        console.error("Caregiver reminders read failed:", error);
-        notice(
-          "error",
-          "Shared reminders could not be loaded. Check the reciprocal connection and Firebase Database Rules."
-        );
-      }
-    )
+    medicinesUnsubscribe,
+    remindersUnsubscribe
   );
 }
+
+/* =======================================================
+   COPY PATIENT UID
+======================================================= */
 
 async function copyPatientUid() {
   if (!state.user) return;
 
   try {
     await navigator.clipboard.writeText(state.user.uid);
-    notice("success", "Patient ID copied. Share it only with your verified authorized caregiver.");
+
+    notice(
+      "success",
+      "Patient ID copied. Share it only with your verified authorized caregiver."
+    );
+
   } catch (error) {
-    notice("info", `Your patient ID is ${state.user.uid}. Select and copy it from the panel.`);
+    notice(
+      "info",
+      `Your patient ID is ${state.user.uid}. Select and copy it from the panel.`
+    );
   }
 }
 
+/* =======================================================
+   RECORD MEDICINE DOSE
+======================================================= */
+
 async function recordDose(reminderId, date, status, button) {
   if (!state.user || !state.caregiverUid) {
-    notice("error", "Your authorized caregiver has not connected your account yet.");
-    return;
+    notice(
+      "error",
+      "Your authorized caregiver has not connected your account yet."
+    );
+
+    return false;
   }
 
-  if (!["taken", "missed"].includes(status)) return;
+  if (!["taken", "missed"].includes(status)) {
+    return false;
+  }
 
   const reminder = state.reminders[reminderId];
 
   if (!reminder) {
     notice("error", "This reminder is no longer available.");
-    return;
+    return false;
   }
 
   const key = logKey(reminderId, date);
 
   if (getLog(reminderId, date)) {
     notice("info", "This dose has already been recorded.");
-    return;
+    return false;
   }
 
-  if (state.recording.has(key)) return;
+  if (state.recording.has(key)) return false;
 
   state.recording.add(key);
 
-  if (button) button.disabled = true;
+  if (button) {
+    button.disabled = true;
+  }
 
   const medicine = findMedicine(reminder);
 
@@ -686,7 +1986,9 @@ async function recordDose(reminderId, date, status, button) {
 
     medicineName: medicine
       ? medicineName(medicine)
-      : reminder.medicineName || reminder.name || "Scheduled medicine",
+      : reminder.medicineName ||
+        reminder.name ||
+        "Scheduled medicine",
 
     dosage:
       reminder.dose ||
@@ -706,6 +2008,12 @@ async function recordDose(reminderId, date, status, button) {
     );
 
     state.logs[key] = log;
+
+    // Prevent the dose from triggering again.
+    triggeredReminders.add(
+      `${reminderId}_${date}_${String(reminderTime(reminder)).slice(0, 5)}`
+    );
+
     renderAll();
 
     notice(
@@ -715,6 +2023,8 @@ async function recordDose(reminderId, date, status, button) {
         : "Dose recorded as missed."
     );
 
+    return true;
+
   } catch (error) {
     console.error("Saving dose record failed:", error);
 
@@ -723,12 +2033,20 @@ async function recordDose(reminderId, date, status, button) {
       "Unable to save this dose. Check your Firebase Database Rules."
     );
 
-    if (button) button.disabled = false;
+    if (button) {
+      button.disabled = false;
+    }
+
+    return false;
 
   } finally {
     state.recording.delete(key);
   }
 }
+
+/* =======================================================
+   NAVIGATION
+======================================================= */
 
 function setupNavigation() {
   const buttons = document.querySelectorAll(".nav-btn[data-page]");
@@ -758,65 +2076,131 @@ function setupNavigation() {
   });
 }
 
+/* =======================================================
+   DASHBOARD EVENTS
+======================================================= */
+
 function setupEvents() {
-  $("copyPatientUidButton")?.addEventListener("click", copyPatientUid);
+  $("copyPatientUidButton")?.addEventListener(
+    "click",
+    copyPatientUid
+  );
 
-  $("allowCaregiverConnections")?.addEventListener("change", async event => {
-    if (!state.user) return;
+  // Caregiver connection permission.
+  $("allowCaregiverConnections")?.addEventListener(
+    "change",
+    async (event) => {
+      if (!state.user) return;
 
-    const checkbox = event.currentTarget;
-    const enabled = checkbox.checked;
-    checkbox.disabled = true;
+      const checkbox = event.currentTarget;
+      const enabled = checkbox.checked;
 
-    try {
-      await set(
-        ref(db, `users/${state.user.uid}/profile/allowCaregiverConnections`),
-        enabled
+      checkbox.disabled = true;
+
+      try {
+        await set(
+          ref(
+            db,
+            `users/${state.user.uid}/profile/allowCaregiverConnections`
+          ),
+          enabled
+        );
+
+        state.profile.allowCaregiverConnections = enabled;
+
+        notice(
+          "success",
+          enabled
+            ? "Caregiver connection requests are enabled. You still need to approve each request."
+            : "Caregiver connection requests are disabled."
+        );
+
+      } catch (error) {
+        console.error("Updating connection permission failed:", error);
+
+        checkbox.checked = !enabled;
+
+        notice(
+          "error",
+          "Unable to update connection permission. Check your Firebase Database Rules."
+        );
+
+      } finally {
+        checkbox.disabled = false;
+      }
+    }
+  );
+
+  // Approve or reject connection requests.
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) return;
+
+    const connectionButton = target.closest(
+      "[data-connection-action]"
+    );
+
+    if (connectionButton) {
+      const caregiverUid = connectionButton.dataset.caregiverUid;
+      const action = connectionButton.dataset.connectionAction;
+
+      if (action === "approve") {
+        approveConnectionRequest(caregiverUid);
+      }
+
+      if (action === "reject") {
+        rejectConnectionRequest(caregiverUid);
+      }
+
+      return;
+    }
+
+    // Record medicine dose.
+    const doseButton = target.closest("[data-dose-action]");
+
+    if (doseButton) {
+      recordDose(
+        doseButton.dataset.reminderId,
+        doseButton.dataset.doseDate,
+        doseButton.dataset.doseAction,
+        doseButton
       );
-      state.profile.allowCaregiverConnections = enabled;
-      notice(
-        "success",
-        enabled
-          ? "Automatic caregiver connections are enabled."
-          : "Automatic caregiver connections are disabled."
-      );
-    } catch (error) {
-      console.error("Updating connection permission failed:", error);
-      checkbox.checked = !enabled;
-      notice("error", "Unable to update connection permission. Check your Firebase Database Rules.");
-    } finally {
-      checkbox.disabled = false;
     }
   });
 
-  $("sidebarLogout")?.addEventListener("click", async () => {
+  // Logout.
+  async function handleLogout() {
     try {
       stopAllListeners();
+
       await signOut(auth);
+
       window.location.href = "login.html";
+
     } catch (error) {
       console.error("Sign out failed:", error);
-      notice("error", "Unable to sign out. Please try again.");
+
+      notice(
+        "error",
+        "Unable to sign out. Please try again."
+      );
     }
-  });
+  }
 
-  document.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-dose-action]");
-    if (!button) return;
+  $("sidebarLogout")?.addEventListener("click", handleLogout);
 
-    recordDose(
-      button.dataset.reminderId,
-      button.dataset.doseDate,
-      button.dataset.doseAction,
-      button
-    );
-  });
+  $("mobileLogoutButton")?.addEventListener(
+    "click",
+    handleLogout
+  );
 
-  $("mobileLogoutButton")?.addEventListener("click", () => {
-  $("sidebarLogout")?.click();
-});
   window.addEventListener("beforeunload", stopAllListeners);
 }
+
+/* =======================================================
+   START PATIENT DASHBOARD
+======================================================= */
 
 async function startPatientDashboard(user) {
   stopAllListeners();
@@ -824,43 +2208,88 @@ async function startPatientDashboard(user) {
   state.user = user;
   state.profile = {};
   state.caregiverUid = null;
+  state.connectionInfo = {};
   state.medicines = {};
   state.reminders = {};
   state.logs = {};
+  state.connectionRequests = {};
+  state.processingRequests.clear();
+  state.recording.clear();
 
   setLoading(true);
   clearNotices();
 
   try {
-    const profileSnapshot = await get(ref(db, `users/${user.uid}/profile`));
+    const profileSnapshot = await get(
+      ref(db, `users/${user.uid}/profile`)
+    );
+
     const profile = profileSnapshot.val() || {};
+
     state.profile = profile;
 
-    const role = String(profile.role || "").toLowerCase().trim();
+    const role = String(profile.role || "")
+      .toLowerCase()
+      .trim();
 
-    if (!["patient", "medicine taker", "medicine_taker"].includes(role)) {
+    if (
+      !["patient", "medicine taker", "medicine_taker"].includes(role)
+    ) {
       setLoading(false);
-      notice("error", "This page is for patient accounts. Please sign in with your patient account.");
+
+      notice(
+        "error",
+        "This page is for patient accounts. Please sign in with your patient account."
+      );
+
       return;
     }
 
     updateUserDisplay(profile, user);
 
     const permissionToggle = $("allowCaregiverConnections");
+
     if (permissionToggle) {
-      permissionToggle.checked = profile.allowCaregiverConnections === true;
+      permissionToggle.checked =
+        profile.allowCaregiverConnections === true;
     }
 
-    listenToConnection(user.uid);
-    listenToPatientLogs(user.uid);
+    // Create connection panel.
+    ensureConnectionRequestPanel();
 
-    setLoading(false);
+    renderActiveCaregiver();
+    renderConnectionRequests();
+
+    // Listen for incoming caregiver requests.
+    listenToConnectionRequests(user.uid);
+
+    // Listen for active caregiver connection.
+    listenToConnection(user.uid);
+
+    // Listen for patient dose history.
+    // Listen for patient dose history.
+  listenToPatientLogs(user.uid);
+
+  // Start checking scheduled medicine reminders.
+  startReminderChecker();
+
+  setLoading(false);
+
   } catch (error) {
     console.error("Patient dashboard startup failed:", error);
+
     setLoading(false);
-    notice("error", "Unable to load your account. Check Firebase configuration, sign-in status, and Database Rules.");
+
+    notice(
+      "error",
+      "Unable to load your account. Check Firebase configuration, sign-in status, and Database Rules."
+    );
   }
 }
+
+/* =======================================================
+   INITIALIZE DASHBOARD
+======================================================= */
 
 setupNavigation();
 setupEvents();
@@ -868,7 +2297,9 @@ setupEvents();
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     stopAllListeners();
+
     window.location.href = "login.html";
+
     return;
   }
 

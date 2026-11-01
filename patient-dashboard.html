@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#175638">
   <meta name="description" content="Medminder patient medicine schedule and reminders">
   <title>Medminder | Patient Dashboard</title>
@@ -16,16 +16,22 @@
     :root {
       --green: #175638;
       --dark: #10442b;
-      --light: #e7f4eb;
-      --bg: #f2f7f3;
-      --white: #fff;
+      --green-light: #e7f4eb;
+      --green-soft: #f1f8f3;
+      --bg: #f4f8f5;
+      --white: #ffffff;
       --text: #24352b;
       --muted: #718078;
-      --border: #dce8df;
+      --border: #e0eae2;
       --danger: #b42318;
+      --shadow: 0 5px 20px rgba(20, 65, 39, .045);
+      --radius: 16px;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     html, body {
       width: 100%;
@@ -33,29 +39,42 @@
       margin: 0;
     }
 
-    html { overflow: hidden; }
+    html {
+      overflow: hidden;
+    }
 
     body {
+      min-width: 320px;
       font-family: Inter, sans-serif;
       background: var(--bg);
       color: var(--text);
       overflow: hidden;
     }
 
-    button, input, select, textarea { font: inherit; }
-    button { cursor: pointer; }
-    button:disabled { opacity: .55; cursor: wait; }
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: wait;
+    }
 
     button:focus-visible,
     input:focus-visible {
-      outline: 2px solid var(--green);
-      outline-offset: 2px;
+      outline: 3px solid rgba(23, 86, 56, .25);
+      outline-offset: 3px;
     }
 
-    [hidden],
-    .hidden {
+    [hidden], .hidden {
       display: none !important;
     }
+
+    /* LOADING */
 
     .loading {
       position: fixed;
@@ -70,30 +89,30 @@
 
     .loading-card {
       width: min(100%, 350px);
-      padding: 30px;
+      padding: 32px 24px;
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 20px;
       background: white;
+      box-shadow: var(--shadow);
     }
 
     .loading-mark {
       display: grid;
       place-items: center;
-      width: 48px;
-      height: 48px;
+      width: 58px;
+      height: 58px;
       margin: auto;
-      border-radius: 13px;
-      background: var(--light);
+      border-radius: 17px;
+      background: var(--green-light);
       color: var(--green);
-      font-size: 25px;
-      font-weight: 800;
+      font-size: 28px;
     }
 
     .spinner {
       width: 30px;
       height: 30px;
       margin: 18px auto 0;
-      border: 3px solid var(--light);
+      border: 3px solid var(--green-light);
       border-top-color: var(--green);
       border-radius: 50%;
       animation: spin .8s linear infinite;
@@ -103,25 +122,207 @@
       to { transform: rotate(360deg); }
     }
 
+    /* APPLICATION */
+
     .app {
       display: none;
-      grid-template-columns: 240px minmax(0, 1fr);
+      grid-template-columns: 250px minmax(0, 1fr);
       width: 100%;
       height: 100vh;
       height: 100dvh;
       overflow: hidden;
     }
 
-    .app.ready { display: grid; }
+    .app.ready {
+      display: grid;
+    }
+
+    /* DOSE TRACKING */
+
+    .reminder-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      padding: 18px;
+      margin-bottom: 14px;
+      background: #ffffff;
+      border: 1px solid #e3ebe5;
+      border-radius: 16px;
+      transition: border-color .2s ease, box-shadow .2s ease;
+      min-width: 0;
+    }
+
+    .reminder-item:hover {
+      border-color: #b8d7c1;
+      box-shadow: 0 5px 16px rgba(23, 86, 56, .06);
+    }
+
+    .medicine-icon {
+      width: 46px;
+      height: 46px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e7f4eb;
+      color: #175638;
+      border-radius: 13px;
+      font-size: 22px;
+    }
+
+    .reminder-item .item-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .reminder-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-bottom: 7px;
+    }
+
+    .reminder-heading .item-title {
+      margin: 0;
+      color: #24352b;
+      font-size: 15px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .reminder-item .item-description {
+      margin: 5px 0;
+      color: #718078;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-line;
+    }
+
+    .reminder-instructions {
+      margin: 5px 0;
+      color: #718078;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .reminder-time {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 7px;
+      color: #175638;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .dose-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 30px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .status-icon {
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .dose-pending {
+      background: #fff5df;
+      color: #986515;
+    }
+
+    .dose-taken {
+      background: #e5f5e9;
+      color: #17643b;
+    }
+
+    .dose-missed {
+      background: #fff0e5;
+      color: #b45a1c;
+    }
+
+    .dose-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+
+    .dose-action-button {
+      flex: 1 1 140px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .dose-action-button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .taken-button {
+      border: 1px solid #175638;
+      background: #175638;
+      color: #ffffff;
+    }
+
+    .taken-button:hover:not(:disabled) {
+      background: #10442b;
+    }
+
+    .missed-button {
+      border: 1px solid #e8c4b1;
+      background: #fff8f4;
+      color: #b45a1c;
+    }
+
+    .missed-button:hover:not(:disabled) {
+      background: #fff0e5;
+    }
+
+    .dose-completion-message {
+      margin-top: 13px;
+      padding: 10px 12px;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .completion-taken {
+      background: #eaf6ed;
+      color: #17643b;
+    }
+
+    .completion-missed {
+      background: #fff2e8;
+      color: #a6531b;
+    }
 
     /* SIDEBAR */
 
     .sidebar {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 24px;
       min-height: 0;
-      padding: 24px 16px;
+      padding: 26px 17px 20px;
       overflow-y: auto;
       background: var(--white);
       border-right: 1px solid var(--border);
@@ -130,113 +331,129 @@
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 4px 10px 18px;
+      gap: 11px;
+      padding: 2px 8px 15px;
     }
 
     .brand-mark {
       display: grid;
-      flex: 0 0 42px;
+      flex: 0 0 44px;
       place-items: center;
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      background: var(--light);
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: var(--green-light);
       color: var(--green);
-      font-size: 23px;
-      font-weight: 800;
+      font-size: 24px;
     }
 
     .brand-name {
       color: var(--green);
       font-size: 21px;
       font-weight: 800;
+      letter-spacing: -.7px;
     }
 
     .brand-caption {
+      margin-top: 3px;
       color: var(--muted);
       font-size: 10px;
     }
 
     .nav-label {
-      margin: 12px 10px;
-      color: var(--muted);
-      font-size: 11px;
+      margin: 9px 10px 12px;
+      color: #91a097;
+      font-size: 10px;
       font-weight: 800;
       letter-spacing: 1px;
     }
 
-    nav { display: grid; gap: 7px; }
+    nav:not(.bottom-nav) {
+      display: grid;
+      gap: 7px;
+    }
 
     .nav-btn {
       width: 100%;
-      padding: 13px;
+      min-height: 44px;
+      padding: 12px;
       border: 0;
-      border-radius: 10px;
+      border-radius: 11px;
       background: transparent;
-      color: var(--text);
+      color: #526259;
       text-align: left;
+      font-size: 13px;
+      font-weight: 600;
       transition: background .18s, color .18s;
     }
 
     .nav-btn:hover,
     .nav-btn.active {
-      background: var(--light);
+      background: var(--green-light);
       color: var(--green);
-      font-weight: 700;
+      font-weight: 750;
     }
 
-    .sidebar-bottom { margin-top: auto; }
+    .sidebar-bottom {
+      margin-top: auto;
+    }
 
     .user-card {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 12px 8px;
+      gap: 11px;
+      padding: 14px 8px;
       border-top: 1px solid var(--border);
     }
 
-    .avatar {
+    .avatar, .top-avatar {
       display: grid;
-      flex: 0 0 40px;
+      flex: 0 0 41px;
       place-items: center;
-      width: 40px;
-      height: 40px;
+      width: 41px;
+      height: 41px;
       border-radius: 50%;
-      background: var(--light);
+      background: var(--green-light);
       color: var(--green);
       font-weight: 800;
     }
 
-    .user-info { min-width: 0; }
+    .user-info {
+      min-width: 0;
+    }
 
     .user-name {
       overflow: hidden;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 750;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .user-role {
+      margin-top: 3px;
       color: var(--muted);
       font-size: 11px;
     }
 
     .logout-button {
       width: 100%;
+      min-height: 44px;
       padding: 12px;
       border: 0;
-      border-radius: 10px;
-      background: #fff0ef;
+      border-radius: 11px;
+      background: #fff1ef;
       color: var(--danger);
       text-align: left;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 750;
     }
 
-    .logout-button:hover { background: #ffe4e2; }
+    .logout-button:hover {
+      background: #ffe4e2;
+    }
 
-    /* MAIN LAYOUT */
+    /* MAIN */
 
     .main {
       display: flex;
@@ -254,57 +471,41 @@
       flex: 0 0 auto;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      min-height: 88px;
-      padding: 18px 28px;
+      gap: 14px;
+      min-height: 84px;
+      padding: 17px 30px;
       background: var(--white);
       border-bottom: 1px solid var(--border);
     }
 
-    h1 {
-      margin: 0 0 6px;
-      font-size: 22px;
+    .topbar h1 {
+      margin: 0 0 5px;
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -.5px;
     }
-
-    h2 {
-      margin: 0 0 8px;
-      font-size: 20px;
-    }
-
-    h3 { margin-top: 0; }
-
-    p { line-height: 1.5; }
 
     .muted {
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
+      line-height: 1.6;
     }
 
     .profile-shortcut {
       display: flex;
       align-items: center;
       gap: 10px;
-      border: 0;
-      background: transparent;
-      text-align: left;
+      min-width: 0;
     }
 
-    .top-avatar {
-      display: grid;
-      flex: 0 0 40px;
-      place-items: center;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--light);
-      color: var(--green);
-      font-weight: 800;
+    .profile-text b {
+      font-size: 12px;
     }
 
     .content {
       flex: 1 1 auto;
       min-height: 0;
-      padding: 26px;
+      padding: 26px 30px;
       overflow-y: auto;
       overflow-x: hidden;
       overscroll-behavior-y: contain;
@@ -312,55 +513,100 @@
       scrollbar-gutter: stable;
     }
 
-    .page { display: none; }
-    .page.active { display: block; }
+    .page {
+      display: none;
+      width: 100%;
+      max-width: 1450px;
+      margin: 0 auto;
+    }
+
+    .page.active {
+      display: block;
+      animation: pageIn .2s ease;
+    }
+
+    @keyframes pageIn {
+      from { opacity: .65; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     /* NOTICES */
 
     .notice {
       display: none;
       margin: 12px 0;
-      padding: 13px;
-      border-radius: 10px;
+      padding: 13px 15px;
+      border-radius: 11px;
       font-size: 13px;
       line-height: 1.6;
       overflow-wrap: anywhere;
     }
 
-    .notice.show { display: block; }
-    .notice.success { background: #effaf2; color: #17663a; }
-    .notice.error { background: #fff0ef; color: var(--danger); }
-    .notice.info { background: var(--light); color: var(--dark); }
+    .notice.show {
+      display: block;
+    }
+
+    .notice.success {
+      background: #effaf2;
+      color: #17663a;
+    }
+
+    .notice.error {
+      background: #fff0ef;
+      color: var(--danger);
+    }
+
+    .notice.info {
+      background: var(--green-light);
+      color: var(--dark);
+    }
 
     /* WELCOME */
 
     .welcome {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 20px;
+      min-height: 150px;
       margin-bottom: 20px;
-      padding: 26px;
-      border-radius: 18px;
-      background: linear-gradient(120deg, var(--green), #28794d);
+      padding: 27px 30px;
+      border-radius: 19px;
+      overflow: hidden;
+      background: linear-gradient(120deg, #10442b, #28794d);
       color: white;
     }
 
+    .welcome::after {
+      content: "";
+      position: absolute;
+      right: 75px;
+      bottom: -100px;
+      width: 230px;
+      height: 230px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 50%;
+    }
+
     .welcome h2 {
-      margin: 0 0 8px;
-      font-size: 24px;
+      margin: 0 0 9px;
+      font-size: 25px;
+      letter-spacing: -.7px;
     }
 
     .welcome p {
-      max-width: 600px;
+      max-width: 570px;
       margin: 0;
       color: #e2eee6;
       font-size: 13px;
+      line-height: 1.7;
     }
 
     .welcome-icon {
+      z-index: 1;
       flex: 0 0 auto;
-      font-size: 45px;
+      font-size: 49px;
     }
 
     /* STATISTICS */
@@ -369,41 +615,50 @@
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
-      margin-bottom: 20px;
+      margin-bottom: 21px;
     }
 
     .stat {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
       min-width: 0;
-      padding: 20px;
+      padding: 19px 20px;
       border: 1px solid var(--border);
       border-radius: 15px;
-      background: var(--white);
+      background: white;
+      box-shadow: var(--shadow);
     }
 
     .stat-label {
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
+      font-weight: 600;
     }
 
     .stat-number {
-      margin: 10px 0;
+      margin-top: 9px;
+      color: var(--green);
       font-size: 29px;
       font-weight: 800;
     }
 
     .stat-caption {
-      color: var(--muted);
-      font-size: 11px;
+      margin-top: 4px;
+      color: #94a098;
+      font-size: 10px;
     }
 
     /* PANELS */
 
     .panel {
       min-width: 0;
-      margin-bottom: 20px;
+      margin-bottom: 19px;
       border: 1px solid var(--border);
-      border-radius: 15px;
-      background: var(--white);
+      border-radius: var(--radius);
+      background: white;
+      box-shadow: var(--shadow);
       overflow: hidden;
     }
 
@@ -418,32 +673,35 @@
 
     .panel-heading h2 {
       margin: 0;
-      font-size: 17px;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 800;
     }
 
     .panel-heading p {
       margin: 5px 0 0;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
+      line-height: 1.5;
     }
 
-    .panel-body { padding: 18px 20px; }
-
-    .panel-description {
-      margin: 5px 0 0;
-      color: var(--muted);
-      font-size: 12px;
+    .panel-body {
+      padding: 19px 20px;
     }
 
     .section-heading {
-      margin: 0 0 6px;
-      font-size: 20px;
+      margin: 0 0 7px;
+      color: var(--text);
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -.5px;
     }
 
     .section-description {
-      margin: 0 0 18px;
+      margin: 0 0 20px;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
+      line-height: 1.6;
     }
 
     /* BUTTONS */
@@ -452,12 +710,18 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 40px;
+      gap: 7px;
+      min-height: 43px;
       padding: 11px 15px;
       border: 0;
-      border-radius: 9px;
+      border-radius: 10px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 750;
+      transition: background .15s, transform .15s;
+    }
+
+    .btn:active {
+      transform: scale(.98);
     }
 
     .btn-primary {
@@ -465,7 +729,9 @@
       color: white;
     }
 
-    .btn-primary:hover { background: var(--dark); }
+    .btn-primary:hover {
+      background: var(--dark);
+    }
 
     .btn-secondary {
       border: 1px solid var(--border);
@@ -473,7 +739,9 @@
       color: var(--green);
     }
 
-    .btn-secondary:hover { background: var(--light); }
+    .btn-secondary:hover {
+      background: var(--green-light);
+    }
 
     .btn-danger {
       background: #fff0ef;
@@ -486,24 +754,28 @@
       gap: 9px;
     }
 
-    /* PATIENT SCHEDULE */
+    /* CONTENT GRID */
 
     .content-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.3fr) minmax(260px, .9fr);
-      gap: 18px;
+      grid-template-columns: minmax(0, 1.3fr) minmax(270px, .9fr);
+      gap: 19px;
       align-items: start;
     }
+
+    /* TAGS */
 
     .tag {
       display: inline-flex;
       align-items: center;
-      padding: 5px 9px;
+      justify-content: center;
+      padding: 6px 10px;
       border-radius: 20px;
       background: #f0f5f1;
       color: #52685a;
       font-size: 10px;
-      font-weight: 750;
+      font-weight: 800;
+      white-space: nowrap;
     }
 
     .tag.green {
@@ -517,7 +789,7 @@
     }
 
     .connection-status {
-      padding: 6px 10px;
+      padding: 7px 10px;
       border-radius: 20px;
       background: #fff1d9;
       color: #89550e;
@@ -531,34 +803,43 @@
       color: #17663a;
     }
 
+    /* MEDICINE RECORDS */
+
     .record-list {
       display: grid;
-      gap: 12px;
+      gap: 11px;
     }
 
     .record {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 14px;
+      gap: 13px;
       min-width: 0;
       padding: 15px;
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 13px;
       background: white;
     }
 
-    .record-main { min-width: 0; }
+    .record-main {
+      flex: 1;
+      min-width: 0;
+    }
 
     .record h3 {
-      margin: 0 0 6px;
+      margin: 0 0 7px;
+      color: var(--text);
       font-size: 14px;
+      font-weight: 750;
+      overflow-wrap: anywhere;
     }
 
     .record p {
       margin: 4px 0;
-      font-size: 12px;
       color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
       overflow-wrap: anywhere;
       white-space: pre-line;
     }
@@ -567,99 +848,310 @@
       display: flex;
       flex-wrap: wrap;
       gap: 7px;
+      align-items: center;
+    }
+
+    .record-actions button {
+      min-height: 37px;
+      padding: 9px 12px;
+      border: 0;
+      border-radius: 9px;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .take-button {
+      background: var(--green);
+      color: white;
+    }
+
+    .secondary-button {
+      background: #fff1d9;
+      color: #89550e;
     }
 
     .empty-state {
-      padding: 28px 12px;
+      padding: 29px 14px;
       border: 1px dashed var(--border);
-      border-radius: 12px;
+      border-radius: 13px;
+      background: #fbfdfb;
       color: var(--muted);
       text-align: center;
       font-size: 12px;
+      line-height: 1.7;
     }
 
-    /* QR CODE AND CONNECTION */
+    .empty-icon {
+      margin-bottom: 8px;
+      font-size: 26px;
+    }
+
+    /* QR CODE */
 
     .qr-wrap {
       display: grid;
       place-items: center;
-      min-height: 230px;
-      padding: 15px;
-      margin: 14px 0;
+      min-height: 220px;
+      padding: 18px;
+      margin: 15px 0;
       border: 1px dashed #cbded0;
-      border-radius: 12px;
+      border-radius: 14px;
       background: #fbfdfb;
+    }
+
+    #patientQrCode {
+      max-width: 100%;
+      text-align: center;
     }
 
     #patientQrCode canvas,
     #patientQrCode img {
       display: block;
+      width: auto !important;
       max-width: 100%;
-      height: auto;
+      height: auto !important;
+      margin: 0 auto;
+      border-radius: 5px;
     }
 
     .uid-value {
+      width: 100%;
       padding: 12px;
       border: 1px solid var(--border);
-      border-radius: 9px;
+      border-radius: 10px;
       background: #f7faf7;
       color: #52685a;
       font-size: 11px;
+      line-height: 1.6;
       overflow-wrap: anywhere;
       user-select: text;
     }
 
     .connection-permission {
       margin-top: 18px;
-      padding: 14px;
+      padding: 15px;
       border: 1px solid var(--border);
       border-radius: 12px;
-      background: var(--bg);
+      background: #f8fbf8;
     }
 
     .connection-permission label {
       display: flex;
       align-items: flex-start;
       gap: 10px;
-      font-size: 13px;
-      font-weight: 700;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 750;
+      line-height: 1.5;
     }
 
     .connection-permission input {
       flex: 0 0 auto;
-      width: auto;
-      margin-top: 3px;
+      width: 17px;
+      height: 17px;
+      margin: 1px 0 0;
       accent-color: var(--green);
     }
 
     .connection-permission p {
-      margin: 8px 0 0 26px;
+      margin: 8px 0 0 27px;
       color: var(--muted);
       font-size: 11px;
-      line-height: 1.6;
+      line-height: 1.7;
+    }
+
+    #connectionRequestsPanel {
+      margin-top: 19px;
+    }
+
+    #connectionRequestsPanel button {
+      min-height: 42px;
+      touch-action: manipulation;
+    }
+
+    #connectionRequestsPanel article {
+      overflow-wrap: anywhere;
     }
 
     /* MOBILE NAV */
 
-    .bottom-nav { display: none; }
-
-    .footer-note {
-      padding: 10px 0;
-      color: var(--muted);
-      text-align: center;
-      font-size: 10px;
+    .bottom-nav {
+      display: none;
     }
 
-    @media (max-width: 850px) {
+    .footer-note {
+      padding: 13px 0 5px;
+      color: #91a097;
+      text-align: center;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+
+    /* MEDICINE REMINDER MODAL */
+
+    .medicine-reminder-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(10, 25, 15, .65);
+      backdrop-filter: blur(5px);
+    }
+
+    .medicine-reminder-overlay[hidden] {
+      display: none !important;
+    }
+
+    .medicine-reminder-modal {
+      width: 100%;
+      max-width: 390px;
+      max-height: calc(100dvh - 36px);
+      overflow-y: auto;
+      padding: 28px 22px;
+      border-radius: 24px;
+      background: #ffffff;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      animation: reminderAppear .25s ease;
+    }
+
+    @keyframes reminderAppear {
+      from {
+        opacity: 0;
+        transform: translateY(15px) scale(.97);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .reminder-bell {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 16px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #e7f4eb;
+      font-size: 32px;
+      animation: bellPulse 1.5s infinite;
+    }
+
+    @keyframes bellPulse {
+      50% { transform: scale(1.08); }
+    }
+
+    .reminder-eyebrow {
+      color: #175638;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+    }
+
+    .medicine-reminder-modal h2 {
+      color: #173b27;
+      font-size: 22px;
+      margin: 8px 0 18px;
+    }
+
+    .reminder-medicine-details {
+      padding: 18px;
+      border-radius: 15px;
+      background: #f2f7f3;
+    }
+
+    .reminder-medicine-details h3 {
+      margin: 0 0 8px;
+      color: #175638;
+      font-size: 19px;
+      overflow-wrap: anywhere;
+    }
+
+    .reminder-medicine-details p {
+      margin: 5px 0;
+      color: #64756a;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .reminder-message {
+      color: #64756a;
+      font-size: 13px;
+      margin: 18px 0;
+    }
+
+    .reminder-modal-actions {
+      display: grid;
+      gap: 10px;
+    }
+
+    .reminder-modal-actions button,
+    .stop-sound-button {
+      min-height: 48px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .modal-taken-button {
+      border: none;
+      background: #175638;
+      color: white;
+    }
+
+    .modal-snooze-button {
+      border: 1px solid #dce8df;
+      background: white;
+      color: #175638;
+    }
+
+    .stop-sound-button {
+      margin-top: 12px;
+      padding: 0 15px;
+      border: none;
+      background: transparent;
+      color: #718078;
+    }
+
+    /* TABLET */
+
+    @media (max-width: 1050px) {
       .app {
+        grid-template-columns: 220px minmax(0, 1fr);
+      }
+
+      .content {
+        padding: 22px;
+      }
+
+      .content-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    /* MOBILE */
+
+    @media (max-width: 850px) {
+      html, body {
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .app,
+      .app.ready {
         display: block;
         height: 100vh;
         height: 100dvh;
       }
 
-      .app.ready { display: block; }
-
-      .sidebar { display: none; }
+      .sidebar {
+        display: none;
+      }
 
       .main {
         width: 100%;
@@ -668,14 +1160,22 @@
       }
 
       .topbar {
-        min-height: 76px;
-        padding: 14px 16px;
+        min-height: 70px;
+        padding: 12px 17px;
+      }
+
+      .topbar h1 {
+        font-size: 18px;
       }
 
       .content {
-        padding: 16px;
-        padding-bottom: 105px;
+        padding: 17px 15px 25px;
+        padding-bottom: calc(100px + env(safe-area-inset-bottom));
         scrollbar-gutter: auto;
+      }
+
+      .page {
+        max-width: 680px;
       }
 
       .bottom-nav {
@@ -688,79 +1188,358 @@
         align-items: stretch;
         justify-content: space-around;
         gap: 3px;
-        padding: 7px 4px;
+        min-height: 65px;
+        padding: 7px 5px;
         padding-bottom: max(7px, env(safe-area-inset-bottom));
         border-top: 1px solid var(--border);
         background: rgba(255,255,255,.97);
-        backdrop-filter: blur(12px);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        box-shadow: 0 -5px 20px rgba(20,65,39,.06);
+      }
+
+      .app:not(.ready) ~ .bottom-nav {
+        display: none;
       }
 
       .bottom-nav .nav-btn {
+        display: flex;
         flex: 1 1 0;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
         min-width: 0;
-        padding: 8px 2px;
-        border-radius: 8px;
+        min-height: 48px;
+        padding: 5px 2px;
+        border-radius: 10px;
         font-size: 10px;
-        line-height: 1.5;
+        line-height: 1.3;
         text-align: center;
       }
 
       .bottom-nav .nav-btn.active {
-        background: var(--light);
+        background: var(--green-light);
         color: var(--green);
       }
 
-      .stats { gap: 8px; }
-      .stat { padding: 13px; }
-      .stat-number { font-size: 23px; }
-
-      .profile-text { display: none; }
-
-      .content-grid { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 520px) {
-      .welcome {
-        padding: 18px;
-        border-radius: 14px;
+      .content-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
       }
 
-      .welcome h2 { font-size: 20px; }
-      .welcome-icon { font-size: 32px; }
-
-      .stats { grid-template-columns: 1fr; }
+      .stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 9px;
+      }
 
       .stat {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
+        display: block;
+        padding: 14px 12px;
+      }
+
+      .stat-label {
+        font-size: 10px;
+        line-height: 1.4;
       }
 
       .stat-number {
-        margin: 0;
+        margin-top: 8px;
+        font-size: 24px;
+      }
+
+      .stat-caption {
+        display: none;
+      }
+
+      .profile-text {
+        display: none;
+      }
+
+      .welcome {
+        min-height: 130px;
+        padding: 21px;
+      }
+
+      .welcome h2 {
+        font-size: 21px;
+      }
+
+      .welcome p {
+        font-size: 12px;
+      }
+
+      .welcome-icon {
+        font-size: 36px;
+      }
+
+      .panel {
+        margin-bottom: 15px;
+      }
+
+      .reminder-item {
+        gap: 11px;
+        padding: 14px;
+        border-radius: 13px;
+      }
+
+      .medicine-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 19px;
+      }
+
+      .reminder-heading {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 7px;
+      }
+
+      .reminder-heading .item-title {
+        font-size: 14px;
+      }
+
+      .dose-actions {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .dose-action-button {
+        width: 100%;
+        flex-basis: auto;
+        min-height: 46px;
+        font-size: 13px;
+      }
+    }
+
+    /* SMALL PHONES */
+
+    @media (max-width: 520px) {
+      .topbar {
+        min-height: 65px;
+        padding: 11px 14px;
+      }
+
+      .topbar h1 {
+        font-size: 16px;
+      }
+
+      .topbar .muted {
+        font-size: 10px;
+      }
+
+      .top-avatar {
+        flex-basis: 37px;
+        width: 37px;
+        height: 37px;
+      }
+
+      .content {
+        padding: 13px 12px;
+        padding-bottom: calc(94px + env(safe-area-inset-bottom));
+      }
+
+      .welcome {
+        gap: 9px;
+        min-height: 122px;
+        margin-bottom: 13px;
+        padding: 17px;
+        border-radius: 15px;
+      }
+
+      .welcome h2 {
+        font-size: 18px;
+      }
+
+      .welcome p {
+        font-size: 11px;
+        line-height: 1.6;
+      }
+
+      .welcome-icon {
+        font-size: 29px;
+      }
+
+      .stats {
+        gap: 7px;
+        margin-bottom: 15px;
+      }
+
+      .stat {
+        padding: 12px 9px;
+        border-radius: 12px;
+      }
+
+      .stat-label {
+        font-size: 9px;
+      }
+
+      .stat-number {
         font-size: 22px;
       }
 
-      .stat-caption { display: none; }
+      .panel {
+        border-radius: 13px;
+      }
 
-      .record { flex-direction: column; }
+      .panel-heading {
+        padding: 14px;
+      }
 
-      .record-actions { width: 100%; }
-      .record-actions button { flex: 1; }
+      .panel-heading h2 {
+        font-size: 13px;
+      }
 
-      .panel { border-radius: 12px; }
-      .panel-heading { padding: 15px; }
-      .panel-body { padding: 15px; }
+      .panel-heading p {
+        font-size: 10px;
+      }
 
-      .topbar h1 { font-size: 19px; }
+      .panel-body {
+        padding: 13px;
+      }
+
+      .section-heading {
+        font-size: 19px;
+      }
+
+      .section-description {
+        margin-bottom: 15px;
+        font-size: 11px;
+      }
+
+      .record {
+        flex-direction: column;
+        gap: 11px;
+        padding: 13px;
+        border-radius: 11px;
+      }
+
+      .record-main {
+        width: 100%;
+      }
+
+      .record h3 {
+        font-size: 13px;
+      }
+
+      .record p {
+        font-size: 11px;
+      }
+
+      .record-actions {
+        width: 100%;
+        gap: 7px;
+      }
+
+      .record-actions button {
+        flex: 1 1 0;
+        min-height: 42px;
+      }
+
+      .qr-wrap {
+        min-height: 195px;
+        padding: 13px;
+      }
+
+      .qr-wrap canvas,
+      .qr-wrap img {
+        max-width: min(100%, 180px);
+      }
+
+      .button-row {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      .button-row .btn {
+        width: 100%;
+      }
+
+      .connection-permission {
+        padding: 12px;
+      }
+
+      .connection-permission label {
+        font-size: 11px;
+      }
+
+      .connection-permission p {
+        margin-left: 26px;
+        font-size: 10px;
+      }
+
+      #connectionRequestsPanel {
+        padding: 16px !important;
+        border-radius: 14px !important;
+      }
+
+      #connectionRequestsPanel h2 {
+        font-size: 16px !important;
+      }
+
+      #connectionRequestsPanel article {
+        padding: 13px !important;
+      }
+
+      #connectionRequestsPanel article > div:last-child {
+        gap: 8px !important;
+      }
+
+      #connectionRequestsPanel article button {
+        min-width: 0;
+        padding: 10px 7px !important;
+        font-size: 11px;
+      }
+
+      .footer-note {
+        font-size: 9px;
+      }
+
+      .medicine-reminder-modal {
+        padding: 24px 18px;
+      }
+
+      .medicine-reminder-modal h2 {
+        font-size: 20px;
+      }
     }
 
     @media (max-width: 360px) {
-      .content { padding-right: 10px; padding-left: 10px; }
+      .content {
+        padding-right: 9px;
+        padding-left: 9px;
+      }
+
+      .stats {
+        gap: 5px;
+      }
+
+      .stat {
+        padding: 10px 7px;
+      }
+
+      .stat-label {
+        font-size: 8px;
+      }
+
+      .stat-number {
+        font-size: 20px;
+      }
+
+      .bottom-nav {
+        gap: 1px;
+      }
 
       .bottom-nav .nav-btn {
         font-size: 9px;
+      }
+
+      .welcome {
+        padding: 14px;
+      }
+
+      .welcome h2 {
+        font-size: 16px;
       }
     }
 
@@ -768,6 +1547,7 @@
       *, *::before, *::after {
         animation-duration: .01ms !important;
         transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
       }
     }
   </style>
@@ -775,11 +1555,50 @@
 
 <body>
 
-  <!-- LOADING SCREEN -->
+  <!-- MEDICINE REMINDER MODAL -->
+  <div id="medicineReminderModal" class="medicine-reminder-overlay" hidden>
+    <div class="medicine-reminder-modal" role="dialog"
+         aria-modal="true" aria-labelledby="reminderModalTitle">
+
+      <div class="reminder-bell">
+        <span>🔔</span>
+      </div>
+
+      <p class="reminder-eyebrow">MEDICINE REMINDER</p>
+
+      <h2 id="reminderModalTitle">Time to take your medicine!</h2>
+
+      <div class="reminder-medicine-details">
+        <h3 id="modalMedicineName">Medicine name</h3>
+        <p id="modalMedicineDosage">Dosage information</p>
+        <p id="modalMedicineTime">Scheduled time</p>
+      </div>
+
+      <p class="reminder-message">
+        Please take your scheduled medicine.
+      </p>
+
+      <div class="reminder-modal-actions">
+        <button id="modalTakenButton" class="modal-taken-button" type="button">
+          ✓ Mark as Taken
+        </button>
+
+        <button id="modalSnoozeButton" class="modal-snooze-button" type="button">
+          Remind Me Later
+        </button>
+      </div>
+
+      <button id="stopReminderSound" class="stop-sound-button" type="button">
+        Stop sound
+      </button>
+    </div>
+  </div>
+
+  <!-- LOADING -->
   <div id="loading" class="loading">
     <div class="loading-card">
       <div class="loading-mark">💊</div>
-      <h2 style="color:#10442b;margin:12px 0 0;">Medminder</h2>
+      <h2 style="color:#10442b;margin:14px 0 0;">Medminder</h2>
       <p class="muted">Loading your patient dashboard...</p>
       <div class="spinner"></div>
     </div>
@@ -790,7 +1609,6 @@
 
     <!-- DESKTOP SIDEBAR -->
     <aside class="sidebar">
-
       <div class="brand">
         <div class="brand-mark">💊</div>
         <div>
@@ -838,10 +1656,8 @@
       </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN -->
     <main class="main">
-
-      <!-- HEADER -->
       <header class="topbar">
         <div>
           <h1 id="welcomeTitle">Hello, welcome back!</h1>
@@ -857,16 +1673,15 @@
         </div>
       </header>
 
-      <!-- MESSAGES -->
+      <!-- SCROLLABLE CONTENT -->
       <div class="content" id="mainContent">
 
         <div id="error" class="notice error" role="alert"></div>
         <div id="success" class="notice success" role="status"></div>
         <div id="info" class="notice info" role="status"></div>
 
-        <!-- TODAY'S SCHEDULE -->
+        <!-- HOME -->
         <section id="homeSection" class="page active">
-
           <div class="welcome">
             <div>
               <h2>Take care of yourself 💚</h2>
@@ -878,7 +1693,6 @@
             <div class="welcome-icon">💊</div>
           </div>
 
-          <!-- STATISTICS -->
           <div class="stats">
             <div class="stat">
               <div>
@@ -906,8 +1720,6 @@
           </div>
 
           <div class="content-grid">
-
-            <!-- DAILY SCHEDULE -->
             <div class="panel">
               <div class="panel-heading">
                 <div>
@@ -924,22 +1736,20 @@
               </div>
             </div>
 
-            <!-- PATIENT QR -->
             <div>
-
               <div class="panel">
                 <div class="panel-heading">
                   <div>
                     <h2>Your patient QR code</h2>
                     <p>Show this to your authorized caregiver.</p>
                   </div>
+
                   <span id="connectionStatusBadge" class="connection-status">
                     Not connected
                   </span>
                 </div>
 
                 <div class="panel-body">
-
                   <p id="connectionStatus" class="muted">
                     Your caregiver can scan your QR code to identify your account.
                   </p>
@@ -950,50 +1760,47 @@
                     </div>
                   </div>
 
-                  <p class="muted" style="margin-bottom:8px;">Your patient ID</p>
+                  <p class="muted" style="margin-bottom:8px;">
+                    Your patient ID
+                  </p>
 
                   <div id="patientUidDisplay" class="uid-value">
                     Loading...
                   </div>
 
                   <div class="button-row" style="margin-top:12px;">
-                    <button
-                      id="copyPatientUidButton"
-                      class="btn btn-secondary"
-                      type="button"
-                    >
+                    <button id="copyPatientUidButton" class="btn btn-secondary" type="button">
                       📋 Copy patient ID
                     </button>
                   </div>
 
                   <div class="connection-permission">
                     <label for="allowCaregiverConnections">
-                      <input
-                        id="allowCaregiverConnections"
-                        type="checkbox"
-                      >
-                      <span>Allow automatic caregiver connections</span>
+                      <input id="allowCaregiverConnections" type="checkbox">
+                      <span>Allow caregiver connection requests</span>
                     </label>
 
                     <p>
-                      Turn this on to allow an authorized caregiver you trust
-                      to connect using your UID or QR code. Your UID alone
-                      cannot connect an account while this permission is off.
+                      When enabled, authorized caregivers can send you
+                      connection requests using your UID or QR code.
+                      You must still approve each request before connecting.
                     </p>
                   </div>
 
-                  <p class="muted" style="margin-top:12px;line-height:1.6;">
+                  <p class="muted" style="margin-top:13px;line-height:1.7;">
                     Only share your ID with an authorized person you trust.
                     This ID identifies your account; it is not a password.
                   </p>
-
                 </div>
               </div>
+
+              <!-- CONNECTION REQUESTS ARE INSERTED HERE BY JAVASCRIPT -->
 
               <div class="panel">
                 <div class="panel-heading">
                   <h2>Helpful reminder 💚</h2>
                 </div>
+
                 <div class="panel-body">
                   <p class="muted" style="line-height:1.8;margin:0;">
                     Follow your healthcare professional's instructions.
@@ -1002,7 +1809,6 @@
                   </p>
                 </div>
               </div>
-
             </div>
           </div>
         </section>
@@ -1053,7 +1859,7 @@
           </div>
         </section>
 
-        <!-- INTAKE HISTORY -->
+        <!-- HISTORY -->
         <section id="historySection" class="page">
           <h2 class="section-heading">Intake history</h2>
           <p class="section-description">
@@ -1080,34 +1886,36 @@
           Medminder helps organize medicine reminders and does not replace
           professional medical advice.
         </p>
-
       </div>
     </main>
   </div>
 
   <!-- MOBILE BOTTOM NAVIGATION -->
   <nav class="bottom-nav" aria-label="Mobile navigation">
-
     <button class="nav-btn active" data-page="homeSection" type="button">
-      🏠<br>Today
+      <span>🏠</span>
+      <span>Today</span>
     </button>
 
     <button class="nav-btn" data-page="medicinesSection" type="button">
-      💊<br>Medicines
+      <span>💊</span>
+      <span>Medicines</span>
     </button>
 
     <button class="nav-btn" data-page="remindersSection" type="button">
-      🔔<br>Reminders
+      <span>🔔</span>
+      <span>Reminders</span>
     </button>
 
     <button class="nav-btn" data-page="historySection" type="button">
-      📋<br>History
+      <span>📋</span>
+      <span>History</span>
     </button>
 
     <button class="nav-btn" id="mobileLogoutButton" type="button">
-      ↪<br>Sign out
+      <span>↪</span>
+      <span>Sign out</span>
     </button>
-
   </nav>
 
   <!-- QR CODE GENERATOR -->
@@ -1115,36 +1923,6 @@
 
   <!-- PATIENT DASHBOARD JAVASCRIPT -->
   <script type="module" src="./js/patient-dashboard.js"></script>
-
-  <!-- MOBILE SIGN OUT -->
-  <script type="module">
-    import { auth } from "./js/firebaseConfig.js";
-    import { signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-    const mobileLogoutButton = document.getElementById("mobileLogoutButton");
-    const sidebarLogout = document.getElementById("sidebarLogout");
-
-    async function logoutPatient() {
-      if (!auth.currentUser) {
-        window.location.replace("login.html");
-        return;
-      }
-
-      const confirmed = window.confirm("Are you sure you want to sign out?");
-      if (!confirmed) return;
-
-      try {
-        await signOut(auth);
-        window.location.replace("login.html");
-      } catch (error) {
-        console.error("Sign out failed:", error);
-        alert("Unable to sign out. Please try again.");
-      }
-    }
-
-    mobileLogoutButton?.addEventListener("click", logoutPatient);
-    sidebarLogout?.addEventListener("click", logoutPatient);
-  </script>
 
 </body>
 </html>

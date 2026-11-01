@@ -1,6 +1,5 @@
 
 import { auth, db } from "./firebaseConfig.js";
-import { callConnectionApi } from "./connection-api.js";
 
 import {
   onAuthStateChanged,
@@ -866,7 +865,8 @@ $("openProfile")?.addEventListener("click", () => showPage("profilePage"));
 $("profileButton")?.addEventListener("click", () => showPage("profilePage"));
 
 /* =========================================================
-   PATIENT CONNECTION — UID / QR
+   PATIENT CONNECTION — FIREBASE UID / QR
+   Firebase-only connection request (no Cloudflare Worker)
    ========================================================= */
 
 let patientQrScanner = null;
@@ -887,92 +887,247 @@ async function stopPatientQrScanner() {
       if (patientQrScanner.isScanning) {
         await patientQrScanner.stop();
       }
+
       await patientQrScanner.clear();
     } catch (error) {
       console.warn("QR scanner stop:", error);
     }
+
     patientQrScanner = null;
   }
 
   const reader = $("patientQrReader");
+
   if (reader) reader.hidden = true;
-  if ($("stopPatientScanner")) $("stopPatientScanner").hidden = true;
+  if ($("stopPatientScanner")) {
+    $("stopPatientScanner").hidden = true;
+  }
 }
 
 $("startPatientScanner")?.addEventListener("click", async () => {
   const reader = $("patientQrReader");
 
   if (typeof Html5Qrcode === "undefined") {
-    showMessage("connectionMessage", "The QR scanner library could not load. You can still paste the patient's UID.", "error");
+    showMessage(
+      "connectionMessage",
+      "The QR scanner could not load. You can enter the patient's UID manually.",
+      "error"
+    );
     return;
   }
 
   try {
     await stopPatientQrScanner();
-    reader.hidden = false;
-    $("stopPatientScanner").hidden = false;
+
+    if (reader) reader.hidden = false;
+    if ($("stopPatientScanner")) {
+      $("stopPatientScanner").hidden = false;
+    }
 
     patientQrScanner = new Html5Qrcode("patientQrReader");
+
     await patientQrScanner.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 230, height: 230 } },
+      {
+        fps: 10,
+        qrbox: { width: 230, height: 230 }
+      },
       async decodedText => {
         const uid = cleanPatientUid(decodedText);
-        $("connectionCode").value = uid;
+
+        if ($("connectionCode")) {
+          $("connectionCode").value = uid;
+        }
+
         await stopPatientQrScanner();
-        showMessage("connectionMessage", "Patient QR scanned. Verify the UID, then select Connect to patient.");
+
+        showMessage(
+          "connectionMessage",
+          "Patient QR code scanned. Check the UID, then send the connection request."
+        );
       },
       () => {}
     );
   } catch (error) {
     console.error("QR scanner failed:", error);
+
     await stopPatientQrScanner();
-    showMessage("connectionMessage", "Unable to start the camera. Allow camera access or enter the patient UID manually.", "error");
+
+    showMessage(
+      "connectionMessage",
+      "Unable to start the camera. Allow camera access or enter the patient UID manually.",
+      "error"
+    );
   }
 });
 
-$("stopPatientScanner")?.addEventListener("click", stopPatientQrScanner);
+$("stopPatientScanner")?.addEventListener(
+  "click",
+  stopPatientQrScanner
+);
+
+/*
+  Send a connection request directly to Firebase.
+
+  Database location:
+  users/{PATIENT_UID}/connectionRequests/{CAREGIVER_UID}
+
+  The patient must approve the request from their own account.
+*/
 
 $("connectionForm")?.addEventListener("submit", async event => {
   event.preventDefault();
 
   if (!state.user || !auth.currentUser) {
-    showMessage("connectionMessage", "Please sign in again.", "error");
+    showMessage(
+      "connectionMessage",
+      "Please sign in again.",
+      "error"
+    );
     return;
   }
 
-  const patientUid = cleanPatientUid($("connectionCode")?.value);
+  const patientUid = cleanPatientUid(
+    $("connectionCode")?.value
+  );
 
-  if (!patientUid || patientUid.length < 20 || patientUid.length > 128) {
-    showMessage("connectionMessage", "Please enter or scan a valid Firebase patient UID.", "error");
+  const caregiverUid = state.user.uid;
+
+  if (
+    !patientUid ||
+    patientUid.length < 20 ||
+    patientUid.length > 128
+  ) {
+    showMessage(
+      "connectionMessage",
+      "Please enter or scan a valid Firebase patient UID.",
+      "error"
+    );
+    return;
+  }
+
+  if (patientUid === caregiverUid) {
+    showMessage(
+      "connectionMessage",
+      "You cannot connect your account to itself.",
+      "error"
+    );
     return;
   }
 
   const form = $("connectionForm");
-  const submitButton = form.querySelector('button[type="submit"]');
+  const submitButton = form.querySelector(
+    'button[type="submit"]'
+  );
 
   hideMessage("connectionMessage");
-  setButtonBusy(submitButton, true, "Connecting…");
+
+  setButtonBusy(
+    submitButton,
+    true,
+    "Sending request…"
+  );
 
   try {
-    const result = await callConnectionApi("connectPatientByUid", { patientUid });
+    /*
+      Refresh the user's Firebase authentication token.
+      Firebase Realtime Database rules use this authenticated UID.
+    */
+    await auth.currentUser.getIdToken(true);
 
-    showMessage(
-      "connectionMessage",
-      result?.message || "Patient connected successfully. Their schedule will sync automatically."
+    /*
+      Check whether a request already exists.
+      This does not grant access to the patient's account.
+    */
+    const requestRef = ref(
+      db,
+      `users/${patientUid}/connectionRequests/${caregiverUid}`
+    );
+
+    const existingRequest = await get(requestRef);
+
+    if (existingRequest.exists()) {
+      const existing = existingRequest.val() || {};
+
+      if (existing.status === "pending") {
+        showMessage(
+          "connectionMessage",
+          "You have already sent a request to this patient. Please wait for their approval."
+        );
+        return;
+      }
+
+      if (existing.status === "approved") {
+        showMessage(
+          "connectionMessage",
+          "This connection request has already been approved."
+        );
+        return;
+      }
+    }
+
+    /*
+      Use the caregiver's Firebase UID as the identity.
+      The display name is only for showing the request to the patient.
+    */
+    const caregiverName =
+      state.user.displayName ||
+      [state.user.email].filter(Boolean).join("") ||
+      "Authorized Person";
+
+    const requestData = {
+      caregiverUid,
+      caregiverName,
+      caregiverEmail: state.user.email || "",
+      status: "pending",
+      createdAt: Date.now()
+    };
+
+    await set(requestRef, requestData);
+
+    await logActivity(
+      "Patient connection request sent",
+      `A connection request was sent to patient UID ${patientUid}.`
     );
 
     form.reset();
+
+    showMessage(
+      "connectionMessage",
+      "Connection request sent successfully. The patient must approve your request before their medicines and reminders can appear in your dashboard."
+    );
+
   } catch (error) {
-    console.error("Patient connection failed:", error);
+    console.error(
+      "Patient connection request failed:",
+      error
+    );
 
-    let message = error.message || "Unable to connect. Please try again.";
-    if (error.status === 401) message = "Your session has expired. Please sign in again.";
-    if (error.status === 403) message = error.message || "The patient must enable automatic caregiver connections first.";
-    if (error.status === 404) message = "No Medminder account was found for that patient UID.";
-    if (error.status === 409) message = error.message || "This patient already has an active caregiver connection.";
+    let message =
+      "Unable to send the connection request. Please try again.";
 
-    showMessage("connectionMessage", message, "error");
+    if (error.code === "PERMISSION_DENIED") {
+      message =
+        "Firebase denied this request. Check that the patient allows caregiver connection requests and that your Firebase database rules have been updated.";
+    } else if (
+      error.code === "NETWORK_ERROR" ||
+      !navigator.onLine
+    ) {
+      message =
+        "You appear to be offline. Check your internet connection and try again.";
+    } else if (
+      error.code === "auth/user-token-expired"
+    ) {
+      message =
+        "Your session has expired. Please sign in again.";
+    }
+
+    showMessage(
+      "connectionMessage",
+      message,
+      "error"
+    );
+
   } finally {
     setButtonBusy(submitButton, false);
   }
