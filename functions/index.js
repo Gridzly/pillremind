@@ -1,8 +1,6 @@
-
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const { getDatabase } = require("firebase-admin/database");
-const crypto = require("crypto");
 
 initializeApp({
   databaseURL: "https://pillremind-e6294-default-rtdb.firebaseio.com"
@@ -10,23 +8,19 @@ initializeApp({
 
 const db = getDatabase();
 
-const CODE_LIFETIME_MS = 10 * 60 * 1000;
-
-function hashCode(code) {
-  return crypto.createHash("sha256").update(code).digest("hex");
-}
-
 async function getUser(uid) {
   const snapshot = await db.ref(`users/${uid}`).get();
 
   if (!snapshot.exists()) {
-    throw new HttpsError("failed-precondition", "User profile not found.");
+    throw new HttpsError("not-found", "The account profile was not found.");
   }
 
-  const user = snapshot.val();
-  const role = user?.profile?.role || user?.role || "";
+  const user = snapshot.val() || {};
+  const role = String(user.profile?.role || user.role || "")
+    .toLowerCase()
+    .trim();
 
-  return { user, role: String(role).toLowerCase().trim() };
+  return { user, role };
 }
 
 function isPatient(role) {
@@ -34,205 +28,143 @@ function isPatient(role) {
 }
 
 function isAuthorized(role) {
-  return ["authorized", "caregiver", "authorized_person"].includes(role);
+  return [
+    "authorized",
+    "caregiver",
+    "authorized_person",
+    "authorized person"
+  ].includes(role);
 }
 
-// Patient: generate a short-lived, one-time connection code.
-exports.createConnectionCode = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "Please sign in first.");
-  }
-
-  const patientUid = request.auth.uid;
-  const { role } = await getUser(patientUid);
-
-  if (!isPatient(role)) {
-    throw new HttpsError(
-      "permission-denied",
-      "Only a patient can create a connection code."
-    );
-  }
-
-  // Prevent creating a new code if this patient already has an active connection.
-  const existingConnections = await db
-    .ref(`connectionsByPatient/${patientUid}`)
-    .get();
-
-  if (existingConnections.exists()) {
-    const active = Object.values(existingConnections.val()).some(
-      connection => connection?.status === "active"
-    );
-
-    if (active) {
-      throw new HttpsError(
-        "failed-precondition",
-        "Your account already has an active caregiver connection."
-      );
-    }
-  }
-
-  const code = String(crypto.randomInt(100000, 1000000));
-  const codeHash = hashCode(code);
-  const expiresAt = Date.now() + CODE_LIFETIME_MS;
-
-  const activeRef = db.ref(`activeConnectionCodes/${patientUid}`);
-  const previous = await activeRef.get();
-
-  // Invalidate the patient's previous code.
-  if (previous.exists() && previous.val()?.codeHash) {
-    await db.ref(`connectionCodes/${previous.val().codeHash}`).remove();
-  }
-
-  await db.ref(`connectionCodes/${codeHash}`).set({
-    patientUid,
-    expiresAt,
-    attempts: 0,
-    used: false
-  });
-
-  await activeRef.set({ codeHash, expiresAt });
-
-  return {
-    code,
-    expiresAt,
-    expiresInSeconds: CODE_LIFETIME_MS / 1000,
-    qrText: `MEDMINDER:${code}`
-  };
-});
-
-// Authorized person: redeem the patient's code.
-exports.redeemConnectionCode = onCall(async (request) => {
+/**
+ * The patient shares their Firebase Auth UID (also encoded in their QR).
+ * The patient must first enable the one-time automatic connection permission
+ * in their own dashboard. Knowing a UID alone never grants access.
+ */
+exports.connectPatientByUid = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Please sign in first.");
   }
 
   const caregiverUid = request.auth.uid;
-  const { role } = await getUser(caregiverUid);
+  const { role: caregiverRole } = await getUser(caregiverUid);
 
-  if (!isAuthorized(role)) {
+  if (!isAuthorized(caregiverRole)) {
     throw new HttpsError(
       "permission-denied",
-      "Only an authorized person can connect to a patient."
+      "Only an authorized caregiver account can connect to a patient."
     );
   }
 
-  let code = String(request.data?.code || "").trim();
+  const patientUid = String(request.data?.patientUid || "").trim();
 
-  if (code.startsWith("MEDMINDER:")) {
-    code = code.slice("MEDMINDER:".length);
+  if (!patientUid || patientUid.length < 20 || patientUid.length > 128) {
+    throw new HttpsError("invalid-argument", "Enter or scan a valid patient UID.");
   }
 
-  if (!/^\d{6}$/.test(code)) {
-    throw new HttpsError(
-      "invalid-argument",
-      "Enter a valid six-digit connection code."
-    );
-  }
-
-  const codeHash = hashCode(code);
-  const codeRef = db.ref(`connectionCodes/${codeHash}`);
-
-  // Reserve the code only if it is valid, unexpired and unused.
-  const result = await codeRef.transaction(current => {
-    if (
-      !current ||
-      current.used ||
-      !current.patientUid ||
-      Number(current.expiresAt) <= Date.now() ||
-      Number(current.attempts || 0) >= 5
-    ) {
-      return;
-    }
-
-    current.attempts = Number(current.attempts || 0) + 1;
-    current.used = true;
-    current.caregiverUid = caregiverUid;
-    current.connectedAt = Date.now();
-
-    return current;
-  });
-
-  if (!result.committed) {
-    throw new HttpsError(
-      "not-found",
-      "This code is invalid, expired, or already used. Ask the patient for a new code."
-    );
-  }
-
-  const patientUid = result.snapshot.val().patientUid;
-
-  // Validate that the code owner is not the caregiver's own account.
   if (patientUid === caregiverUid) {
-    await codeRef.remove();
-    await db.ref(`activeConnectionCodes/${patientUid}`).remove();
-
     throw new HttpsError(
       "failed-precondition",
       "You cannot connect an account to itself."
     );
   }
 
-  // Confirm the patient still exists and has a patient role.
-  const { role: patientRole } = await getUser(patientUid);
+  const { user: patient, role: patientRole } = await getUser(patientUid);
 
   if (!isPatient(patientRole)) {
-    await codeRef.remove();
-    await db.ref(`activeConnectionCodes/${patientUid}`).remove();
-
     throw new HttpsError(
       "failed-precondition",
-      "The code does not belong to a patient account."
+      "This UID does not belong to a patient account."
     );
   }
 
-  // Prevent accidental replacement of an existing active caregiver.
-  const existing = await db
-    .ref(`connectionsByPatient/${patientUid}`)
-    .get();
-
-  if (existing.exists()) {
-    const alreadyConnected = Object.values(existing.val()).some(
-      connection => connection?.status === "active"
+  if (patient.profile?.allowCaregiverConnections !== true) {
+    throw new HttpsError(
+      "permission-denied",
+      "The patient has not enabled automatic caregiver connections. Ask them to enable it in their patient dashboard."
     );
-
-    if (alreadyConnected) {
-      await codeRef.remove();
-      await db.ref(`activeConnectionCodes/${patientUid}`).remove();
-
-      throw new HttpsError(
-        "already-exists",
-        "This patient already has an active caregiver connection."
-      );
-    }
   }
-
-  const connectedAt = Date.now();
 
   const connection = {
     patientUid,
     caregiverUid,
-    connectedAt,
+    connectedAt: Date.now(),
     status: "active"
   };
 
-  // The Admin SDK writes these records securely on the server.
-  const updates = {};
+  const patientConnectionsRef = db.ref(`connectionsByPatient/${patientUid}`);
+  const existingSnapshot = await patientConnectionsRef.get();
+  const existingConnections = existingSnapshot.val() || {};
+  const activeConnection = Object.values(existingConnections).find(
+    item => item?.status === "active"
+  );
 
-  updates[`connectionsByPatient/${patientUid}/${caregiverUid}`] = connection;
-  updates[`connectionsByCaregiver/${caregiverUid}/${patientUid}`] = connection;
-  updates[`activeConnectionCodes/${patientUid}`] = null;
-  updates[`connectionCodes/${codeHash}`] = null;
+  if (activeConnection?.caregiverUid === caregiverUid) {
+    // Idempotent retry: repair the reciprocal records if needed.
+    await db.ref().update({
+      [`users/${patientUid}/careConnection`]: {
+        authorizedUid: caregiverUid,
+        connectedAt: activeConnection.connectedAt || Date.now(),
+        status: "active"
+      },
+      [`connectionsByCaregiver/${caregiverUid}/${patientUid}`]: {
+        ...activeConnection,
+        patientUid,
+        caregiverUid
+      }
+    });
 
-  await db.ref().update(updates);
+    return {
+      success: true,
+      patientUid,
+      message: "This patient is already connected to your account."
+    };
+  }
+
+  if (activeConnection) {
+    throw new HttpsError(
+      "already-exists",
+      "This patient already has an active caregiver connection."
+    );
+  }
+
+  // Claim the patient connection atomically to prevent two caregivers
+  // from connecting to the same patient at the same time.
+  const transaction = await patientConnectionsRef.transaction(current => {
+    const links = current || {};
+    const active = Object.values(links).some(
+      item => item?.status === "active"
+    );
+
+    if (active) return;
+    return { ...links, [caregiverUid]: connection };
+  });
+
+  if (!transaction.committed) {
+    throw new HttpsError(
+      "already-exists",
+      "This patient has just been connected to another caregiver."
+    );
+  }
+
+  // The server writes the patient's pointer and caregiver's reciprocal link.
+  // The browser is never allowed to write another user's careConnection.
+  await db.ref().update({
+    [`users/${patientUid}/careConnection`]: {
+      authorizedUid: caregiverUid,
+      connectedAt: connection.connectedAt,
+      status: "active"
+    },
+    [`connectionsByCaregiver/${caregiverUid}/${patientUid}`]: connection
+  });
 
   return {
     success: true,
     patientUid,
-    message: "Patient connected successfully."
+    message: "Patient connected successfully. Their medicines and reminders will now sync."
   };
 });
 
-// Return only the authenticated account's connection list.
 exports.getMyConnections = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Please sign in first.");

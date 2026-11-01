@@ -564,7 +564,16 @@
                 <div class="button-row" style="margin-top:12px;">
                   <button id="copyPatientUidButton" class="secondary-button" type="button">Copy patient ID</button>
                 </div>
-                <p class="panel-subtitle" style="margin-top:12px;">Only share your ID with the authorized person you have verified. This code identifies your account; it is not a password.</p>
+
+                <div class="connection-permission" style="margin-top:18px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);">
+                  <label for="allowCaregiverConnections" style="display:flex;gap:10px;align-items:flex-start;font-weight:600;">
+                    <input id="allowCaregiverConnections" type="checkbox" style="margin-top:3px;accent-color:#175638;">
+                    <span>Allow automatic caregiver connections</span>
+                  </label>
+                  <p class="panel-subtitle" style="margin:8px 0 0 26px;">Turn this on once to let a caregiver you share your UID/QR with connect without asking you to approve each connection. Your UID alone cannot connect an account while this is off.</p>
+                </div>
+
+                <p class="panel-subtitle" style="margin-top:12px;">Only share your ID with an authorized person you trust. This ID identifies your account; it is not a password.</p>
               </div>
             </div>
 

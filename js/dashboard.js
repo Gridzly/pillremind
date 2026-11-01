@@ -45,7 +45,7 @@ const pages = {
   remindersPage: ["Reminders", "Manage one-time and weekly schedules."],
   refillsPage: ["Refill tracker", "Monitor medicine stock levels."],
   historyPage: ["Activity history", "Review recent changes."],
-  connectionPage: ["Patient connection", "Connect to a patient using their code."],
+  connectionPage: ["Patient connection", "Connect to a patient using their Firebase UID or QR code."],
   notificationsPage: ["Notifications", "Review recent activity."],
   profilePage: ["My profile", "Manage your account."]
 };
@@ -869,8 +869,72 @@ $("openProfile")?.addEventListener("click", () => showPage("profilePage"));
 $("profileButton")?.addEventListener("click", () => showPage("profilePage"));
 
 /* =========================================================
-   PATIENT CONNECTION
+   PATIENT CONNECTION — UID / QR
    ========================================================= */
+
+let patientQrScanner = null;
+
+function cleanPatientUid(value) {
+  let uid = String(value || "").trim();
+
+  if (uid.startsWith("MEDMINDER:")) {
+    uid = uid.slice("MEDMINDER:".length).trim();
+  }
+
+  return uid;
+}
+
+async function stopPatientQrScanner() {
+  if (patientQrScanner) {
+    try {
+      if (patientQrScanner.isScanning) {
+        await patientQrScanner.stop();
+      }
+      await patientQrScanner.clear();
+    } catch (error) {
+      console.warn("QR scanner stop:", error);
+    }
+    patientQrScanner = null;
+  }
+
+  const reader = $("patientQrReader");
+  if (reader) reader.hidden = true;
+  if ($("stopPatientScanner")) $("stopPatientScanner").hidden = true;
+}
+
+$("startPatientScanner")?.addEventListener("click", async () => {
+  const reader = $("patientQrReader");
+
+  if (typeof Html5Qrcode === "undefined") {
+    showMessage("connectionMessage", "The QR scanner library could not load. You can still paste the patient's UID.", "error");
+    return;
+  }
+
+  try {
+    await stopPatientQrScanner();
+    reader.hidden = false;
+    $("stopPatientScanner").hidden = false;
+
+    patientQrScanner = new Html5Qrcode("patientQrReader");
+    await patientQrScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 230, height: 230 } },
+      async decodedText => {
+        const uid = cleanPatientUid(decodedText);
+        $("connectionCode").value = uid;
+        await stopPatientQrScanner();
+        showMessage("connectionMessage", "Patient QR scanned. Verify the UID, then select Connect to patient.");
+      },
+      () => {}
+    );
+  } catch (error) {
+    console.error("QR scanner failed:", error);
+    await stopPatientQrScanner();
+    showMessage("connectionMessage", "Unable to start the camera. Allow camera access or enter the patient UID manually.", "error");
+  }
+});
+
+$("stopPatientScanner")?.addEventListener("click", stopPatientQrScanner);
 
 $("connectionForm")?.addEventListener("submit", async event => {
   event.preventDefault();
@@ -880,10 +944,10 @@ $("connectionForm")?.addEventListener("submit", async event => {
     return;
   }
 
-  const code = $("connectionCode")?.value.trim().toUpperCase() || "";
+  const patientUid = cleanPatientUid($("connectionCode")?.value);
 
-  if (!code) {
-    showMessage("connectionMessage", "Please enter the patient's connection code.", "error");
+  if (!patientUid || patientUid.length < 20 || patientUid.length > 128) {
+    showMessage("connectionMessage", "Please enter or scan a valid Firebase patient UID.", "error");
     return;
   }
 
@@ -894,20 +958,12 @@ $("connectionForm")?.addEventListener("submit", async event => {
   setButtonBusy(submitButton, true, "Connecting…");
 
   try {
-    // This must match the deployed Firebase Callable Function name and region.
-    const redeemConnectionCode = httpsCallable(
-      functions,
-      "redeemConnectionCode"
-    );
-
-    const result = await redeemConnectionCode({ code });
-
-    console.log("Connection response:", result.data);
+    const connectPatientByUid = httpsCallable(functions, "connectPatientByUid");
+    const result = await connectPatientByUid({ patientUid });
 
     showMessage(
       "connectionMessage",
-      result.data?.message || "Patient connection processed successfully.",
-      "success"
+      result.data?.message || "Patient connected successfully. Their schedule will sync automatically."
     );
 
     form.reset();
@@ -915,26 +971,13 @@ $("connectionForm")?.addEventListener("submit", async event => {
     console.error("Patient connection failed:", error);
 
     const messages = {
-      "functions/unauthenticated":
-        "Your session has expired. Please sign in again.",
-
-      "functions/permission-denied":
-        "Only an authorized person can connect to a patient.",
-
-      "functions/invalid-argument":
-        "Please enter a valid connection code.",
-
-      "functions/not-found":
-        "The code is invalid, expired, or already used. Ask the patient to generate a new code.",
-
-      "functions/already-exists":
-        "This patient already has an active caregiver connection.",
-
-      "functions/failed-precondition":
-        "The patient or authorized-person profile is missing or has an incorrect role.",
-
-      "functions/unavailable":
-        "The connection service is unavailable. Check the Cloud Function deployment and region."
+      "functions/unauthenticated": "Your session has expired. Please sign in again.",
+      "functions/permission-denied": error.message || "The patient must enable automatic caregiver connections first.",
+      "functions/invalid-argument": "Please enter or scan a valid Firebase patient UID.",
+      "functions/not-found": "No Medminder account was found for that patient UID.",
+      "functions/already-exists": "This patient already has an active caregiver connection.",
+      "functions/failed-precondition": error.message || "The UID does not belong to a patient account.",
+      "functions/unavailable": "The connection service is unavailable. Deploy the Firebase Cloud Functions and check the region."
     };
 
     showMessage(
@@ -1172,4 +1215,4 @@ onAuthStateChanged(auth, async authenticatedUser => {
   }
 });
 
-window.addEventListener("beforeunload", stopSubscriptions);
+window.addEventListener("beforeunload", () => { stopSubscriptions(); stopPatientQrScanner(); });

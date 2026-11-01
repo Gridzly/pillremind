@@ -22,6 +22,7 @@ const state = {
   reminders: {},
   logs: {},
   patientLogUnsubscribe: null,
+  connectionUnsubscribe: null,
   caregiverUnsubscribers: [],
   recording: new Set()
 };
@@ -534,6 +535,11 @@ function stopCaregiverListeners() {
 function stopAllListeners() {
   stopPatientLogListener();
   stopCaregiverListeners();
+
+  if (state.connectionUnsubscribe) {
+    state.connectionUnsubscribe();
+    state.connectionUnsubscribe = null;
+  }
 }
 
 function listenToPatientLogs(uid) {
@@ -548,6 +554,48 @@ function listenToPatientLogs(uid) {
     (error) => {
       console.error("Patient history read failed:", error);
       notice("error", "Unable to load intake history. Check your Firebase Database Rules.");
+    }
+  );
+}
+
+function listenToConnection(uid) {
+  if (state.connectionUnsubscribe) {
+    state.connectionUnsubscribe();
+    state.connectionUnsubscribe = null;
+  }
+
+  state.connectionUnsubscribe = onValue(
+    ref(db, `users/${uid}/careConnection`),
+    snapshot => {
+      const connection = snapshot.val() || {};
+      const caregiverUid =
+        connection.status === "active" ? connection.authorizedUid : null;
+
+      if (caregiverUid && caregiverUid !== uid) {
+        state.caregiverUid = caregiverUid;
+        updateConnectionStatus(
+          true,
+          "Connected. Your caregiver's medicines and reminders are syncing live."
+        );
+        listenToCaregiverData(caregiverUid);
+      } else {
+        state.caregiverUid = null;
+        stopCaregiverListeners();
+        state.medicines = {};
+        state.reminders = {};
+        updateConnectionStatus(
+          false,
+          "Show your QR code or patient ID to your authorized caregiver. Enable automatic connections above before they connect."
+        );
+        empty("todayList", "Waiting for your caregiver", "Your medicine schedule will appear here after the accounts are connected.");
+        empty("medicineList", "Waiting for your caregiver", "Shared medicines will appear here after connection.");
+        empty("reminderList", "No reminders yet", "Shared reminders will appear here after connection.");
+        renderAll();
+      }
+    },
+    error => {
+      console.error("Patient connection listener failed:", error);
+      notice("error", "Unable to check your caregiver connection. Check your Firebase Database Rules.");
     }
   );
 }
@@ -679,6 +727,34 @@ function setupNavigation() {
 function setupEvents() {
   $("copyPatientUidButton")?.addEventListener("click", copyPatientUid);
 
+  $("allowCaregiverConnections")?.addEventListener("change", async event => {
+    if (!state.user) return;
+
+    const checkbox = event.currentTarget;
+    const enabled = checkbox.checked;
+    checkbox.disabled = true;
+
+    try {
+      await set(
+        ref(db, `users/${state.user.uid}/profile/allowCaregiverConnections`),
+        enabled
+      );
+      state.profile.allowCaregiverConnections = enabled;
+      notice(
+        "success",
+        enabled
+          ? "Automatic caregiver connections are enabled."
+          : "Automatic caregiver connections are disabled."
+      );
+    } catch (error) {
+      console.error("Updating connection permission failed:", error);
+      checkbox.checked = !enabled;
+      notice("error", "Unable to update connection permission. Check your Firebase Database Rules.");
+    } finally {
+      checkbox.disabled = false;
+    }
+  });
+
   $("sidebarLogout")?.addEventListener("click", async () => {
     try {
       stopAllListeners();
@@ -719,11 +795,7 @@ async function startPatientDashboard(user) {
   clearNotices();
 
   try {
-    const [profileSnapshot, connectionSnapshot] = await Promise.all([
-      get(ref(db, `users/${user.uid}/profile`)),
-      get(ref(db, `users/${user.uid}/careConnection`))
-    ]);
-
+    const profileSnapshot = await get(ref(db, `users/${user.uid}/profile`));
     const profile = profileSnapshot.val() || {};
     state.profile = profile;
 
@@ -737,35 +809,15 @@ async function startPatientDashboard(user) {
 
     updateUserDisplay(profile, user);
 
-    const connection = connectionSnapshot.val() || {};
-    const caregiverUid = connection.authorizedUid || null;
-
-    setLoading(false);
-
-    if (caregiverUid && caregiverUid !== user.uid) {
-      state.caregiverUid = caregiverUid;
-
-      updateConnectionStatus(
-        true,
-        "Your caregiver ID is saved. Loading your shared medicine schedule..."
-      );
-
-      listenToCaregiverData(caregiverUid);
-    } else {
-      updateConnectionStatus(
-        false,
-        "Show your QR code or patient ID to your authorized caregiver. They initiate the connection from their dashboard."
-      );
-
-      empty("todayList", "Waiting for your caregiver", "Your medicine schedule will appear here after the accounts are connected.");
-      empty("medicineList", "Waiting for your caregiver", "Shared medicines will appear here after connection.");
-      empty("reminderList", "No reminders yet", "Shared reminders will appear here after connection.");
-      renderAll();
-
-      notice("info", "Your QR code is ready. Ask your authorized caregiver to scan it from their dashboard.");
+    const permissionToggle = $("allowCaregiverConnections");
+    if (permissionToggle) {
+      permissionToggle.checked = profile.allowCaregiverConnections === true;
     }
 
+    listenToConnection(user.uid);
     listenToPatientLogs(user.uid);
+
+    setLoading(false);
   } catch (error) {
     console.error("Patient dashboard startup failed:", error);
     setLoading(false);
