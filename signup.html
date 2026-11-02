@@ -1,9 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#175638">
+  <meta name="description" content="Create your Medminder account to manage medication schedules and reminders.">
 
   <title>Medminder | Create Account</title>
 
@@ -12,14 +14,14 @@
       --green: #175638;
       --green-dark: #10442b;
       --green-light: #e7f4eb;
-      --green-soft: #f2f7f3;
-      --text: #203b2d;
-      --muted: #748278;
-      --border: #dce7df;
+      --green-soft: #f4f8f5;
+      --text: #24372b;
+      --muted: #758178;
+      --border: #e0e9e2;
       --white: #ffffff;
       --danger: #b42318;
       --success: #167344;
-      --shadow: 0 18px 50px rgba(23, 86, 56, 0.10);
+      --shadow: 0 4px 16px rgba(23, 86, 56, 0.045);
     }
 
     * {
@@ -42,10 +44,7 @@
       font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
         Roboto, Arial, sans-serif;
       color: var(--text);
-      background:
-        radial-gradient(circle at 10% 10%, rgba(150, 217, 176, 0.20), transparent 30%),
-        radial-gradient(circle at 90% 90%, rgba(23, 86, 56, 0.07), transparent 35%),
-        var(--green-soft);
+      background: var(--green-soft);
     }
 
     button,
@@ -60,37 +59,37 @@
       margin: auto;
     }
 
-    /* Brand */
+    /* BRAND */
 
     .brand {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 11px;
-      margin-bottom: 24px;
+      margin-bottom: 22px;
       text-decoration: none;
       color: var(--green);
     }
 
     .brand-logo {
-      width: 46px;
-      height: 46px;
+      width: 42px;
+      height: 42px;
       flex-shrink: 0;
       display: grid;
       place-items: center;
-      border-radius: 14px;
+      border-radius: 12px;
       background: var(--green);
-      box-shadow: 0 5px 12px rgba(23, 86, 56, 0.16);
+      box-shadow: none;
     }
 
     .brand-logo svg {
-      width: 27px;
-      height: 27px;
+      width: 25px;
+      height: 25px;
       display: block;
     }
 
     .brand-name {
-      font-size: 25px;
+      font-size: 24px;
       font-weight: 800;
       letter-spacing: -0.8px;
     }
@@ -99,19 +98,19 @@
       color: #65a77e;
     }
 
-    /* Signup card */
+    /* SIGNUP CARD */
 
     .signup-card {
       width: 100%;
-      padding: 34px;
+      padding: 30px;
       background: var(--white);
-      border: 1px solid rgba(220, 231, 223, 0.9);
-      border-radius: 22px;
+      border: 1px solid var(--border);
+      border-radius: 17px;
       box-shadow: var(--shadow);
     }
 
     .heading {
-      margin-bottom: 27px;
+      margin-bottom: 25px;
     }
 
     .eyebrow {
@@ -122,9 +121,10 @@
       padding: 7px 11px;
       color: var(--green);
       background: var(--green-light);
-      border-radius: 30px;
-      font-size: 12px;
+      border-radius: 8px;
+      font-size: 11px;
       font-weight: 700;
+      letter-spacing: 0.3px;
     }
 
     .eyebrow svg {
@@ -135,19 +135,20 @@
     h1 {
       margin: 0 0 9px;
       color: var(--text);
-      font-size: 29px;
-      line-height: 1.2;
-      letter-spacing: -0.9px;
+      font-size: 27px;
+      line-height: 1.25;
+      letter-spacing: -0.7px;
+      font-weight: 750;
     }
 
     .subtitle {
       margin: 0;
       color: var(--muted);
-      font-size: 14px;
+      font-size: 13px;
       line-height: 1.7;
     }
 
-    /* Form */
+    /* FORM */
 
     .form-grid {
       display: grid;
@@ -157,7 +158,7 @@
 
     .form-group {
       min-width: 0;
-      margin-bottom: 18px;
+      margin-bottom: 17px;
     }
 
     .form-group.full-width {
@@ -168,7 +169,7 @@
       display: block;
       margin-bottom: 8px;
       color: var(--text);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
     }
 
@@ -191,14 +192,14 @@
     select {
       width: 100%;
       min-width: 0;
-      min-height: 47px;
-      padding: 12px 13px;
+      min-height: 45px;
+      padding: 11px 13px;
       color: var(--text);
-      background: #fff;
+      background: #ffffff;
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 9px;
       outline: none;
-      font-size: 14px;
+      font-size: 13px;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
 
@@ -213,7 +214,7 @@
     input:focus,
     select:focus {
       border-color: var(--green);
-      box-shadow: 0 0 0 3px rgba(23, 86, 56, 0.09);
+      box-shadow: 0 0 0 3px rgba(23, 86, 56, 0.08);
     }
 
     select {
@@ -232,18 +233,18 @@
       display: block;
       min-height: 17px;
       margin-top: 7px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
     }
 
-    /* Feedback */
+    /* FEEDBACK */
 
     .message {
       display: none;
-      margin: 0 0 17px;
-      padding: 12px 13px;
+      margin: 0 0 16px;
+      padding: 11px 13px;
       border-radius: 9px;
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.6;
       overflow-wrap: anywhere;
     }
@@ -265,29 +266,29 @@
       border: 1px solid #ccebd6;
     }
 
-    /* Button */
+    /* BUTTON */
 
     .submit-button {
       width: 100%;
-      min-height: 49px;
+      min-height: 47px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 9px;
-      padding: 13px 18px;
+      padding: 12px 18px;
       color: var(--white);
       background: var(--green);
-      border: 0;
-      border-radius: 11px;
-      font-size: 14px;
+      border: 1px solid var(--green);
+      border-radius: 9px;
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
-      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+      transition: background 0.2s, transform 0.2s;
     }
 
     .submit-button:hover {
       background: var(--green-dark);
-      box-shadow: 0 5px 14px rgba(23, 86, 56, 0.16);
+      border-color: var(--green-dark);
     }
 
     .submit-button:active {
@@ -297,12 +298,11 @@
     .submit-button:disabled {
       opacity: 0.65;
       cursor: wait;
-      box-shadow: none;
     }
 
     .submit-button svg {
-      width: 18px;
-      height: 18px;
+      width: 17px;
+      height: 17px;
     }
 
     .security-note {
@@ -310,7 +310,7 @@
       justify-content: center;
       align-items: center;
       gap: 7px;
-      margin: 17px 0 0;
+      margin: 16px 0 0;
       color: var(--muted);
       font-size: 11px;
       line-height: 1.5;
@@ -324,12 +324,12 @@
       color: var(--green);
     }
 
-    /* Footer */
+    /* FOOTER */
 
     .login-footer {
-      margin: 23px 0 0;
+      margin: 22px 0 0;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.7;
       text-align: center;
     }
@@ -341,17 +341,18 @@
     }
 
     .login-footer a:hover {
+      color: var(--green-dark);
       text-decoration: underline;
     }
 
     .copyright {
-      margin-top: 22px;
+      margin-top: 20px;
       color: #91a096;
       font-size: 11px;
       text-align: center;
     }
 
-    /* Mobile */
+    /* MOBILE */
 
     @media (max-width: 520px) {
       body {
@@ -368,9 +369,9 @@
       }
 
       .brand-logo {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
       }
 
       .brand-name {
@@ -378,16 +379,16 @@
       }
 
       .signup-card {
-        padding: 25px 21px;
-        border-radius: 18px;
+        padding: 24px 20px;
+        border-radius: 16px;
       }
 
       .heading {
-        margin-bottom: 23px;
+        margin-bottom: 22px;
       }
 
       h1 {
-        font-size: 26px;
+        font-size: 25px;
       }
 
       .form-grid {
@@ -400,17 +401,17 @@
       }
 
       .form-group {
-        margin-bottom: 16px;
+        margin-bottom: 15px;
       }
 
       input,
       select {
-        min-height: 48px;
+        min-height: 47px;
         font-size: 16px;
       }
 
       .submit-button {
-        min-height: 49px;
+        min-height: 48px;
       }
     }
 
@@ -425,9 +426,10 @@
 </head>
 
 <body>
+
   <main class="page">
 
-    <!-- Medminder brand: green medical cross logo -->
+    <!-- MEDMINDER BRAND -->
     <a class="brand" href="index.html" aria-label="Medminder home">
       <span class="brand-logo" aria-hidden="true">
         <svg viewBox="0 0 32 32" fill="none">
@@ -441,13 +443,21 @@
       <span class="brand-name">Med<span>minder</span></span>
     </a>
 
+    <!-- SIGNUP CARD -->
     <section class="signup-card" aria-labelledby="signupTitle">
 
       <header class="heading">
+
         <div class="eyebrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
             <circle cx="10" cy="7" r="4"/>
             <path d="M20 8v6"/>
@@ -457,24 +467,36 @@
         </div>
 
         <h1 id="signupTitle">Create your account</h1>
+
         <p class="subtitle">
           Join Medminder to help manage medicines and keep track of medication schedules.
         </p>
+
       </header>
 
       <form id="signupForm" novalidate>
+
         <div class="form-grid">
 
+          <!-- FIRST NAME -->
           <div class="form-group">
             <label for="firstName">First name</label>
+
             <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round"
-                aria-hidden="true">
+              <svg
+                class="input-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <circle cx="12" cy="8" r="4"/>
                 <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
               </svg>
+
               <input
                 id="firstName"
                 name="firstName"
@@ -486,16 +508,25 @@
             </div>
           </div>
 
+          <!-- LAST NAME -->
           <div class="form-group">
             <label for="lastName">Last name</label>
+
             <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round"
-                aria-hidden="true">
+              <svg
+                class="input-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <circle cx="12" cy="8" r="4"/>
                 <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
               </svg>
+
               <input
                 id="lastName"
                 name="lastName"
@@ -507,16 +538,25 @@
             </div>
           </div>
 
+          <!-- EMAIL -->
           <div class="form-group full-width">
             <label for="email">Email address</label>
+
             <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round"
-                aria-hidden="true">
+              <svg
+                class="input-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <rect x="3" y="5" width="18" height="14" rx="2"/>
                 <path d="m3 7 9 6 9-6"/>
               </svg>
+
               <input
                 id="email"
                 name="email"
@@ -528,38 +568,57 @@
             </div>
           </div>
 
+          <!-- ACCOUNT TYPE -->
           <div class="form-group full-width">
             <label for="role">Account type</label>
+
             <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round"
-                aria-hidden="true">
+              <svg
+                class="input-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                 <circle cx="10" cy="7" r="4"/>
                 <path d="m17 11 2 2 4-4"/>
               </svg>
+
               <select id="role" name="role" required>
                 <option value="">Choose your account type</option>
                 <option value="authorized">Authorized Person / Caregiver</option>
                 <option value="patient">Patient / Medicine Taker</option>
               </select>
             </div>
+
             <small class="field-hint">
               Choose the role that matches how you will use Medminder.
             </small>
           </div>
 
+          <!-- PASSWORD -->
           <div class="form-group full-width">
             <label for="password">Password</label>
+
             <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round"
-                aria-hidden="true">
+              <svg
+                class="input-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <rect x="4" y="10" width="16" height="11" rx="2"/>
                 <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
               </svg>
+
               <input
                 id="password"
                 name="password"
@@ -571,19 +630,29 @@
                 required
               >
             </div>
+
             <small id="passwordStrength" aria-live="polite"></small>
           </div>
 
+          <!-- CONFIRM PASSWORD -->
           <div class="form-group full-width">
             <label for="confirmPassword">Confirm password</label>
+
             <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="1.8"
-                stroke-linecap="round" stroke-linejoin="round"
-                aria-hidden="true">
+              <svg
+                class="input-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <rect x="4" y="10" width="16" height="11" rx="2"/>
                 <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
               </svg>
+
               <input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -597,46 +666,79 @@
 
         </div>
 
-        <p id="formMessage" class="message" role="alert" aria-live="polite"></p>
+        <!-- FORM MESSAGE -->
+        <p
+          id="formMessage"
+          class="message"
+          role="alert"
+          aria-live="polite"
+        ></p>
 
-        <button type="submit" id="submitButton" class="submit-button">
+        <!-- CREATE ACCOUNT BUTTON -->
+        <button
+          type="submit"
+          id="submitButton"
+          class="submit-button"
+        >
           <span>Create Account</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            aria-hidden="true">
+
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <path d="M5 12h14"/>
             <path d="m12 5 7 7-7 7"/>
           </svg>
         </button>
 
+        <!-- SECURITY NOTE -->
         <p class="security-note">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
             <rect x="4" y="10" width="16" height="11" rx="2"/>
             <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
           </svg>
+
           Your account details are handled through Firebase Authentication.
         </p>
+
       </form>
 
+      <!-- LOGIN LINK -->
       <p class="login-footer">
         Already have an account?
         <a href="login.html">Log in</a>
       </p>
+
     </section>
 
+    <!-- COPYRIGHT -->
     <p class="copyright">
       © <span id="currentYear"></span> Medminder. Your medication, organized.
     </p>
 
   </main>
 
+  <!-- CURRENT YEAR -->
   <script>
     document.getElementById("currentYear").textContent =
       new Date().getFullYear();
   </script>
 
-  <script type="module" src="js/signup.js"></script>
+  <!-- FIREBASE SIGNUP -->
+  <script type="module" src="./js/signup.js"></script>
+
 </body>
 </html>

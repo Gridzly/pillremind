@@ -56,7 +56,7 @@ function getSignupError(error) {
       "Please choose a stronger password with at least 8 characters.",
 
     "auth/network-request-failed":
-      "Cannot connect to Firebase. Check your internet connection and Firebase Emulator settings.",
+      "Cannot connect to Firebase. Check your internet connection.",
 
     "auth/operation-not-allowed":
       "Email/password authentication is disabled. Enable it in Firebase Authentication settings.",
@@ -65,14 +65,14 @@ function getSignupError(error) {
       "The Firebase API key is invalid. Check firebaseConfig.js.",
 
     "PERMISSION_DENIED":
-      "Firebase denied the database write. Check your Realtime Database rules and emulator connection."
+      "Firebase denied the database write. Check your Realtime Database rules."
   };
 
   return messages[error.code] ||
     `Signup failed (${error.code || "unknown error"}). Check the browser console for details.`;
 }
 
-// Password strength indicator
+// PASSWORD STRENGTH INDICATOR
 if (passwordInput && strengthText) {
   passwordInput.addEventListener("input", () => {
     const password = passwordInput.value;
@@ -101,6 +101,7 @@ if (passwordInput && strengthText) {
   });
 }
 
+// SIGNUP FORM
 if (!form) {
   console.error(
     'Signup form not found. Check that signup.html contains id="signupForm".'
@@ -152,7 +153,7 @@ if (!form) {
     let profileSaved = false;
 
     try {
-      // 1. Create the Authentication account.
+      // 1. CREATE FIREBASE AUTHENTICATION ACCOUNT
       const credential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -163,26 +164,33 @@ if (!form) {
 
       const fullName = `${firstName} ${lastName}`;
 
-      // 2. Set the user's display name.
+      // 2. UPDATE AUTHENTICATION DISPLAY NAME
       await updateProfile(createdUser, {
         displayName: fullName
       });
 
-      // 3. Save the profile using the exact Authentication UID.
-      // Keep role under profile/role for compatibility with your
-      // current Medminder database and Cloud Functions.
+      // 3. PREPARE USER PROFILE
       const userProfile = {
-        profile: {
-          role,
-          firstName,
-          lastName,
-          fullName,
-          email,
-          createdAt: new Date().toISOString()
-        }
+        firstName,
+        lastName,
+        fullName,
+        email,
+        role,
+        createdAt: new Date().toISOString()
       };
 
-      await set(ref(db, `users/${createdUser.uid}`), userProfile);
+      // Allow patients to receive caregiver connection requests.
+      if (role === "patient") {
+        userProfile.allowCaregiverConnections = true;
+      }
+
+      // 4. SAVE PROFILE AT THE CORRECT FIREBASE DATABASE PATH.
+      // IMPORTANT: Your current Firebase rules allow writing here.
+      await set(
+        ref(db, `users/${createdUser.uid}/profile`),
+        userProfile
+      );
+
       profileSaved = true;
 
       showMessage(
@@ -190,7 +198,7 @@ if (!form) {
         "success"
       );
 
-      // 4. Send the user to the dashboard matching their role.
+      // 5. REDIRECT BASED ON ACCOUNT ROLE
       window.location.replace(destinations[role]);
 
     } catch (error) {
@@ -198,12 +206,13 @@ if (!form) {
 
       if (createdUser && !profileSaved) {
         showMessage(
-          "Your authentication account was created, but the profile could not be saved. Do not register again with this email. Check your Firebase connection and Realtime Database rules, then repair the profile for UID: " +
+          "Your Authentication account was created, but your profile could not be saved. Do not register again. Check your Firebase Database rules. Your UID is: " +
           createdUser.uid
         );
       } else {
         showMessage(getSignupError(error));
       }
+
     } finally {
       setLoading(false);
     }

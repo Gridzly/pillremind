@@ -1,3 +1,4 @@
+
 import { auth, db } from "./firebaseConfig.js";
 
 import {
@@ -22,8 +23,9 @@ const destinations = {
 
 function showMessage(id, text, type = "error") {
   const element = $(id);
+
   if (!element) {
-    console[type === "error" ? "error" : "log"](text);
+    console.log(text);
     return;
   }
 
@@ -34,6 +36,7 @@ function showMessage(id, text, type = "error") {
 function clearMessages() {
   ["loginMessage", "signupMessage"].forEach((id) => {
     const element = $(id);
+
     if (element) {
       element.textContent = "";
       element.className = "message";
@@ -43,6 +46,7 @@ function clearMessages() {
 
 function setLoading(buttonId, loading, defaultText) {
   const button = $(buttonId);
+
   if (!button) return;
 
   button.disabled = loading;
@@ -72,16 +76,16 @@ function friendlyError(error) {
     "auth/operation-not-allowed":
       "Email/password sign-in is disabled in Firebase Authentication.",
     "PERMISSION_DENIED":
-      "Firebase denied access to the database. Check your Realtime Database rules.",
+      "Firebase denied access. Check your Realtime Database rules.",
     "permission-denied":
-      "Firebase denied access to the database. Check your Realtime Database rules."
+      "Firebase denied access. Check your Realtime Database rules."
   };
 
   return messages[error.code] ||
     `Something went wrong (${error.code || "unknown error"}). Check the browser console.`;
 }
 
-// Switch between the login and signup panels.
+// SWITCH BETWEEN LOGIN AND SIGNUP
 $("showSignup")?.addEventListener("click", () => {
   $("loginSection")?.classList.add("hidden");
   $("signupSection")?.classList.remove("hidden");
@@ -94,23 +98,36 @@ $("showLogin")?.addEventListener("click", () => {
   clearMessages();
 });
 
-// Show or hide password fields.
+// SHOW / HIDE PASSWORD
 document.querySelectorAll(".toggle-password").forEach((button) => {
   button.addEventListener("click", () => {
-    const input = $(button.dataset.target);
-    if (!input) return;
+    const targetId = button.getAttribute("data-target");
+    const input = document.getElementById(targetId);
 
-    const show = input.type === "password";
-    input.type = show ? "text" : "password";
-    button.textContent = show ? "Hide" : "Show";
+    if (!input) {
+      console.error("Password input not found:", targetId);
+      return;
+    }
+
+    const isHidden = input.type === "password";
+
+    input.type = isHidden ? "text" : "password";
+
+    button.textContent = isHidden ? "Hide" : "Show";
+
     button.setAttribute(
       "aria-label",
-      show ? "Hide password" : "Show password"
+      isHidden ? "Hide password" : "Show password"
+    );
+
+    button.setAttribute(
+      "aria-pressed",
+      String(isHidden)
     );
   });
 });
 
-// Login.
+// LOGIN
 $("loginForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   clearMessages();
@@ -132,39 +149,52 @@ $("loginForm")?.addEventListener("submit", async (event) => {
       password
     );
 
-    // Read the saved role instead of trusting a role from the login form.
+    const uid = credential.user.uid;
+
+    console.log("Firebase login successful. UID:", uid);
+
+    // READ THE USER'S PROFILE
     const profileSnapshot = await get(
-      ref(db, `users/${credential.user.uid}/profile`)
+      ref(db, `users/${uid}/profile`)
     );
 
     if (!profileSnapshot.exists()) {
       showMessage(
         "loginMessage",
-        "Your account profile is missing. Please contact the app administrator."
+        "Your Firebase account exists, but its profile is missing. Your profile needs to be repaired."
       );
+
+      console.error("Missing profile for UID:", uid);
       return;
     }
 
     const profile = profileSnapshot.val();
+
+    console.log("Loaded Medminder profile:", profile);
+
+    // REDIRECT BASED ON ACCOUNT ROLE
     const destination = destinations[profile.role];
 
     if (!destination) {
       showMessage(
         "loginMessage",
-        "Your account role is not recognized. Please contact the app administrator."
+        `Unrecognized account role: ${profile.role || "empty"}. Please check your Firebase profile.`
       );
+
       return;
     }
 
     window.location.replace(destination);
+
   } catch (error) {
     showMessage("loginMessage", friendlyError(error));
+
   } finally {
     setLoading("loginSubmit", false, "Log In");
   }
 });
 
-// Signup.
+// SIGNUP
 $("signupForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   clearMessages();
@@ -203,6 +233,7 @@ $("signupForm")?.addEventListener("submit", async (event) => {
   let createdUser = null;
 
   try {
+    // CREATE FIREBASE AUTHENTICATION ACCOUNT
     const credential = await createUserWithEmailAndPassword(
       auth,
       email,
@@ -211,6 +242,7 @@ $("signupForm")?.addEventListener("submit", async (event) => {
 
     createdUser = credential.user;
 
+    // SAVE DISPLAY NAME IN FIREBASE AUTHENTICATION
     await updateProfile(createdUser, {
       displayName: fullName
     });
@@ -219,19 +251,26 @@ $("signupForm")?.addEventListener("submit", async (event) => {
     const firstName = nameParts.shift() || "";
     const lastName = nameParts.join(" ");
 
+    // SAVE PROFILE TO USERS/{UID}/PROFILE
+    // THIS MATCHES YOUR FIREBASE DATABASE RULES.
     const userProfile = {
-      profile: {
-        firstName,
-        lastName,
-        fullName,
-        email,
-        role,
-        createdAt: new Date().toISOString()
-      }
+      firstName,
+      lastName,
+      fullName,
+      email,
+      role,
+      createdAt: new Date().toISOString()
     };
 
-    // Save under the authenticated user's own UID.
-    await set(ref(db, `users/${createdUser.uid}`), userProfile);
+    await set(
+      ref(db, `users/${createdUser.uid}/profile`),
+      userProfile
+    );
+
+    console.log(
+      "Medminder profile successfully saved:",
+      createdUser.uid
+    );
 
     showMessage(
       "signupMessage",
@@ -240,24 +279,32 @@ $("signupForm")?.addEventListener("submit", async (event) => {
     );
 
     window.location.replace(destinations[role]);
+
   } catch (error) {
+    console.error("Signup error:", error);
+
     if (createdUser) {
-      console.error("Profile save failed for UID:", createdUser.uid, error);
+      console.error(
+        "Authentication account created, but profile saving failed. UID:",
+        createdUser.uid
+      );
 
       showMessage(
         "signupMessage",
-        "Your authentication account was created, but saving your profile failed. Do not sign up again with this email. Check your database rules and repair the profile for UID: " +
+        "Your authentication account was created, but saving your profile failed. Do not register again. Check Firebase Database Rules. Your UID is: " +
           createdUser.uid
       );
+
     } else {
       showMessage("signupMessage", friendlyError(error));
     }
+
   } finally {
     setLoading("signupSubmit", false, "Create Account");
   }
 });
 
-// Password reset.
+// PASSWORD RESET
 $("forgotPasswordButton")?.addEventListener("click", async () => {
   clearMessages();
 
@@ -271,11 +318,13 @@ $("forgotPasswordButton")?.addEventListener("click", async () => {
 
   try {
     await sendPasswordResetEmail(auth, email);
+
     showMessage(
       "loginMessage",
       "If an account exists for that email, a password reset email has been requested.",
       "success"
     );
+
   } catch (error) {
     showMessage("loginMessage", friendlyError(error));
   }
