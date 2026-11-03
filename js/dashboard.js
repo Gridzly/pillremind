@@ -1,4 +1,3 @@
-
 import { auth, db } from "./firebaseConfig.js";
 
 import {
@@ -37,6 +36,10 @@ import {
 
    PATIENT REMINDERS:
    users/{patientUid}/reminders
+
+   MEDICINE SNAPSHOT:
+   Each patient reminder contains a copy of the medicine
+   information so the patient dashboard can display it.
    ========================================================= */
 
 const $ = id => document.getElementById(id);
@@ -57,19 +60,49 @@ const state = {
 };
 
 const DAYS = [
-  "Sunday", "Monday", "Tuesday", "Wednesday",
-  "Thursday", "Friday", "Saturday"
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday"
 ];
 
 const pages = {
-  medicinesPage: ["My Medicines", "Manage your medicine inventory."],
-  remindersPage: ["Reminders", "Manage one-time and weekly patient schedules."],
-  refillsPage: ["Refill tracker", "Monitor your medicine stock."],
-  historyPage: ["Activity history", "Review recent account activity."],
-  connectionPage: ["Patient connection", "Connect to a patient using their Firebase UID or QR code."],
-  notificationsPage: ["Notifications", "Review recent activity."],
-  profilePage: ["My profile", "Manage your account."]
+  medicinesPage: [
+    "My Medicines",
+    "Manage your medicine inventory."
+  ],
+  remindersPage: [
+    "Reminders",
+    "Manage one-time and weekly patient schedules."
+  ],
+  refillsPage: [
+    "Refill tracker",
+    "Monitor your medicine stock."
+  ],
+  historyPage: [
+    "Activity history",
+    "Review recent account activity."
+  ],
+  connectionPage: [
+    "Patient connection",
+    "Connect to a patient using their Firebase UID or QR code."
+  ],
+  notificationsPage: [
+    "Notifications",
+    "Review recent activity."
+  ],
+  profilePage: [
+    "My profile",
+    "Manage your account."
+  ]
 };
+
+/* =========================================================
+   GENERAL HELPERS
+   ========================================================= */
 
 const escapeHTML = value =>
   String(value ?? "").replace(/[&<>"']/g, character => ({
@@ -81,17 +114,24 @@ const escapeHTML = value =>
   })[character]);
 
 const accountPath = path => {
-  if (!state.user) throw new Error("You are not signed in.");
+  if (!state.user) {
+    throw new Error("You are not signed in.");
+  }
+
   return `users/${state.user.uid}/${path}`;
 };
 
 const patientPath = (uid, path) => {
-  if (!uid) throw new Error("Please select a connected patient.");
+  if (!uid) {
+    throw new Error("Please select a connected patient.");
+  }
+
   return `users/${uid}/${path}`;
 };
 
 function showMessage(id, message, type = "success") {
   const element = $(id);
+
   if (!element) return;
 
   element.textContent = message;
@@ -100,7 +140,10 @@ function showMessage(id, message, type = "success") {
 
 function hideMessage(id) {
   const element = $(id);
-  if (element) element.className = "message";
+
+  if (element) {
+    element.className = "message";
+  }
 }
 
 function setButtonBusy(button, busy, busyText = "Please wait…") {
@@ -134,8 +177,13 @@ function showPage(id) {
     button.classList.toggle("active", button.dataset.page === id);
   });
 
-  if ($("pageTitle")) $("pageTitle").textContent = pages[id][0];
-  if ($("pageSubtitle")) $("pageSubtitle").textContent = pages[id][1];
+  if ($("pageTitle")) {
+    $("pageTitle").textContent = pages[id][0];
+  }
+
+  if ($("pageSubtitle")) {
+    $("pageSubtitle").textContent = pages[id][1];
+  }
 
   document.querySelector(".content")?.scrollTo({
     top: 0,
@@ -164,9 +212,13 @@ function formatDate(value) {
     parts.length !== 3 ||
     parts.some(Number.isNaN) ||
     parts[0] < 1000 ||
-    parts[1] < 1 || parts[1] > 12 ||
-    parts[2] < 1 || parts[2] > 31
-  ) return "Date not set";
+    parts[1] < 1 ||
+    parts[1] > 12 ||
+    parts[2] < 1 ||
+    parts[2] > 31
+  ) {
+    return "Date not set";
+  }
 
   return new Date(parts[0], parts[1] - 1, parts[2])
     .toLocaleDateString("en-PH", {
@@ -183,7 +235,9 @@ function formatTime(value) {
 
   const [hours, minutes] = value.split(":").map(Number);
 
-  if (hours > 23 || minutes > 59) return "Time not set";
+  if (hours > 23 || minutes > 59) {
+    return "Time not set";
+  }
 
   return new Date(2000, 0, 1, hours, minutes)
     .toLocaleTimeString("en-PH", {
@@ -239,7 +293,12 @@ function subscribeAccount(path, callback) {
     snapshot => callback(snapshot.val() || {}),
     error => {
       console.error(`Firebase error at ${path}:`, error);
-      showMessage("pageMessage", `Unable to load ${path}: ${error.message}`, "error");
+
+      showMessage(
+        "pageMessage",
+        `Unable to load ${path}: ${error.message}`,
+        "error"
+      );
     }
   );
 
@@ -253,10 +312,12 @@ function subscribePatient(path, callback, patientUid) {
     ref(db, patientPath(patientUid, path)),
     snapshot => {
       if (state.selectedPatientUid !== patientUid) return;
+
       callback(snapshot.val() || {});
     },
     error => {
       console.error(`Patient data error at ${path}:`, error);
+
       showMessage(
         "pageMessage",
         `Unable to load this patient's ${path}: ${error.message}`,
@@ -267,6 +328,10 @@ function subscribePatient(path, callback, patientUid) {
 
   state.patientUnsubscribers.push(listener);
 }
+
+/* =========================================================
+   ACTIVITY HISTORY
+   ========================================================= */
 
 async function logActivity(action, detail, patientUid = null) {
   if (!state.user) return;
@@ -285,8 +350,13 @@ async function logActivity(action, detail, patientUid = null) {
 
 function getActivities() {
   return Object.entries(state.activities || {})
-    .map(([id, item]) => ({ id, ...item }))
-    .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
+    .map(([id, item]) => ({
+      id,
+      ...item
+    }))
+    .sort((a, b) =>
+      Number(b.timestamp || 0) - Number(a.timestamp || 0)
+    );
 }
 
 /* =========================================================
@@ -294,9 +364,15 @@ function getActivities() {
    ========================================================= */
 
 function patientIsActive(patient) {
-  const status = String(patient?.status || "").toLowerCase().trim();
+  const status = String(
+    patient?.status || ""
+  ).toLowerCase().trim();
 
-  return ["active", "approved", "connected"].includes(status);
+  return [
+    "active",
+    "approved",
+    "connected"
+  ].includes(status);
 }
 
 function patientDisplayName(uid, patient) {
@@ -311,15 +387,20 @@ function patientDisplayName(uid, patient) {
 
 function getConnectedPatients() {
   return Object.entries(state.connectedPatients || {})
-    .filter(([uid, patient]) => uid && patient && patientIsActive(patient));
+    .filter(([uid, patient]) =>
+      uid && patient && patientIsActive(patient)
+    );
 }
 
 function buildPatientOptions(selectedUid = "") {
   return `
     <option value="">Select a connected patient</option>
+
     ${getConnectedPatients().map(([uid, patient]) => `
-      <option value="${escapeHTML(uid)}"
-        ${uid === selectedUid ? "selected" : ""}>
+      <option
+        value="${escapeHTML(uid)}"
+        ${uid === selectedUid ? "selected" : ""}
+      >
         ${escapeHTML(patientDisplayName(uid, patient))}
       </option>
     `).join("")}
@@ -346,7 +427,11 @@ function populateReminderPatientSelector(preferredUid = null) {
         "No approved patients are connected. Connect to a patient first.";
     }
 
-    setReminderMedicineOptions([], "Connect to a patient first.");
+    setReminderMedicineOptions(
+      [],
+      "Connect to a patient first."
+    );
+
     return;
   }
 
@@ -368,8 +453,10 @@ function populateReminderPatientSelector(preferredUid = null) {
 /* =========================================================
    PATIENT REMINDER SUBSCRIPTION
 
-   Medicines are NOT loaded from the patient account.
-   The caregiver's medicine inventory is used instead.
+   The caregiver reads and writes reminders under the
+   connected patient's account.
+
+   The patient's reminder includes medicineSnapshot.
    ========================================================= */
 
 function selectPatient(uid) {
@@ -381,6 +468,7 @@ function selectPatient(uid) {
 
     stopList(state.patientUnsubscribers);
     renderReminders();
+
     return;
   }
 
@@ -390,12 +478,17 @@ function selectPatient(uid) {
   state.reminders = {};
 
   stopList(state.patientUnsubscribers);
+
   renderReminders();
 
-  subscribePatient("reminders", value => {
-    state.reminders = value;
-    renderReminders();
-  }, uid);
+  subscribePatient(
+    "reminders",
+    value => {
+      state.reminders = value;
+      renderReminders();
+    },
+    uid
+  );
 
   console.log("Selected patient:", uid);
 }
@@ -410,11 +503,15 @@ function refreshPatientSelectors() {
     state.reminders = {};
 
     stopList(state.patientUnsubscribers);
+
     renderReminders();
+
     return;
   }
 
-  if (!patients.some(([uid]) => uid === state.selectedPatientUid)) {
+  if (!patients.some(([uid]) =>
+    uid === state.selectedPatientUid
+  )) {
     selectPatient(patients[0][0]);
   }
 }
@@ -425,7 +522,11 @@ $("reminderPatient")?.addEventListener("change", event => {
 
   if (!uid || !patient || !patientIsActive(patient)) {
     selectPatient(null);
-    setReminderMedicineOptions([], "Select a patient first.");
+
+    setReminderMedicineOptions(
+      [],
+      "Select a patient first."
+    );
 
     if ($("reminderPatientMessage")) {
       $("reminderPatientMessage").textContent =
@@ -446,23 +547,35 @@ $("reminderPatient")?.addEventListener("change", event => {
 
 /* =========================================================
    MEDICINE DROPDOWN FOR REMINDERS
+
    Uses the authorized person's own inventory.
    ========================================================= */
 
 function setReminderMedicineOptions(medicines, placeholder) {
   const select = $("reminderMedicine");
+
   if (!select) return;
 
-  select.innerHTML = `<option value="">${escapeHTML(placeholder)}</option>`;
+  select.innerHTML = `
+    <option value="">
+      ${escapeHTML(placeholder)}
+    </option>
+  `;
+
   select.disabled = true;
 
-  if (!Array.isArray(medicines) || !medicines.length) return;
+  if (!Array.isArray(medicines) || !medicines.length) {
+    return;
+  }
 
   medicines.forEach(([id, medicine]) => {
     const option = document.createElement("option");
+
     option.value = id;
+
     option.textContent =
-      `${medicine.name || "Unnamed medicine"}${medicine.dosage ? ` — ${medicine.dosage}` : ""}`;
+      `${medicine.name || "Unnamed medicine"}` +
+      `${medicine.dosage ? ` — ${medicine.dosage}` : ""}`;
 
     select.appendChild(option);
   });
@@ -474,25 +587,40 @@ function updateReminderMedicineDropdown() {
   const patientUid = $("reminderPatient")?.value || "";
 
   if (!patientUid) {
-    setReminderMedicineOptions([], "Select a patient first.");
+    setReminderMedicineOptions(
+      [],
+      "Select a patient first."
+    );
+
     return;
   }
 
   if (!patientIsActive(state.connectedPatients?.[patientUid])) {
-    setReminderMedicineOptions([], "Patient is not connected.");
+    setReminderMedicineOptions(
+      [],
+      "Patient is not connected."
+    );
+
     return;
   }
 
   const entries = Object.entries(state.medicines || {});
 
   if (!entries.length) {
-    setReminderMedicineOptions([], "Add a medicine to your inventory first.");
+    setReminderMedicineOptions(
+      [],
+      "Add a medicine to your inventory first."
+    );
+
     return;
   }
 
   const previous = $("reminderMedicine")?.value || "";
 
-  setReminderMedicineOptions(entries, "Choose a medicine");
+  setReminderMedicineOptions(
+    entries,
+    "Choose a medicine"
+  );
 
   if (state.medicines[previous]) {
     $("reminderMedicine").value = previous;
@@ -500,7 +628,7 @@ function updateReminderMedicineDropdown() {
 }
 
 /* =========================================================
-   DISPLAY
+   DISPLAY HELPERS
    ========================================================= */
 
 function medicineName(id) {
@@ -510,11 +638,19 @@ function medicineName(id) {
 function dayNames(days) {
   return (Array.isArray(days) ? days : [])
     .map(Number)
-    .filter(day => Number.isInteger(day) && day >= 0 && day <= 6)
+    .filter(day =>
+      Number.isInteger(day) &&
+      day >= 0 &&
+      day <= 6
+    )
     .sort((a, b) => a - b)
     .map(day => DAYS[day])
     .join(", ");
 }
+
+/* =========================================================
+   MEDICINE DISPLAY
+   ========================================================= */
 
 function renderMedicines() {
   const entries = Object.entries(state.medicines || {});
@@ -533,70 +669,155 @@ function renderMedicines() {
           return `
             <article class="record">
               <div class="record-main">
-                <h3>${escapeHTML(medicine.name || "Unnamed medicine")}</h3>
-                <p>Strength: ${escapeHTML(medicine.dosage || "Not provided")}</p>
+                <h3>
+                  ${escapeHTML(medicine.name || "Unnamed medicine")}
+                </h3>
+
+                <p>
+                  Strength: ${escapeHTML(medicine.dosage || "Not provided")}
+                </p>
+
                 <p>Stock: ${quantity} units</p>
+
                 ${lowStock
-                  ? '<p style="color:#b42318;font-weight:700">Refill needed</p>'
-                  : ""}
+                  ? `
+                    <p style="color:#b42318;font-weight:700">
+                      Refill needed
+                    </p>
+                  `
+                  : ""
+                }
+
                 ${medicine.instructions
-                  ? `<p>Instructions: ${escapeHTML(medicine.instructions)}</p>`
-                  : ""}
+                  ? `
+                    <p>
+                      Instructions:
+                      ${escapeHTML(medicine.instructions)}
+                    </p>
+                  `
+                  : ""
+                }
+
                 ${medicine.notes
-                  ? `<p>Notes: ${escapeHTML(medicine.notes)}</p>`
-                  : ""}
+                  ? `
+                    <p>
+                      Notes:
+                      ${escapeHTML(medicine.notes)}
+                    </p>
+                  `
+                  : ""
+                }
+
                 ${medicine.detailsVerified
-                  ? '<p style="color:#175638">✓ Details verified</p>'
-                  : ""}
+                  ? `
+                    <p style="color:#175638">
+                      ✓ Details verified
+                    </p>
+                  `
+                  : ""
+                }
               </div>
 
               <div class="record-actions">
-                <button type="button" class="btn btn-secondary"
-                  data-edit-med="${escapeHTML(id)}">Edit</button>
-                <button type="button" class="btn btn-secondary"
-                  data-stock-med="${escapeHTML(id)}">＋ Refill</button>
-                <button type="button" class="btn btn-danger"
-                  data-del-med="${escapeHTML(id)}">Delete</button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  data-edit-med="${escapeHTML(id)}"
+                >
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  data-stock-med="${escapeHTML(id)}"
+                >
+                  ＋ Refill
+                </button>
+
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  data-del-med="${escapeHTML(id)}"
+                >
+                  Delete
+                </button>
               </div>
             </article>
           `;
         }).join("")
-      : emptyState("No medicines in your inventory yet. Add your first medicine.");
+      : emptyState(
+          "No medicines in your inventory yet. Add your first medicine."
+        );
   }
 
   updateReminderMedicineDropdown();
   renderRefills();
 }
 
-function renderRefills() {
-  const entries = Object.entries(state.medicines || {}).filter(([, medicine]) =>
-    Number(medicine.quantity ?? 0) <= Number(medicine.refillAt ?? 5)
-  );
+/* =========================================================
+   REFILL TRACKER
+   ========================================================= */
 
-  if ($("refillCount")) $("refillCount").textContent = entries.length;
+function renderRefills() {
+  const entries = Object.entries(state.medicines || {})
+    .filter(([, medicine]) =>
+      Number(medicine.quantity ?? 0) <=
+      Number(medicine.refillAt ?? 5)
+    );
+
+  if ($("refillCount")) {
+    $("refillCount").textContent = entries.length;
+  }
+
   if (!$("refillList")) return;
 
   $("refillList").innerHTML = entries.length
     ? entries.map(([id, medicine]) => `
         <article class="record">
           <div class="record-main">
-            <h3>${escapeHTML(medicine.name || "Unnamed medicine")}</h3>
-            <p>Remaining: ${Number(medicine.quantity ?? 0)} units</p>
-            <p>Refill alert level: ${Number(medicine.refillAt ?? 5)} units</p>
+            <h3>
+              ${escapeHTML(medicine.name || "Unnamed medicine")}
+            </h3>
+
+            <p>
+              Remaining: ${Number(medicine.quantity ?? 0)} units
+            </p>
+
+            <p>
+              Refill alert level:
+              ${Number(medicine.refillAt ?? 5)} units
+            </p>
           </div>
-          <button type="button" class="btn btn-primary"
-            data-stock-med="${escapeHTML(id)}">Record refill</button>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            data-stock-med="${escapeHTML(id)}"
+          >
+            Record refill
+          </button>
         </article>
       `).join("")
     : emptyState("No medicines currently need refilling.");
 }
 
-function renderReminders() {
-  const entries = Object.entries(state.reminders || {}).sort((a, b) =>
-    String(a[1].time || "").localeCompare(String(b[1].time || ""))
-  );
+/* =========================================================
+   REMINDER DISPLAY
+   ========================================================= */
 
-  if ($("reminderCount")) $("reminderCount").textContent = entries.length;
+function renderReminders() {
+  const entries = Object.entries(state.reminders || {})
+    .sort((a, b) =>
+      String(a[1].time || "").localeCompare(
+        String(b[1].time || "")
+      )
+    );
+
+  if ($("reminderCount")) {
+    $("reminderCount").textContent = entries.length;
+  }
+
   if (!$("reminderList")) return;
 
   const patientUid = state.selectedPatientUid;
@@ -606,40 +827,95 @@ function renderReminders() {
     ? entries.map(([id, reminder]) => {
         const recurring = reminder.recurrence === "weekly";
 
+        const snapshot =
+          reminder.medicineSnapshot ||
+          reminder.medicineDetails ||
+          {};
+
+        const displayMedicineName =
+          snapshot.name ||
+          reminder.medicineName ||
+          medicineName(reminder.medicineId);
+
+        const displayDosage =
+          snapshot.dosage ||
+          reminder.medicineDosage ||
+          "";
+
         return `
           <article class="record">
             <div class="record-main">
-              <h3>${escapeHTML(
-                reminder.medicineName ||
-                medicineName(reminder.medicineId)
-              )}</h3>
+              <h3>
+                ${escapeHTML(displayMedicineName)}
+              </h3>
 
-              <p>Patient: ${escapeHTML(
-                patient ? patientDisplayName(patientUid, patient) : "Selected patient"
-              )}</p>
+              ${displayDosage
+                ? `<p>Strength: ${escapeHTML(displayDosage)}</p>`
+                : ""
+              }
+
+              <p>
+                Patient:
+                ${escapeHTML(
+                  patient
+                    ? patientDisplayName(patientUid, patient)
+                    : "Selected patient"
+                )}
+              </p>
 
               <p>
                 ${recurring
                   ? `Every week: ${escapeHTML(dayNames(reminder.daysOfWeek))}`
-                  : `Date: ${escapeHTML(formatDate(reminder.date))}`}
+                  : `Date: ${escapeHTML(formatDate(reminder.date))}`
+                }
               </p>
 
-              <p>Time: ${escapeHTML(formatTime(reminder.time))}</p>
+              <p>
+                Time: ${escapeHTML(formatTime(reminder.time))}
+              </p>
 
               ${reminder.dose
                 ? `<p>Dose: ${escapeHTML(reminder.dose)}</p>`
-                : ""}
+                : ""
+              }
+
+              ${snapshot.instructions
+                ? `
+                  <p>
+                    Instructions:
+                    ${escapeHTML(snapshot.instructions)}
+                  </p>
+                `
+                : ""
+              }
 
               ${reminder.notes
                 ? `<p>Notes: ${escapeHTML(reminder.notes)}</p>`
-                : ""}
+                : ""
+              }
+
+              <p>
+                Status:
+                ${escapeHTML(reminder.status || "active")}
+              </p>
             </div>
 
             <div class="record-actions">
-              <button type="button" class="btn btn-secondary"
-                data-edit-rem="${escapeHTML(id)}">Edit</button>
-              <button type="button" class="btn btn-danger"
-                data-del-rem="${escapeHTML(id)}">Delete</button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-edit-rem="${escapeHTML(id)}"
+              >
+                Edit
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-danger"
+                data-del-rem="${escapeHTML(id)}"
+              >
+                Delete
+              </button>
             </div>
           </article>
         `;
@@ -651,6 +927,10 @@ function renderReminders() {
       );
 }
 
+/* =========================================================
+   HISTORY AND NOTIFICATIONS
+   ========================================================= */
+
 function renderHistory() {
   const entries = getActivities();
 
@@ -659,9 +939,17 @@ function renderHistory() {
       ? entries.slice(0, 100).map(activity => `
           <article class="record">
             <div class="record-main">
-              <h3>${escapeHTML(activity.action || "Activity")}</h3>
-              <p>${escapeHTML(activity.detail || "")}</p>
-              <p class="muted">${escapeHTML(formatStamp(activity.timestamp))}</p>
+              <h3>
+                ${escapeHTML(activity.action || "Activity")}
+              </h3>
+
+              <p>
+                ${escapeHTML(activity.detail || "")}
+              </p>
+
+              <p class="muted">
+                ${escapeHTML(formatStamp(activity.timestamp))}
+              </p>
             </div>
           </article>
         `).join("")
@@ -673,9 +961,17 @@ function renderHistory() {
       ? entries.slice(0, 30).map(activity => `
           <article class="record">
             <div class="record-main">
-              <h3>${escapeHTML(activity.action || "Activity")}</h3>
-              <p>${escapeHTML(activity.detail || "")}</p>
-              <p class="muted">${escapeHTML(formatStamp(activity.timestamp))}</p>
+              <h3>
+                ${escapeHTML(activity.action || "Activity")}
+              </h3>
+
+              <p>
+                ${escapeHTML(activity.detail || "")}
+              </p>
+
+              <p class="muted">
+                ${escapeHTML(formatStamp(activity.timestamp))}
+              </p>
             </div>
           </article>
         `).join("")
@@ -685,8 +981,6 @@ function renderHistory() {
 
 /* =========================================================
    MEDICINE FORM
-   Medicines belong to the authorized person's account.
-   No patient selection is required.
    ========================================================= */
 
 function medicinePanel(open) {
@@ -698,16 +992,28 @@ function medicinePanel(open) {
 function resetMedicineForm() {
   $("medicineForm")?.reset();
 
-  if ($("medicineId")) $("medicineId").value = "";
-  if ($("medicineQuantity")) $("medicineQuantity").value = "0";
-  if ($("medicineRefillAt")) $("medicineRefillAt").value = "5";
+  if ($("medicineId")) {
+    $("medicineId").value = "";
+  }
+
+  if ($("medicineQuantity")) {
+    $("medicineQuantity").value = "0";
+  }
+
+  if ($("medicineRefillAt")) {
+    $("medicineRefillAt").value = "5";
+  }
 
   if ($("medicineFormTitle")) {
     $("medicineFormTitle").textContent = "Add medicine";
   }
 
-  const button = $("medicineForm")?.querySelector('button[type="submit"]');
-  if (button) button.textContent = "Save medicine";
+  const button = $("medicineForm")
+    ?.querySelector('button[type="submit"]');
+
+  if (button) {
+    button.textContent = "Save medicine";
+  }
 
   medicinePanel(false);
 }
@@ -731,20 +1037,39 @@ $("medicineForm")?.addEventListener("submit", async event => {
   const id = $("medicineId")?.value || "";
   const name = $("medicineName")?.value.trim() || "";
   const dosage = $("medicineDosage")?.value.trim() || "";
+
   const quantity = Number($("medicineQuantity")?.value);
-  const refillAt = Number($("medicineRefillAt")?.value ?? 5);
+
+  const refillAt = Number(
+    $("medicineRefillAt")?.value ?? 5
+  );
+
   const verified = $("detailsVerified");
 
   if (!name || !dosage) {
-    showMessage("pageMessage", "Enter the medicine name and strength/dosage.", "error");
+    showMessage(
+      "pageMessage",
+      "Enter the medicine name and strength/dosage.",
+      "error"
+    );
+
     return;
   }
 
   if (
-    !Number.isInteger(quantity) || quantity < 0 || quantity > 100000 ||
-    !Number.isInteger(refillAt) || refillAt < 0 || refillAt > 100000
+    !Number.isInteger(quantity) ||
+    quantity < 0 ||
+    quantity > 100000 ||
+    !Number.isInteger(refillAt) ||
+    refillAt < 0 ||
+    refillAt > 100000
   ) {
-    showMessage("pageMessage", "Enter valid whole-number stock quantities.", "error");
+    showMessage(
+      "pageMessage",
+      "Enter valid whole-number stock quantities.",
+      "error"
+    );
+
     return;
   }
 
@@ -754,13 +1079,17 @@ $("medicineForm")?.addEventListener("submit", async event => {
       "Verify the details against the medicine label or prescription before saving.",
       "error"
     );
+
     verified.focus();
+
     return;
   }
 
   state.busy = true;
 
-  const button = $("medicineForm")?.querySelector('button[type="submit"]');
+  const button = $("medicineForm")
+    ?.querySelector('button[type="submit"]');
+
   setButtonBusy(button, true, "Saving…");
 
   try {
@@ -771,19 +1100,31 @@ $("medicineForm")?.addEventListener("submit", async event => {
       dosage,
       quantity,
       refillAt,
-      instructions: $("medicineInstructions")?.value.trim() || "",
-      notes: $("medicineNotes")?.value.trim() || "",
+
+      instructions:
+        $("medicineInstructions")?.value.trim() || "",
+
+      notes:
+        $("medicineNotes")?.value.trim() || "",
+
       detailsVerified: Boolean(verified?.checked),
+
       updatedAt: timestamp
     };
 
     if (id) {
-      await update(ref(db, accountPath(`medicines/${id}`)), record);
+      await update(
+        ref(db, accountPath(`medicines/${id}`)),
+        record
+      );
     } else {
       record.createdAt = timestamp;
       record.createdBy = state.user.uid;
 
-      const newMedicineRef = push(ref(db, accountPath("medicines")));
+      const newMedicineRef = push(
+        ref(db, accountPath("medicines"))
+      );
+
       await set(newMedicineRef, record);
     }
 
@@ -793,16 +1134,30 @@ $("medicineForm")?.addEventListener("submit", async event => {
     );
 
     resetMedicineForm();
-    showMessage("pageMessage", "Medicine saved to your inventory.");
+
+    showMessage(
+      "pageMessage",
+      "Medicine saved to your inventory."
+    );
 
   } catch (error) {
     console.error("Saving medicine failed:", error);
-    showMessage("pageMessage", `Unable to save medicine: ${error.message}`, "error");
+
+    showMessage(
+      "pageMessage",
+      `Unable to save medicine: ${error.message}`,
+      "error"
+    );
+
   } finally {
     state.busy = false;
     setButtonBusy(button, false);
   }
 });
+
+/* =========================================================
+   MEDICINE EDIT / DELETE / REFILL BUTTONS
+   ========================================================= */
 
 $("medicineList")?.addEventListener("click", async event => {
   const edit = event.target.closest("[data-edit-med]");
@@ -833,28 +1188,45 @@ $("medicineList")?.addEventListener("click", async event => {
   $("medicineDosage").value = medicine.dosage || "";
   $("medicineQuantity").value = medicine.quantity ?? 0;
   $("medicineRefillAt").value = medicine.refillAt ?? 5;
-  $("medicineInstructions").value = medicine.instructions || "";
-  $("medicineNotes").value = medicine.notes || "";
+
+  $("medicineInstructions").value =
+    medicine.instructions || "";
+
+  $("medicineNotes").value =
+    medicine.notes || "";
 
   if ($("detailsVerified")) {
-    $("detailsVerified").checked = Boolean(medicine.detailsVerified);
+    $("detailsVerified").checked =
+      Boolean(medicine.detailsVerified);
   }
 
   if ($("medicineFormTitle")) {
     $("medicineFormTitle").textContent = "Edit medicine";
   }
 
-  const button = $("medicineForm")?.querySelector('button[type="submit"]');
-  if (button) button.textContent = "Update medicine";
+  const button = $("medicineForm")
+    ?.querySelector('button[type="submit"]');
+
+  if (button) {
+    button.textContent = "Update medicine";
+  }
 
   medicinePanel(true);
+
   $("medicineName")?.focus();
 });
 
 $("refillList")?.addEventListener("click", async event => {
   const button = event.target.closest("[data-stock-med]");
-  if (button) await recordRefill(button.dataset.stockMed);
+
+  if (button) {
+    await recordRefill(button.dataset.stockMed);
+  }
 });
+
+/* =========================================================
+   RECORD MEDICINE REFILL
+   ========================================================= */
 
 async function recordRefill(id) {
   const medicine = state.medicines[id];
@@ -870,15 +1242,29 @@ async function recordRefill(id) {
 
   const amount = Number(input);
 
-  if (!Number.isInteger(amount) || amount <= 0 || amount > 100000) {
-    showMessage("pageMessage", "Enter a positive whole number up to 100,000.", "error");
+  if (
+    !Number.isInteger(amount) ||
+    amount <= 0 ||
+    amount > 100000
+  ) {
+    showMessage(
+      "pageMessage",
+      "Enter a positive whole number up to 100,000.",
+      "error"
+    );
+
     return;
   }
 
   const current = Number(medicine.quantity ?? 0);
 
   if (current + amount > 100000) {
-    showMessage("pageMessage", "The resulting stock quantity is too large.", "error");
+    showMessage(
+      "pageMessage",
+      "The resulting stock quantity is too large.",
+      "error"
+    );
+
     return;
   }
 
@@ -888,49 +1274,72 @@ async function recordRefill(id) {
     const newQuantity = current + amount;
     const timestamp = Date.now();
 
-    await update(ref(db, accountPath(`medicines/${id}`)), {
-      quantity: newQuantity,
-      updatedAt: timestamp
-    });
+    await update(
+      ref(db, accountPath(`medicines/${id}`)),
+      {
+        quantity: newQuantity,
+        updatedAt: timestamp
+      }
+    );
 
-    await set(push(ref(db, accountPath("refills"))), {
-      medicineId: id,
-      medicineName: medicine.name || "",
-      amount,
-      previousQuantity: current,
-      newQuantity,
-      recordedBy: state.user.uid,
-      timestamp
-    });
+    await set(
+      push(ref(db, accountPath("refills"))),
+      {
+        medicineId: id,
+        medicineName: medicine.name || "",
+        amount,
+        previousQuantity: current,
+        newQuantity,
+        recordedBy: state.user.uid,
+        timestamp
+      }
+    );
 
     await logActivity(
       "Medicine refilled",
       `${medicine.name}: added ${amount} units. New stock: ${newQuantity}.`
     );
 
-    showMessage("pageMessage", "Medicine stock updated successfully.");
+    showMessage(
+      "pageMessage",
+      "Medicine stock updated successfully."
+    );
 
   } catch (error) {
     console.error(error);
-    showMessage("pageMessage", `Unable to record refill: ${error.message}`, "error");
+
+    showMessage(
+      "pageMessage",
+      `Unable to record refill: ${error.message}`,
+      "error"
+    );
+
   } finally {
     state.busy = false;
   }
 }
+
+/* =========================================================
+   DELETE MEDICINE
+   ========================================================= */
 
 async function deleteMedicine(id) {
   const medicine = state.medicines[id];
 
   if (!medicine || !state.user || state.busy) return;
 
-  if (!confirm(`Delete ${medicine.name} from your medicine inventory?`)) {
+  if (!confirm(
+    `Delete ${medicine.name} from your medicine inventory?`
+  )) {
     return;
   }
 
   state.busy = true;
 
   try {
-    await remove(ref(db, accountPath(`medicines/${id}`)));
+    await remove(
+      ref(db, accountPath(`medicines/${id}`))
+    );
 
     await logActivity(
       "Medicine deleted",
@@ -944,7 +1353,13 @@ async function deleteMedicine(id) {
 
   } catch (error) {
     console.error(error);
-    showMessage("pageMessage", `Unable to delete medicine: ${error.message}`, "error");
+
+    showMessage(
+      "pageMessage",
+      `Unable to delete medicine: ${error.message}`,
+      "error"
+    );
+
   } finally {
     state.busy = false;
   }
@@ -952,7 +1367,6 @@ async function deleteMedicine(id) {
 
 /* =========================================================
    REMINDER FORM
-   Reminders are saved under the selected patient's account.
    ========================================================= */
 
 function reminderPanel(open) {
@@ -962,37 +1376,70 @@ function reminderPanel(open) {
 }
 
 function updateRecurrenceFields() {
-  const weekly = $("reminderRecurrence")?.value === "weekly";
+  const weekly =
+    $("reminderRecurrence")?.value === "weekly";
 
-  if ($("reminderDateField")) $("reminderDateField").hidden = weekly;
-  if ($("reminderDaysField")) $("reminderDaysField").hidden = !weekly;
-  if ($("reminderDate")) $("reminderDate").required = !weekly;
+  if ($("reminderDateField")) {
+    $("reminderDateField").hidden = weekly;
+  }
+
+  if ($("reminderDaysField")) {
+    $("reminderDaysField").hidden = !weekly;
+  }
+
+  if ($("reminderDate")) {
+    $("reminderDate").required = !weekly;
+  }
 }
 
 function resetReminderForm() {
   $("reminderForm")?.reset();
 
-  if ($("reminderId")) $("reminderId").value = "";
-  if ($("reminderRecurrence")) $("reminderRecurrence").value = "once";
-  if ($("reminderTime")) $("reminderTime").value = "08:00";
-  if ($("reminderDate")) $("reminderDate").value = "";
+  if ($("reminderId")) {
+    $("reminderId").value = "";
+  }
+
+  if ($("reminderRecurrence")) {
+    $("reminderRecurrence").value = "once";
+  }
+
+  if ($("reminderTime")) {
+    $("reminderTime").value = "08:00";
+  }
+
+  if ($("reminderDate")) {
+    $("reminderDate").value = "";
+  }
 
   if ($("reminderFormTitle")) {
     $("reminderFormTitle").textContent = "Add reminder";
   }
 
-  const button = $("reminderForm")?.querySelector('button[type="submit"]');
-  if (button) button.textContent = "Save reminder";
+  const button = $("reminderForm")
+    ?.querySelector('button[type="submit"]');
+
+  if (button) {
+    button.textContent = "Save reminder";
+  }
 
   populateReminderPatientSelector();
-  setReminderMedicineOptions([], "Select a patient first.");
+
+  setReminderMedicineOptions(
+    [],
+    "Select a patient first."
+  );
 
   reminderPanel(false);
+
   updateRecurrenceFields();
+
   hideMessage("pageMessage");
 }
 
-$("reminderRecurrence")?.addEventListener("change", updateRecurrenceFields);
+$("reminderRecurrence")?.addEventListener(
+  "change",
+  updateRecurrenceFields
+);
 
 $("addReminderButton")?.addEventListener("click", () => {
   if (!getConnectedPatients().length) {
@@ -1001,6 +1448,7 @@ $("addReminderButton")?.addEventListener("click", () => {
       "Connect to a patient and wait for approval before adding reminders.",
       "error"
     );
+
     return;
   }
 
@@ -1010,140 +1458,299 @@ $("addReminderButton")?.addEventListener("click", () => {
       "Add a medicine to your inventory before creating a reminder.",
       "error"
     );
+
     return;
   }
 
   resetReminderForm();
+
   reminderPanel(true);
+
   updateRecurrenceFields();
 
   $("reminderPatient")?.focus();
 });
 
-$("cancelReminderButton")?.addEventListener("click", resetReminderForm);
+$("cancelReminderButton")?.addEventListener(
+  "click",
+  resetReminderForm
+);
+
+/* =========================================================
+   CREATE / UPDATE PATIENT REMINDER
+
+   IMPORTANT FIX:
+
+   medicineSnapshot is saved inside the patient's reminder.
+
+   The patient dashboard can read this snapshot without
+   accessing the caregiver's medicine inventory.
+   ========================================================= */
 
 $("reminderForm")?.addEventListener("submit", async event => {
   event.preventDefault();
 
   if (!state.user || state.busy) return;
 
-  const patientUid = $("reminderPatient")?.value || "";
-  const patient = state.connectedPatients?.[patientUid];
+  const patientUid =
+    $("reminderPatient")?.value || "";
 
-  if (!patientUid || !patient || !patientIsActive(patient)) {
-    showMessage("pageMessage", "Please select an approved connected patient.", "error");
+  const patient =
+    state.connectedPatients?.[patientUid];
+
+  if (
+    !patientUid ||
+    !patient ||
+    !patientIsActive(patient)
+  ) {
+    showMessage(
+      "pageMessage",
+      "Please select an approved connected patient.",
+      "error"
+    );
+
     $("reminderPatient")?.focus();
+
     return;
   }
 
-  const medicineId = $("reminderMedicine")?.value || "";
-  const selectedMedicine = state.medicines?.[medicineId];
+  const medicineId =
+    $("reminderMedicine")?.value || "";
 
-  const recurrence = $("reminderRecurrence")?.value || "once";
-  const date = $("reminderDate")?.value || "";
-  const time = $("reminderTime")?.value || "";
-  const dose = $("reminderDose")?.value.trim() || "";
+  const selectedMedicine =
+    state.medicines?.[medicineId];
+
+  const recurrence =
+    $("reminderRecurrence")?.value || "once";
+
+  const date =
+    $("reminderDate")?.value || "";
+
+  const time =
+    $("reminderTime")?.value || "";
+
+  const dose =
+    $("reminderDose")?.value.trim() || "";
 
   if (!selectedMedicine) {
-    showMessage("pageMessage", "Choose a medicine from your inventory.", "error");
+    showMessage(
+      "pageMessage",
+      "Choose a medicine from your inventory.",
+      "error"
+    );
+
     $("reminderMedicine")?.focus();
+
     return;
   }
 
   if (!dose) {
-    showMessage("pageMessage", "Enter the prescribed dose for this reminder.", "error");
+    showMessage(
+      "pageMessage",
+      "Enter the prescribed dose for this reminder.",
+      "error"
+    );
+
     $("reminderDose")?.focus();
+
     return;
   }
 
   if (!/^\d{2}:\d{2}$/.test(time)) {
-    showMessage("pageMessage", "Choose a valid reminder time.", "error");
+    showMessage(
+      "pageMessage",
+      "Choose a valid reminder time.",
+      "error"
+    );
+
     return;
   }
 
-  if (recurrence === "once" && (!date || date < localDate())) {
-    showMessage("pageMessage", "Choose today or a future date.", "error");
+  if (
+    recurrence === "once" &&
+    (!date || date < localDate())
+  ) {
+    showMessage(
+      "pageMessage",
+      "Choose today or a future date.",
+      "error"
+    );
+
     return;
   }
 
   if (!["once", "weekly"].includes(recurrence)) {
-    showMessage("pageMessage", "Choose a valid recurrence.", "error");
+    showMessage(
+      "pageMessage",
+      "Choose a valid recurrence.",
+      "error"
+    );
+
     return;
   }
 
   const daysOfWeek = [
-    ...document.querySelectorAll('input[name="reminderDay"]:checked')
+    ...document.querySelectorAll(
+      'input[name="reminderDay"]:checked'
+    )
   ]
     .map(input => Number(input.value))
-    .filter(day => Number.isInteger(day) && day >= 0 && day <= 6);
+    .filter(day =>
+      Number.isInteger(day) &&
+      day >= 0 &&
+      day <= 6
+    );
 
-  if (recurrence === "weekly" && !daysOfWeek.length) {
-    showMessage("pageMessage", "Select at least one day for the weekly schedule.", "error");
+  if (
+    recurrence === "weekly" &&
+    !daysOfWeek.length
+  ) {
+    showMessage(
+      "pageMessage",
+      "Select at least one day for the weekly schedule.",
+      "error"
+    );
+
     return;
   }
 
   state.busy = true;
 
-  const button = $("reminderForm")?.querySelector('button[type="submit"]');
+  const button = $("reminderForm")
+    ?.querySelector('button[type="submit"]');
+
   setButtonBusy(button, true, "Saving…");
 
   try {
-    const id = $("reminderId")?.value || "";
+    const id =
+      $("reminderId")?.value || "";
+
     const timestamp = Date.now();
+
+    /*
+      MEDICINE SNAPSHOT
+
+      This copies the medicine information from the
+      caregiver's inventory into the patient's reminder.
+
+      This is what the patient dashboard will display.
+    */
+
+    const medicineSnapshot = {
+      medicineId,
+
+      name: selectedMedicine.name || "",
+
+      dosage: selectedMedicine.dosage || "",
+
+      instructions:
+        selectedMedicine.instructions || "",
+
+      notes:
+        selectedMedicine.notes || "",
+
+      detailsVerified:
+        Boolean(selectedMedicine.detailsVerified),
+
+      snapshotUpdatedAt: timestamp
+    };
 
     const record = {
       patientUid,
+
       caregiverUid: state.user.uid,
+
       medicineId,
-      medicineName: selectedMedicine.name || "",
-      medicineDosage: selectedMedicine.dosage || "",
+
+      medicineName:
+        selectedMedicine.name || "",
+
+      medicineDosage:
+        selectedMedicine.dosage || "",
+
+      medicineSnapshot,
+
       recurrence,
-      date: recurrence === "once" ? date : null,
-      daysOfWeek: recurrence === "weekly"
-        ? [...new Set(daysOfWeek)].sort((a, b) => a - b)
-        : [],
+
+      date:
+        recurrence === "once"
+          ? date
+          : null,
+
+      daysOfWeek:
+        recurrence === "weekly"
+          ? [...new Set(daysOfWeek)].sort(
+              (a, b) => a - b
+            )
+          : [],
+
       time,
+
       dose,
-      notes: $("reminderNotes")?.value.trim() || "",
+
+      notes:
+        $("reminderNotes")?.value.trim() || "",
+
       status: "active",
+
       updatedAt: timestamp
     };
 
     if (id) {
-      const existing = state.reminders?.[id];
+      const existing =
+        state.reminders?.[id];
 
       if (
         !existing ||
         existing.caregiverUid !== state.user.uid ||
         existing.patientUid !== patientUid
       ) {
-        throw new Error("This reminder does not belong to this caregiver and patient.");
+        throw new Error(
+          "This reminder does not belong to this caregiver and patient."
+        );
       }
 
       await update(
-        ref(db, patientPath(patientUid, `reminders/${id}`)),
+        ref(
+          db,
+          patientPath(patientUid, `reminders/${id}`)
+        ),
         record
       );
+
     } else {
       record.createdAt = timestamp;
 
-      await set(
-        push(ref(db, patientPath(patientUid, "reminders"))),
-        record
+      const newReminderRef = push(
+        ref(db, patientPath(patientUid, "reminders"))
       );
+
+      await set(newReminderRef, record);
     }
 
-    const scheduleDescription = recurrence === "weekly"
-      ? `Every week on ${dayNames(record.daysOfWeek)} at ${formatTime(time)}`
-      : `One time on ${formatDate(date)} at ${formatTime(time)}`;
+    const scheduleDescription =
+      recurrence === "weekly"
+        ? `Every week on ${dayNames(record.daysOfWeek)} at ${formatTime(time)}`
+        : `One time on ${formatDate(date)} at ${formatTime(time)}`;
 
     await logActivity(
-      id ? "Patient reminder updated" : "Patient reminder added",
+      id
+        ? "Patient reminder updated"
+        : "Patient reminder added",
+
       `${selectedMedicine.name} — ${scheduleDescription}. Patient: ${patientDisplayName(patientUid, patient)}`,
+
       patientUid
     );
 
-    selectPatient(patientUid);
+    /*
+      Keep the selected patient active after saving.
+    */
+
+    if (state.selectedPatientUid !== patientUid) {
+      selectPatient(patientUid);
+    }
+
     resetReminderForm();
 
     showMessage(
@@ -1153,26 +1760,51 @@ $("reminderForm")?.addEventListener("submit", async event => {
 
   } catch (error) {
     console.error("Saving reminder failed:", error);
-    showMessage("pageMessage", `Unable to save reminder: ${error.message}`, "error");
+
+    showMessage(
+      "pageMessage",
+      `Unable to save reminder: ${error.message}`,
+      "error"
+    );
+
   } finally {
     state.busy = false;
+
     setButtonBusy(button, false);
   }
 });
 
+/* =========================================================
+   EDIT / DELETE PATIENT REMINDERS
+   ========================================================= */
+
 $("reminderList")?.addEventListener("click", async event => {
-  const edit = event.target.closest("[data-edit-rem]");
-  const del = event.target.closest("[data-del-rem]");
-  const patientUid = state.selectedPatientUid;
+  const edit =
+    event.target.closest("[data-edit-rem]");
+
+  const del =
+    event.target.closest("[data-del-rem]");
+
+  const patientUid =
+    state.selectedPatientUid;
 
   if (!patientUid) {
-    showMessage("pageMessage", "Select a connected patient first.", "error");
+    showMessage(
+      "pageMessage",
+      "Select a connected patient first.",
+      "error"
+    );
+
     return;
   }
 
+  /* DELETE REMINDER */
+
   if (del) {
     const id = del.dataset.delRem;
-    const reminder = state.reminders[id];
+
+    const reminder =
+      state.reminders[id];
 
     if (!reminder) return;
 
@@ -1180,14 +1812,26 @@ $("reminderList")?.addEventListener("click", async event => {
       reminder.caregiverUid !== state.user.uid ||
       reminder.patientUid !== patientUid
     ) {
-      showMessage("pageMessage", "You cannot delete this reminder.", "error");
+      showMessage(
+        "pageMessage",
+        "You cannot delete this reminder.",
+        "error"
+      );
+
       return;
     }
 
-    if (!confirm("Delete this reminder?")) return;
+    if (!confirm("Delete this reminder?")) {
+      return;
+    }
 
     try {
-      await remove(ref(db, patientPath(patientUid, `reminders/${id}`)));
+      await remove(
+        ref(
+          db,
+          patientPath(patientUid, `reminders/${id}`)
+        )
+      );
 
       await logActivity(
         "Patient reminder deleted",
@@ -1195,20 +1839,32 @@ $("reminderList")?.addEventListener("click", async event => {
         patientUid
       );
 
-      showMessage("pageMessage", "Reminder deleted successfully.");
+      showMessage(
+        "pageMessage",
+        "Reminder deleted successfully."
+      );
 
     } catch (error) {
       console.error(error);
-      showMessage("pageMessage", `Unable to delete reminder: ${error.message}`, "error");
+
+      showMessage(
+        "pageMessage",
+        `Unable to delete reminder: ${error.message}`,
+        "error"
+      );
     }
 
     return;
   }
 
+  /* EDIT REMINDER */
+
   if (!edit) return;
 
   const id = edit.dataset.editRem;
-  const reminder = state.reminders[id];
+
+  const reminder =
+    state.reminders[id];
 
   if (!reminder) return;
 
@@ -1216,7 +1872,12 @@ $("reminderList")?.addEventListener("click", async event => {
     reminder.caregiverUid !== state.user.uid ||
     reminder.patientUid !== patientUid
   ) {
-    showMessage("pageMessage", "You cannot edit this reminder.", "error");
+    showMessage(
+      "pageMessage",
+      "You cannot edit this reminder.",
+      "error"
+    );
+
     return;
   }
 
@@ -1226,6 +1887,7 @@ $("reminderList")?.addEventListener("click", async event => {
       "The medicine for this reminder is no longer in your inventory.",
       "error"
     );
+
     return;
   }
 
@@ -1233,38 +1895,64 @@ $("reminderList")?.addEventListener("click", async event => {
 
   resetReminderForm();
 
+  populateReminderPatientSelector(patientUid);
+
   if ($("reminderPatient")) {
-    populateReminderPatientSelector(patientUid);
     $("reminderPatient").value = patientUid;
   }
 
+  selectPatient(patientUid);
+
   reminderPanel(true);
+
   updateReminderMedicineDropdown();
 
   $("reminderId").value = id;
-  $("reminderMedicine").value = reminder.medicineId || "";
-  $("reminderRecurrence").value = reminder.recurrence || "once";
-  $("reminderDate").value = reminder.date || "";
-  $("reminderTime").value = reminder.time || "08:00";
-  $("reminderDose").value = reminder.dose || "";
-  $("reminderNotes").value = reminder.notes || "";
 
-  const selectedDays = Array.isArray(reminder.daysOfWeek)
-    ? reminder.daysOfWeek.map(Number)
-    : [];
+  $("reminderMedicine").value =
+    reminder.medicineId || "";
 
-  document.querySelectorAll('input[name="reminderDay"]').forEach(input => {
-    input.checked = selectedDays.includes(Number(input.value));
+  $("reminderRecurrence").value =
+    reminder.recurrence || "once";
+
+  $("reminderDate").value =
+    reminder.date || "";
+
+  $("reminderTime").value =
+    reminder.time || "08:00";
+
+  $("reminderDose").value =
+    reminder.dose || "";
+
+  $("reminderNotes").value =
+    reminder.notes || "";
+
+  const selectedDays =
+    Array.isArray(reminder.daysOfWeek)
+      ? reminder.daysOfWeek.map(Number)
+      : [];
+
+  document.querySelectorAll(
+    'input[name="reminderDay"]'
+  ).forEach(input => {
+    input.checked = selectedDays.includes(
+      Number(input.value)
+    );
   });
 
   updateRecurrenceFields();
 
   if ($("reminderFormTitle")) {
-    $("reminderFormTitle").textContent = "Edit reminder";
+    $("reminderFormTitle").textContent =
+      "Edit reminder";
   }
 
-  const button = $("reminderForm")?.querySelector('button[type="submit"]');
-  if (button) button.textContent = "Update reminder";
+  const button = $("reminderForm")
+    ?.querySelector('button[type="submit"]');
+
+  if (button) {
+    button.textContent = "Update reminder";
+  }
 });
 
 /* =========================================================
@@ -1272,14 +1960,30 @@ $("reminderList")?.addEventListener("click", async event => {
    ========================================================= */
 
 document.querySelectorAll("[data-page]").forEach(button => {
-  button.addEventListener("click", () => showPage(button.dataset.page));
+  button.addEventListener("click", () => {
+    showPage(button.dataset.page);
+  });
 });
 
-$("openConnection")?.addEventListener("click", () => showPage("connectionPage"));
-$("mobileConnectionButton")?.addEventListener("click", () => showPage("connectionPage"));
-$("openNotifications")?.addEventListener("click", () => showPage("notificationsPage"));
-$("openProfile")?.addEventListener("click", () => showPage("profilePage"));
-$("profileButton")?.addEventListener("click", () => showPage("profilePage"));
+$("openConnection")?.addEventListener("click", () => {
+  showPage("connectionPage");
+});
+
+$("mobileConnectionButton")?.addEventListener("click", () => {
+  showPage("connectionPage");
+});
+
+$("openNotifications")?.addEventListener("click", () => {
+  showPage("notificationsPage");
+});
+
+$("openProfile")?.addEventListener("click", () => {
+  showPage("profilePage");
+});
+
+$("profileButton")?.addEventListener("click", () => {
+  showPage("profilePage");
+});
 
 /* =========================================================
    PATIENT CONNECTION — UID / QR CODE
@@ -1305,6 +2009,7 @@ async function stopPatientQrScanner() {
       }
 
       await patientQrScanner.clear();
+
     } catch (error) {
       console.warn("QR scanner stop:", error);
     }
@@ -1312,450 +2017,724 @@ async function stopPatientQrScanner() {
     patientQrScanner = null;
   }
 
-  if ($("patientQrReader")) $("patientQrReader").hidden = true;
-  if ($("stopPatientScanner")) $("stopPatientScanner").hidden = true;
+  if ($("patientQrReader")) {
+    $("patientQrReader").hidden = true;
+  }
+
+  if ($("stopPatientScanner")) {
+    $("stopPatientScanner").hidden = true;
+  }
 }
 
-$("startPatientScanner")?.addEventListener("click", async () => {
-  const reader = $("patientQrReader");
+$("startPatientScanner")?.addEventListener(
+  "click",
+  async () => {
+    const reader = $("patientQrReader");
 
-  if (typeof Html5Qrcode === "undefined") {
-    showMessage(
-      "connectionMessage",
-      "The QR scanner could not load. Enter the patient's UID manually.",
-      "error"
-    );
-    return;
-  }
+    if (typeof Html5Qrcode === "undefined") {
+      showMessage(
+        "connectionMessage",
+        "The QR scanner could not load. Enter the patient's UID manually.",
+        "error"
+      );
 
-  try {
-    await stopPatientQrScanner();
-
-    if (reader) reader.hidden = false;
-    if ($("stopPatientScanner")) $("stopPatientScanner").hidden = false;
-
-    patientQrScanner = new Html5Qrcode("patientQrReader");
-
-    await patientQrScanner.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 230, height: 230 } },
-      async decodedText => {
-        const uid = cleanPatientUid(decodedText);
-
-        if ($("connectionCode")) {
-          $("connectionCode").value = uid;
-        }
-
-        await stopPatientQrScanner();
-
-        showMessage(
-          "connectionMessage",
-          "Patient QR code scanned. Check the UID, then send the request."
-        );
-      },
-      () => {}
-    );
-
-  } catch (error) {
-    console.error("QR scanner failed:", error);
-    await stopPatientQrScanner();
-
-    showMessage(
-      "connectionMessage",
-      "Unable to start the camera. Allow camera access or enter the UID manually.",
-      "error"
-    );
-  }
-});
-
-$("stopPatientScanner")?.addEventListener("click", stopPatientQrScanner);
-
-$("connectionForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
-
-  if (!state.user || !auth.currentUser) {
-    showMessage("connectionMessage", "Please sign in again.", "error");
-    return;
-  }
-
-  const patientUid = cleanPatientUid($("connectionCode")?.value);
-  const caregiverUid = state.user.uid;
-
-  if (!patientUid || patientUid.length < 20 || patientUid.length > 128) {
-    showMessage("connectionMessage", "Enter or scan a valid Firebase patient UID.", "error");
-    return;
-  }
-
-  if (patientUid === caregiverUid) {
-    showMessage("connectionMessage", "You cannot connect your account to itself.", "error");
-    return;
-  }
-
-  const button = $("connectionForm")?.querySelector('button[type="submit"]');
-
-  hideMessage("connectionMessage");
-  setButtonBusy(button, true, "Sending request…");
-
-  try {
-    await auth.currentUser.getIdToken(true);
-
-    const requestRef = ref(
-      db,
-      `users/${patientUid}/connectionRequests/${caregiverUid}`
-    );
-
-    const existing = await get(requestRef);
-
-    if (existing.exists()) {
-      const status = String(existing.val()?.status || "").toLowerCase();
-
-      if (status === "pending") {
-        showMessage(
-          "connectionMessage",
-          "A request is already pending. Please wait for the patient's approval."
-        );
-        return;
-      }
-
-      if (["approved", "active", "connected"].includes(status)) {
-        showMessage(
-          "connectionMessage",
-          "This connection request has already been approved."
-        );
-        return;
-      }
+      return;
     }
 
-    const caregiverName =
-      state.user.displayName ||
-      state.profile.displayName ||
-      state.user.email ||
-      "Authorized Person";
+    try {
+      await stopPatientQrScanner();
 
-    await set(requestRef, {
-      caregiverUid,
-      caregiverName,
-      caregiverEmail: state.user.email || "",
-      status: "pending",
-      createdAt: Date.now()
-    });
+      if (reader) {
+        reader.hidden = false;
+      }
 
-    await logActivity(
-      "Patient connection request sent",
-      `A connection request was sent to patient UID ${patientUid}.`
-    );
+      if ($("stopPatientScanner")) {
+        $("stopPatientScanner").hidden = false;
+      }
 
-    $("connectionForm").reset();
+      patientQrScanner =
+        new Html5Qrcode("patientQrReader");
 
-    showMessage(
-      "connectionMessage",
-      "Request sent. The patient must approve it before you can create reminders for them."
-    );
+      await patientQrScanner.start(
+        { facingMode: "environment" },
 
-  } catch (error) {
-    console.error("Connection request failed:", error);
+        {
+          fps: 10,
+          qrbox: {
+            width: 230,
+            height: 230
+          }
+        },
 
-    let message = `Unable to send the connection request: ${error.message}`;
+        async decodedText => {
+          const uid = cleanPatientUid(decodedText);
+
+          if ($("connectionCode")) {
+            $("connectionCode").value = uid;
+          }
+
+          await stopPatientQrScanner();
+
+          showMessage(
+            "connectionMessage",
+            "Patient QR code scanned. Check the UID, then send the request."
+          );
+        },
+
+        () => {}
+      );
+
+    } catch (error) {
+      console.error("QR scanner failed:", error);
+
+      await stopPatientQrScanner();
+
+      showMessage(
+        "connectionMessage",
+        "Unable to start the camera. Allow camera access or enter the UID manually.",
+        "error"
+      );
+    }
+  }
+);
+
+$("stopPatientScanner")?.addEventListener(
+  "click",
+  stopPatientQrScanner
+);
+
+/* =========================================================
+   SEND PATIENT CONNECTION REQUEST
+
+   The patient must approve the request before the
+   authorized person can create patient reminders.
+   ========================================================= */
+
+$("connectionForm")?.addEventListener(
+  "submit",
+  async event => {
+    event.preventDefault();
+
+    if (!state.user || !auth.currentUser) {
+      showMessage(
+        "connectionMessage",
+        "Please sign in again.",
+        "error"
+      );
+
+      return;
+    }
+
+    const patientUid =
+      cleanPatientUid($("connectionCode")?.value);
+
+    const caregiverUid =
+      state.user.uid;
 
     if (
-      error.code === "PERMISSION_DENIED" ||
-      error.code === "database/permission-denied"
+      !patientUid ||
+      patientUid.length < 20 ||
+      patientUid.length > 128
     ) {
-      message =
-        "Firebase denied this request. Check your database rules and patient connection permissions.";
-    } else if (!navigator.onLine) {
-      message = "You appear to be offline. Check your internet connection.";
-    } else if (error.code === "auth/user-token-expired") {
-      message = "Your session has expired. Please sign in again.";
+      showMessage(
+        "connectionMessage",
+        "Enter or scan a valid Firebase patient UID.",
+        "error"
+      );
+
+      return;
     }
 
-    showMessage("connectionMessage", message, "error");
+    if (patientUid === caregiverUid) {
+      showMessage(
+        "connectionMessage",
+        "You cannot connect your account to itself.",
+        "error"
+      );
 
-  } finally {
-    setButtonBusy(button, false);
+      return;
+    }
+
+    const button = $("connectionForm")
+      ?.querySelector('button[type="submit"]');
+
+    hideMessage("connectionMessage");
+
+    setButtonBusy(
+      button,
+      true,
+      "Sending request…"
+    );
+
+    try {
+      await auth.currentUser.getIdToken(true);
+
+      const requestRef = ref(
+        db,
+        `users/${patientUid}/connectionRequests/${caregiverUid}`
+      );
+
+      const existing = await get(requestRef);
+
+      if (existing.exists()) {
+        const status = String(
+          existing.val()?.status || ""
+        ).toLowerCase();
+
+        if (status === "pending") {
+          showMessage(
+            "connectionMessage",
+            "A request is already pending. Please wait for the patient's approval."
+          );
+
+          return;
+        }
+
+        if ([
+          "approved",
+          "active",
+          "connected"
+        ].includes(status)) {
+          showMessage(
+            "connectionMessage",
+            "This connection request has already been approved."
+          );
+
+          return;
+        }
+      }
+
+      const caregiverName =
+        state.user.displayName ||
+        state.profile.displayName ||
+        state.user.email ||
+        "Authorized Person";
+
+      await set(requestRef, {
+        caregiverUid,
+
+        caregiverName,
+
+        caregiverEmail:
+          state.user.email || "",
+
+        status: "pending",
+
+        createdAt: Date.now()
+      });
+
+      await logActivity(
+        "Patient connection request sent",
+        `A connection request was sent to patient UID ${patientUid}.`
+      );
+
+      $("connectionForm").reset();
+
+      showMessage(
+        "connectionMessage",
+        "Request sent. The patient must approve it before you can create reminders for them."
+      );
+
+    } catch (error) {
+      console.error(
+        "Connection request failed:",
+        error
+      );
+
+      let message =
+        `Unable to send the connection request: ${error.message}`;
+
+      if (
+        error.code === "PERMISSION_DENIED" ||
+        error.code === "database/permission-denied"
+      ) {
+        message =
+          "Firebase denied this request. Check your database rules and patient connection permissions.";
+
+      } else if (!navigator.onLine) {
+        message =
+          "You appear to be offline. Check your internet connection.";
+
+      } else if (
+        error.code === "auth/user-token-expired"
+      ) {
+        message =
+          "Your session has expired. Please sign in again.";
+      }
+
+      showMessage(
+        "connectionMessage",
+        message,
+        "error"
+      );
+
+    } finally {
+      setButtonBusy(button, false);
+    }
   }
-});
+);
 
 /* =========================================================
    PROFILE
    ========================================================= */
 
 function loadProfileForm(profile = {}) {
-  const displayName = state.user?.displayName || "";
-  const nameParts = displayName.split(" ");
+  const displayName =
+    state.user?.displayName || "";
+
+  const nameParts =
+    displayName.split(" ");
 
   if ($("profileFirstName")) {
-    $("profileFirstName").value = profile.firstName || nameParts[0] || "";
+    $("profileFirstName").value =
+      profile.firstName ||
+      nameParts[0] ||
+      "";
   }
 
   if ($("profileLastName")) {
     $("profileLastName").value =
-      profile.lastName || nameParts.slice(1).join(" ");
+      profile.lastName ||
+      nameParts.slice(1).join(" ");
   }
 
   if ($("profileEmail")) {
-    $("profileEmail").textContent = state.user?.email || "";
+    $("profileEmail").textContent =
+      state.user?.email || "";
   }
 }
 
-$("profileForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
+$("profileForm")?.addEventListener(
+  "submit",
+  async event => {
+    event.preventDefault();
 
-  if (!state.user || state.busy) return;
+    if (!state.user || state.busy) return;
 
-  const firstName = $("profileFirstName")?.value.trim() || "";
-  const lastName = $("profileLastName")?.value.trim() || "";
+    const firstName =
+      $("profileFirstName")?.value.trim() || "";
 
-  if (!firstName) {
-    showMessage("profileMessage", "Enter your first name.", "error");
-    return;
-  }
+    const lastName =
+      $("profileLastName")?.value.trim() || "";
 
-  const displayName = [firstName, lastName].filter(Boolean).join(" ");
-  const button = $("profileForm")?.querySelector('button[type="submit"]');
+    if (!firstName) {
+      showMessage(
+        "profileMessage",
+        "Enter your first name.",
+        "error"
+      );
 
-  state.busy = true;
-  setButtonBusy(button, true, "Saving…");
+      return;
+    }
 
-  try {
-    await updateProfile(state.user, { displayName });
-
-    await update(ref(db, accountPath("profile")), {
+    const displayName = [
       firstName,
-      lastName,
-      displayName,
-      email: state.user.email || "",
-      updatedAt: Date.now()
-    });
+      lastName
+    ].filter(Boolean).join(" ");
 
-    state.profile = {
-      ...state.profile,
-      firstName,
-      lastName,
-      displayName
-    };
+    const button = $("profileForm")
+      ?.querySelector('button[type="submit"]');
 
-    if ($("displayName")) $("displayName").textContent = displayName;
-    if ($("avatar")) $("avatar").textContent = firstName[0].toUpperCase();
+    state.busy = true;
 
-    await logActivity(
-      "Profile updated",
-      "Account profile information updated."
+    setButtonBusy(
+      button,
+      true,
+      "Saving…"
     );
 
-    showMessage("profileMessage", "Profile updated successfully.");
+    try {
+      await updateProfile(
+        state.user,
+        { displayName }
+      );
 
-  } catch (error) {
-    console.error("Profile update failed:", error);
-    showMessage("profileMessage", `Unable to save your profile: ${error.message}`, "error");
+      await update(
+        ref(db, accountPath("profile")),
+        {
+          firstName,
+          lastName,
+          displayName,
+          email: state.user.email || "",
+          updatedAt: Date.now()
+        }
+      );
 
-  } finally {
-    state.busy = false;
-    setButtonBusy(button, false);
+      state.profile = {
+        ...state.profile,
+        firstName,
+        lastName,
+        displayName
+      };
+
+      if ($("displayName")) {
+        $("displayName").textContent = displayName;
+      }
+
+      if ($("avatar")) {
+        $("avatar").textContent =
+          firstName[0].toUpperCase();
+      }
+
+      await logActivity(
+        "Profile updated",
+        "Account profile information updated."
+      );
+
+      showMessage(
+        "profileMessage",
+        "Profile updated successfully."
+      );
+
+    } catch (error) {
+      console.error(
+        "Profile update failed:",
+        error
+      );
+
+      showMessage(
+        "profileMessage",
+        `Unable to save your profile: ${error.message}`,
+        "error"
+      );
+
+    } finally {
+      state.busy = false;
+
+      setButtonBusy(button, false);
+    }
   }
-});
+);
 
 /* =========================================================
    PASSWORD CHANGE
    ========================================================= */
 
-$("passwordForm")?.addEventListener("submit", async event => {
-  event.preventDefault();
+$("passwordForm")?.addEventListener(
+  "submit",
+  async event => {
+    event.preventDefault();
 
-  if (!state.user || state.busy) return;
+    if (!state.user || state.busy) return;
 
-  const current = $("currentPassword")?.value || "";
-  const next = $("newPassword")?.value || "";
-  const confirmNext = $("confirmPassword")?.value || "";
+    const current =
+      $("currentPassword")?.value || "";
 
-  if (next.length < 8) {
-    showMessage("passwordMessage", "New password must contain at least 8 characters.", "error");
-    return;
-  }
+    const next =
+      $("newPassword")?.value || "";
 
-  if (next !== confirmNext) {
-    showMessage("passwordMessage", "New passwords do not match.", "error");
-    return;
-  }
+    const confirmNext =
+      $("confirmPassword")?.value || "";
 
-  if (next === current) {
-    showMessage("passwordMessage", "Choose a different password.", "error");
-    return;
-  }
+    if (next.length < 8) {
+      showMessage(
+        "passwordMessage",
+        "New password must contain at least 8 characters.",
+        "error"
+      );
 
-  if (!state.user.email) {
-    showMessage(
-      "passwordMessage",
-      "This account has no email address for password verification.",
-      "error"
+      return;
+    }
+
+    if (next !== confirmNext) {
+      showMessage(
+        "passwordMessage",
+        "New passwords do not match.",
+        "error"
+      );
+
+      return;
+    }
+
+    if (next === current) {
+      showMessage(
+        "passwordMessage",
+        "Choose a different password.",
+        "error"
+      );
+
+      return;
+    }
+
+    if (!state.user.email) {
+      showMessage(
+        "passwordMessage",
+        "This account has no email address for password verification.",
+        "error"
+      );
+
+      return;
+    }
+
+    const button = $("passwordForm")
+      ?.querySelector('button[type="submit"]');
+
+    state.busy = true;
+
+    setButtonBusy(
+      button,
+      true,
+      "Updating…"
     );
-    return;
+
+    try {
+      const credential =
+        EmailAuthProvider.credential(
+          state.user.email,
+          current
+        );
+
+      await reauthenticateWithCredential(
+        state.user,
+        credential
+      );
+
+      await updatePassword(
+        state.user,
+        next
+      );
+
+      $("passwordForm").reset();
+
+      await logActivity(
+        "Password changed",
+        "Account password updated."
+      );
+
+      showMessage(
+        "passwordMessage",
+        "Password updated successfully."
+      );
+
+    } catch (error) {
+      console.error(
+        "Password change failed:",
+        error
+      );
+
+      const errorText = [
+        "auth/invalid-credential",
+        "auth/wrong-password",
+        "auth/invalid-login-credentials"
+      ].includes(error.code)
+        ? "Your current password is incorrect."
+        : error.code === "auth/requires-recent-login"
+          ? "Please sign in again before changing your password."
+          : error.code === "auth/weak-password"
+            ? "Choose a stronger password."
+            : error.message;
+
+      showMessage(
+        "passwordMessage",
+        errorText,
+        "error"
+      );
+
+    } finally {
+      state.busy = false;
+
+      setButtonBusy(button, false);
+    }
   }
-
-  const button = $("passwordForm")?.querySelector('button[type="submit"]');
-
-  state.busy = true;
-  setButtonBusy(button, true, "Updating…");
-
-  try {
-    const credential = EmailAuthProvider.credential(state.user.email, current);
-
-    await reauthenticateWithCredential(state.user, credential);
-    await updatePassword(state.user, next);
-
-    $("passwordForm").reset();
-
-    await logActivity("Password changed", "Account password updated.");
-
-    showMessage("passwordMessage", "Password updated successfully.");
-
-  } catch (error) {
-    console.error("Password change failed:", error);
-
-    const errorText = [
-      "auth/invalid-credential",
-      "auth/wrong-password",
-      "auth/invalid-login-credentials"
-    ].includes(error.code)
-      ? "Your current password is incorrect."
-      : error.code === "auth/requires-recent-login"
-        ? "Please sign in again before changing your password."
-        : error.code === "auth/weak-password"
-          ? "Choose a stronger password."
-          : error.message;
-
-    showMessage("passwordMessage", errorText, "error");
-
-  } finally {
-    state.busy = false;
-    setButtonBusy(button, false);
-  }
-});
+);
 
 /* =========================================================
    LOGOUT
    ========================================================= */
 
-$("logoutButton")?.addEventListener("click", async () => {
-  if (!confirm("Are you sure you want to log out?")) return;
+$("logoutButton")?.addEventListener(
+  "click",
+  async () => {
+    if (!confirm("Are you sure you want to log out?")) {
+      return;
+    }
 
-  try {
-    stopSubscriptions();
-    await stopPatientQrScanner();
-    await signOut(auth);
+    try {
+      stopSubscriptions();
 
-    window.location.replace("login.html");
+      await stopPatientQrScanner();
 
-  } catch (error) {
-    console.error("Logout failed:", error);
-    showMessage("pageMessage", `Unable to log out: ${error.message}`, "error");
+      await signOut(auth);
+
+      window.location.replace("login.html");
+
+    } catch (error) {
+      console.error(
+        "Logout failed:",
+        error
+      );
+
+      showMessage(
+        "pageMessage",
+        `Unable to log out: ${error.message}`,
+        "error"
+      );
+    }
   }
-});
+);
 
 /* =========================================================
    AUTHENTICATION AND FIREBASE LISTENERS
    ========================================================= */
 
-onAuthStateChanged(auth, async authenticatedUser => {
-  stopSubscriptions();
+onAuthStateChanged(
+  auth,
+  async authenticatedUser => {
+    stopSubscriptions();
 
-  if (!authenticatedUser) {
-    state.user = null;
-    state.initializedUid = null;
+    if (!authenticatedUser) {
+      state.user = null;
+      state.initializedUid = null;
+      state.selectedPatientUid = null;
+
+      window.location.replace("login.html");
+
+      return;
+    }
+
+    if (
+      state.initializedUid === authenticatedUser.uid
+    ) {
+      return;
+    }
+
+    state.user = authenticatedUser;
+
+    state.initializedUid =
+      authenticatedUser.uid;
+
+    state.profile = {};
+    state.medicines = {};
+    state.refills = {};
+    state.reminders = {};
+    state.activities = {};
+    state.connectedPatients = {};
     state.selectedPatientUid = null;
 
-    window.location.replace("login.html");
-    return;
-  }
+    try {
+      const profileSnapshot = await get(
+        ref(db, accountPath("profile"))
+      );
 
-  if (state.initializedUid === authenticatedUser.uid) return;
+      const profile =
+        profileSnapshot.val() || {};
 
-  state.user = authenticatedUser;
-  state.initializedUid = authenticatedUser.uid;
+      state.profile = profile;
 
-  state.profile = {};
-  state.medicines = {};
-  state.refills = {};
-  state.reminders = {};
-  state.activities = {};
-  state.connectedPatients = {};
-  state.selectedPatientUid = null;
+      const role = String(
+        profile.role || ""
+      ).toLowerCase().trim();
 
-  try {
-    const profileSnapshot = await get(
-      ref(db, accountPath("profile"))
-    );
+      if (![
+        "authorized",
+        "caregiver",
+        "authorized_person"
+      ].includes(role)) {
+        state.initializedUid = null;
 
-    const profile = profileSnapshot.val() || {};
-    state.profile = profile;
+        showMessage(
+          "pageMessage",
+          "This dashboard is only for authorized person accounts.",
+          "error"
+        );
 
-    const role = String(profile.role || "").toLowerCase().trim();
+        window.location.replace("login.html");
 
-    if (!["authorized", "caregiver", "authorized_person"].includes(role)) {
+        return;
+      }
+
+      const name =
+        authenticatedUser.displayName ||
+        profile.displayName ||
+        [
+          profile.firstName,
+          profile.lastName
+        ].filter(Boolean).join(" ") ||
+        "My account";
+
+      if ($("displayName")) {
+        $("displayName").textContent = name;
+      }
+
+      if ($("avatar")) {
+        $("avatar").textContent =
+          name[0].toUpperCase();
+      }
+
+      if ($("welcomeTitle")) {
+        $("welcomeTitle").textContent =
+          `Welcome, ${name.split(" ")[0]}!`;
+      }
+
+      if ($("profileEmail")) {
+        $("profileEmail").textContent =
+          authenticatedUser.email || "";
+      }
+
+      loadProfileForm(profile);
+
+      /* LOAD MEDICINES */
+
+      subscribeAccount(
+        "medicines",
+        value => {
+          state.medicines = value;
+
+          renderMedicines();
+        }
+      );
+
+      /* LOAD REFILLS */
+
+      subscribeAccount(
+        "refills",
+        value => {
+          state.refills = value;
+        }
+      );
+
+      /* LOAD ACTIVITY */
+
+      subscribeAccount(
+        "activity",
+        value => {
+          state.activities = value;
+
+          renderHistory();
+        }
+      );
+
+      /* LOAD CONNECTED PATIENTS */
+
+      subscribeAccount(
+        "connectedPatients",
+        value => {
+          state.connectedPatients = value || {};
+
+          refreshPatientSelectors();
+        }
+      );
+
+      updateRecurrenceFields();
+
+      showPage("medicinesPage");
+
+    } catch (error) {
+      console.error(
+        "Dashboard initialization failed:",
+        error
+      );
+
       state.initializedUid = null;
 
       showMessage(
         "pageMessage",
-        "This dashboard is only for authorized person accounts.",
+        `Unable to initialize the dashboard: ${error.message}`,
         "error"
       );
-
-      window.location.replace("login.html");
-      return;
     }
-
-    const name =
-      authenticatedUser.displayName ||
-      profile.displayName ||
-      [profile.firstName, profile.lastName].filter(Boolean).join(" ") ||
-      "My account";
-
-    if ($("displayName")) $("displayName").textContent = name;
-    if ($("avatar")) $("avatar").textContent = name[0].toUpperCase();
-
-    if ($("welcomeTitle")) {
-      $("welcomeTitle").textContent = `Welcome, ${name.split(" ")[0]}!`;
-    }
-
-    if ($("profileEmail")) {
-      $("profileEmail").textContent = authenticatedUser.email || "";
-    }
-
-    loadProfileForm(profile);
-
-    subscribeAccount("medicines", value => {
-      state.medicines = value;
-      renderMedicines();
-    });
-
-    subscribeAccount("refills", value => {
-      state.refills = value;
-    });
-
-    subscribeAccount("activity", value => {
-      state.activities = value;
-      renderHistory();
-    });
-
-    subscribeAccount("connectedPatients", value => {
-      state.connectedPatients = value || {};
-      refreshPatientSelectors();
-    });
-
-    updateRecurrenceFields();
-    showPage("medicinesPage");
-
-  } catch (error) {
-    console.error("Dashboard initialization failed:", error);
-    state.initializedUid = null;
-
-    showMessage(
-      "pageMessage",
-      `Unable to initialize the dashboard: ${error.message}`,
-      "error"
-    );
   }
-});
+);
 
 /* =========================================================
    CLEANUP
@@ -1763,5 +2742,6 @@ onAuthStateChanged(auth, async authenticatedUser => {
 
 window.addEventListener("beforeunload", () => {
   stopSubscriptions();
+
   stopPatientQrScanner();
 });

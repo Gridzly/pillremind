@@ -1,3 +1,4 @@
+
 import { auth, db } from "./firebaseConfig.js";
 
 import {
@@ -120,7 +121,7 @@ function formatDate(value) {
 function formatTime(value) {
   if (!value) return "Time not set";
 
-  const match = String(value).match(/^(\d{1,2}):(\d{2})$/);
+  const match = String(value).match(/^(\d{1,2}):(\d{2})/);
 
   if (!match) return String(value);
 
@@ -138,6 +139,7 @@ function medicineName(medicine) {
   return medicine?.name ||
     medicine?.medicineName ||
     medicine?.medicationName ||
+    medicine?.productName ||
     "Unnamed medicine";
 }
 
@@ -145,6 +147,7 @@ function medicineDosage(medicine) {
   return medicine?.dosage ||
     medicine?.dose ||
     medicine?.strength ||
+    medicine?.medicineDosage ||
     "Dosage not specified";
 }
 
@@ -158,6 +161,8 @@ function reminderMedicineId(reminder) {
   return reminder?.medicineId ||
     reminder?.medicationId ||
     reminder?.medicineKey ||
+    reminder?.medicine?.id ||
+    reminder?.medicineSnapshot?.id ||
     "";
 }
 
@@ -261,7 +266,9 @@ function getLog(reminderId, date) {
 }
 
 function getStatus(reminderId, date) {
-  return String(getLog(reminderId, date)?.status || "pending").toLowerCase();
+  return String(
+    getLog(reminderId, date)?.status || "pending"
+  ).toLowerCase();
 }
 
 function getReminderEntries(date) {
@@ -273,7 +280,73 @@ function getReminderEntries(date) {
       date,
       time: reminderTime(reminder)
     }))
-    .sort((a, b) => String(a.time).localeCompare(String(b.time)));
+    .sort((a, b) =>
+      String(a.time).localeCompare(String(b.time))
+    );
+}
+
+/*
+  IMPORTANT:
+  A reminder should contain a medicine snapshot.
+
+  Supported formats:
+  reminder.medicineSnapshot
+  reminder.medicineDetails
+  reminder.medicine
+  reminder.medicineName + reminder.medicineDosage
+*/
+
+function getReminderMedicine(reminder) {
+  if (!reminder) return null;
+
+  const snapshot =
+    reminder.medicineSnapshot ||
+    reminder.medicineDetails ||
+    reminder.medicine;
+
+  if (snapshot && typeof snapshot === "object") {
+    return {
+      ...snapshot,
+      name:
+        snapshot.name ||
+        snapshot.medicineName ||
+        reminder.medicineName ||
+        reminder.name ||
+        "Unnamed medicine",
+
+      dosage:
+        snapshot.dosage ||
+        snapshot.dose ||
+        snapshot.strength ||
+        reminder.medicineDosage ||
+        reminder.dosage ||
+        reminder.dose ||
+        ""
+    };
+  }
+
+  if (
+    reminder.medicineName ||
+    reminder.medicineDosage ||
+    reminder.name ||
+    reminder.dosage
+  ) {
+    return {
+      name: reminder.medicineName || reminder.name,
+      dosage:
+        reminder.medicineDosage ||
+        reminder.dosage ||
+        reminder.dose ||
+        "",
+      instructions:
+        reminder.medicineInstructions ||
+        reminder.instructions ||
+        reminder.notes ||
+        ""
+    };
+  }
+
+  return null;
 }
 
 function findMedicine(reminder) {
@@ -283,18 +356,9 @@ function findMedicine(reminder) {
     return state.medicines[id];
   }
 
-  if (reminder?.medicine && typeof reminder.medicine === "object") {
-    return reminder.medicine;
-  }
+  const snapshot = getReminderMedicine(reminder);
 
-  const name = reminder?.medicineName || reminder?.name;
-
-  if (name) {
-    return {
-      name,
-      dosage: reminder?.dosage || reminder?.dose || ""
-    };
-  }
+  if (snapshot) return snapshot;
 
   return null;
 }
@@ -311,6 +375,71 @@ function empty(containerId, title, message) {
       <p>${escapeHTML(message)}</p>
     </div>
   `;
+}
+
+/* =====================================================
+   BUILD PATIENT MEDICINE LIST FROM REMINDERS
+
+   This is the main change.
+
+   One medicine may have multiple reminders.
+   The medicine will only appear once in My medicines.
+===================================================== */
+
+function getPatientMedicineEntries() {
+  const medicines = new Map();
+
+  // Existing patient-owned medicine records.
+  Object.entries(state.medicines).forEach(([id, medicine]) => {
+    if (!isActiveMedicine(medicine)) return;
+
+    medicines.set(`id:${id}`, {
+      id,
+      medicine,
+      source: "medicine"
+    });
+  });
+
+  // Medicines assigned through patient-specific reminders.
+  Object.entries(state.reminders).forEach(([reminderId, reminder]) => {
+    if (
+      reminder?.active === false ||
+      reminder?.isActive === false
+    ) {
+      return;
+    }
+
+    const medicine = findMedicine(reminder);
+
+    if (!medicine || !isActiveMedicine(medicine)) return;
+
+    const medicineId = reminderMedicineId(reminder);
+
+    const identity = medicineId
+      ? `id:${medicineId}`
+      : `name:${medicineName(medicine).trim().toLowerCase()}`;
+
+    const existing = medicines.get(identity);
+
+    if (existing) {
+      existing.reminders.push({
+        id: reminderId,
+        reminder
+      });
+    } else {
+      medicines.set(identity, {
+        id: medicineId || reminderId,
+        medicine,
+        source: "reminder",
+        reminders: [{
+          id: reminderId,
+          reminder
+        }]
+      });
+    }
+  });
+
+  return Array.from(medicines.values());
 }
 
 /* =====================================================
@@ -354,6 +483,10 @@ function updateUserDisplay(profile, user) {
     $("sideUserName").textContent = name;
   }
 
+  if ($("headerAccountName")) {
+    $("headerAccountName").textContent = name;
+  }
+
   if ($("userAvatar")) {
     $("userAvatar").textContent = name.charAt(0).toUpperCase();
   }
@@ -394,10 +527,7 @@ function ensureConnectionRequestPanel() {
 
   const qrContainer = $("patientQrCode");
 
-  if (!qrContainer) {
-    console.warn("Patient QR code container not found.");
-    return null;
-  }
+  if (!qrContainer) return null;
 
   const anchor =
     qrContainer.closest(".panel, .card, section") || qrContainer;
@@ -468,8 +598,7 @@ function ensureConnectionRequestPanel() {
 }
 
 function renderConnectionRequests() {
-  const panel = ensureConnectionRequestPanel();
-  if (!panel) return;
+  ensureConnectionRequestPanel();
 
   const list = $("connectionRequestsList");
   const count = $("connectionRequestCount");
@@ -505,8 +634,12 @@ function renderConnectionRequests() {
   }
 
   list.innerHTML = entries.map(([caregiverUid, request]) => {
-    const caregiverName = request.caregiverName || "Authorized caregiver";
-    const caregiverEmail = request.caregiverEmail || "Email not provided";
+    const caregiverName =
+      request.caregiverName || "Authorized caregiver";
+
+    const caregiverEmail =
+      request.caregiverEmail || "Email not provided";
+
     const createdAt = request.createdAt
       ? new Date(request.createdAt).toLocaleString()
       : "Date not available";
@@ -584,6 +717,7 @@ function renderConnectionRequests() {
 
 function renderActiveCaregiver() {
   const container = $("activeCaregiverCard");
+
   if (!container) return;
 
   if (!state.caregiverUid) {
@@ -607,8 +741,11 @@ function renderActiveCaregiver() {
   }
 
   const connection = state.connectionInfo || {};
-  const caregiverName = connection.caregiverName || "Authorized Caregiver";
-  const caregiverEmail = connection.caregiverEmail || "Email not available";
+  const caregiverName =
+    connection.caregiverName || "Authorized Caregiver";
+
+  const caregiverEmail =
+    connection.caregiverEmail || "Email not available";
 
   container.innerHTML = `
     <div style="
@@ -682,10 +819,6 @@ function renderActiveCaregiver() {
 
 /* =====================================================
    APPROVE CONNECTION
-
-   Writes TWO records:
-   1. Patient's careConnection
-   2. Caregiver's connectedPatients index
 ===================================================== */
 
 async function approveConnectionRequest(caregiverUid) {
@@ -702,7 +835,10 @@ async function approveConnectionRequest(caregiverUid) {
 
   const request = state.connectionRequests[caregiverUid];
 
-  if (!request || request.status !== "pending") {
+  if (
+    !request ||
+    String(request.status || "").toLowerCase() !== "pending"
+  ) {
     notice("error", "This connection request is no longer pending.");
     return;
   }
@@ -711,15 +847,17 @@ async function approveConnectionRequest(caregiverUid) {
   renderConnectionRequests();
 
   const patientUid = state.user.uid;
-  const connectionRef = ref(db, `users/${patientUid}/careConnection`);
-  const patientProfileRef = ref(db, `users/${patientUid}/profile`);
+  const connectionRef = ref(
+    db,
+    `users/${patientUid}/careConnection`
+  );
 
   let connectionWasWritten = false;
 
   try {
     const [connectionSnapshot, profileSnapshot] = await Promise.all([
       get(connectionRef),
-      get(patientProfileRef)
+      get(ref(db, `users/${patientUid}/profile`))
     ]);
 
     const currentConnection = connectionSnapshot.val() || {};
@@ -745,11 +883,9 @@ async function approveConnectionRequest(caregiverUid) {
       connectedAt
     };
 
-    // First: save the patient's active caregiver.
     await set(connectionRef, connectionData);
     connectionWasWritten = true;
 
-    // Second: register this patient under the caregiver's account.
     await set(
       ref(db, `users/${caregiverUid}/connectedPatients/${patientUid}`),
       {
@@ -764,7 +900,6 @@ async function approveConnectionRequest(caregiverUid) {
       }
     );
 
-    // Remove the original pending request.
     await remove(
       ref(db, `users/${patientUid}/connectionRequests/${caregiverUid}`)
     );
@@ -781,7 +916,6 @@ async function approveConnectionRequest(caregiverUid) {
   } catch (error) {
     console.error("Approving caregiver request failed:", error);
 
-    // Roll back the connection if the caregiver index could not be saved.
     if (connectionWasWritten) {
       try {
         await remove(connectionRef);
@@ -843,9 +977,6 @@ async function rejectConnectionRequest(caregiverUid) {
 
 /* =====================================================
    DISCONNECT CAREGIVER
-
-   Removes the caregiver index first, then the patient's
-   active connection.
 ===================================================== */
 
 async function disconnectCaregiver() {
@@ -874,7 +1005,6 @@ async function disconnectCaregiver() {
   }
 
   try {
-    // Remove this patient from the caregiver's patient list.
     await remove(
       ref(
         db,
@@ -882,7 +1012,6 @@ async function disconnectCaregiver() {
       )
     );
 
-    // Remove the patient's active caregiver connection.
     await remove(
       ref(db, `users/${state.user.uid}/careConnection`)
     );
@@ -912,7 +1041,7 @@ async function disconnectCaregiver() {
 
     notice(
       "error",
-      "Unable to disconnect. Check your Firebase Database Rules. If the patient-list entry was removed but the connection remains, try disconnecting again."
+      "Unable to disconnect. Check your Firebase Database Rules."
     );
 
     renderActiveCaregiver();
@@ -1034,10 +1163,12 @@ function getReminderDetails(entry) {
         entry.reminder?.name ||
         "Scheduled medicine",
 
-    dosage: entry.reminder?.dose ||
-      entry.reminder?.dosage ||
-      (medicine ? medicineDosage(medicine) : "") ||
-      "Dosage not specified"
+    dosage: medicine
+      ? medicineDosage(medicine)
+      : entry.reminder?.medicineDosage ||
+        entry.reminder?.dose ||
+        entry.reminder?.dosage ||
+        "Dosage not specified"
   };
 }
 
@@ -1262,14 +1393,24 @@ function renderReminderCard(entry) {
 
   const name = medicine
     ? medicineName(medicine)
-    : reminder?.medicineName || reminder?.name || "Scheduled medicine";
+    : reminder?.medicineName ||
+      reminder?.name ||
+      "Scheduled medicine";
 
-  const dosage = reminder?.dose ||
-    (medicine ? medicineDosage(medicine) : "") ||
-    reminder?.dosage ||
-    "Dosage not specified";
+  const dosage = medicine
+    ? medicineDosage(medicine)
+    : reminder?.medicineDosage ||
+      reminder?.dose ||
+      reminder?.dosage ||
+      "Dosage not specified";
 
-  const instructions = reminder?.notes || reminder?.instructions || "";
+  const instructions =
+    medicine?.instructions ||
+    medicine?.notes ||
+    reminder?.medicineInstructions ||
+    reminder?.notes ||
+    reminder?.instructions ||
+    "";
 
   const status = getStatus(id, date);
   const completed = ["taken", "missed"].includes(status);
@@ -1375,9 +1516,18 @@ function renderToday() {
   }
 }
 
+/*
+  MEDICINE LIST
+
+  Reads:
+  1. Patient's existing medicines.
+  2. Medicine information embedded in patient reminders.
+
+  Multiple reminders for one medicine are combined.
+*/
+
 function renderMedicines() {
-  const entries = Object.entries(state.medicines)
-    .filter(([, medicine]) => isActiveMedicine(medicine));
+  const entries = getPatientMedicineEntries();
 
   if ($("medicineCount")) {
     $("medicineCount").textContent = entries.length;
@@ -1387,33 +1537,121 @@ function renderMedicines() {
     empty(
       "medicineList",
       "No medicines yet",
-      "Medicines added by your authorized caregiver will appear here."
+      state.caregiverUid
+        ? "Medicines assigned to you by your caregiver will appear here after they create your reminders."
+        : "Connect with your authorized caregiver to receive your medicine information."
     );
     return;
   }
 
-  if ($("medicineList")) {
-    $("medicineList").innerHTML = entries.map(([, medicine]) => {
-      const frequency = medicine.frequency || medicine.recurrence || "";
-      const instructions = medicine.notes || medicine.instructions || "";
+  if (!$("medicineList")) return;
 
-      return `
-        <article class="item">
-          <div class="item-icon">💊</div>
-          <div class="item-main">
-            <h3 class="item-title">
-              ${escapeHTML(medicineName(medicine))}
-            </h3>
-            <p class="item-description">
-              Dosage: ${escapeHTML(medicineDosage(medicine))}
-              ${frequency ? `\nSchedule: ${escapeHTML(frequency)}` : ""}
-              ${instructions ? `\nInstructions: ${escapeHTML(instructions)}` : ""}
+  $("medicineList").innerHTML = entries.map(entry => {
+    const medicine = entry.medicine;
+
+    const instructions =
+      medicine.instructions ||
+      medicine.notes ||
+      medicine.usage ||
+      "";
+
+    const quantity =
+      medicine.quantity ??
+      medicine.stock ??
+      medicine.currentQuantity;
+
+    const frequency =
+      medicine.frequency ||
+      medicine.recurrence ||
+      "";
+
+    const schedules = (entry.reminders || [])
+      .map(item => {
+        const reminder = item.reminder;
+        const time = reminderTime(reminder);
+        const recurrence =
+          reminder.recurrence ||
+          reminder.frequency ||
+          reminder.repeat ||
+          "";
+
+        return [
+          time ? formatTime(time) : "",
+          recurrence ? String(recurrence) : ""
+        ].filter(Boolean).join(" · ");
+      })
+      .filter(Boolean);
+
+    const uniqueSchedules = [...new Set(schedules)];
+
+    return `
+      <article class="record">
+        <div class="medicine-icon">💊</div>
+
+        <div class="record-main">
+          <h3>${escapeHTML(medicineName(medicine))}</h3>
+
+          <p>
+            <strong>Dosage:</strong>
+            ${escapeHTML(medicineDosage(medicine))}
+          </p>
+
+          ${medicine.strength ? `
+            <p>
+              <strong>Strength:</strong>
+              ${escapeHTML(medicine.strength)}
             </p>
-          </div>
-        </article>
-      `;
-    }).join("");
-  }
+          ` : ""}
+
+          ${medicine.form ? `
+            <p>
+              <strong>Form:</strong>
+              ${escapeHTML(medicine.form)}
+            </p>
+          ` : ""}
+
+          ${quantity !== undefined && quantity !== null ? `
+            <p>
+              <strong>Quantity:</strong>
+              ${escapeHTML(quantity)}
+            </p>
+          ` : ""}
+
+          ${medicine.refillAt || medicine.refillDate ? `
+            <p>
+              <strong>Refill date:</strong>
+              ${escapeHTML(formatDate(
+                medicine.refillAt || medicine.refillDate
+              ))}
+            </p>
+          ` : ""}
+
+          ${frequency ? `
+            <p>
+              <strong>Frequency:</strong>
+              ${escapeHTML(frequency)}
+            </p>
+          ` : ""}
+
+          ${uniqueSchedules.length ? `
+            <p>
+              <strong>Reminder schedule:</strong>
+              ${escapeHTML(uniqueSchedules.join(", "))}
+            </p>
+          ` : ""}
+
+          ${instructions ? `
+            <p>
+              <strong>Instructions:</strong>
+              ${escapeHTML(instructions)}
+            </p>
+          ` : ""}
+
+          <span class="tag green">Shared by caregiver</span>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
 function renderReminders() {
@@ -1441,7 +1679,9 @@ function renderReminders() {
     $("reminderList").innerHTML = entries.map(entry => `
       <div>
         <p class="panel-subtitle" style="margin:4px 0 8px;">
-          ${escapeHTML(entry.date === today ? "Today" : formatDate(entry.date))}
+          ${escapeHTML(
+            entry.date === today ? "Today" : formatDate(entry.date)
+          )}
         </p>
         ${renderReminderCard(entry)}
       </div>
@@ -1454,10 +1694,14 @@ function renderHistory() {
     .filter(([, log]) => log && typeof log === "object")
     .map(([id, log]) => ({ id, ...log }))
     .filter(log =>
-      ["taken", "missed"].includes(String(log.status || "").toLowerCase())
+      ["taken", "missed"].includes(
+        String(log.status || "").toLowerCase()
+      )
     )
     .sort((a, b) =>
-      String(b.recordedAt || "").localeCompare(String(a.recordedAt || ""))
+      String(b.recordedAt || "").localeCompare(
+        String(a.recordedAt || "")
+      )
     );
 
   if (!entries.length) {
@@ -1471,25 +1715,33 @@ function renderHistory() {
 
   if ($("historyList")) {
     $("historyList").innerHTML = entries.map(log => `
-      <article class="item">
-        <div class="item-icon">
+      <article class="record">
+        <div class="medicine-icon">
           ${String(log.status).toLowerCase() === "taken" ? "✓" : "◷"}
         </div>
 
-        <div class="item-main">
-          <h3 class="item-title">
+        <div class="record-main">
+          <h3>
             ${escapeHTML(log.medicineName || log.name || "Medicine dose")}
           </h3>
 
-          <p class="item-description">
+          <p>
             Date: ${escapeHTML(formatDate(log.date))}
-            \nDosage: ${escapeHTML(log.dosage || "Not specified")}
-            ${log.recordedAt
-              ? `\nRecorded: ${escapeHTML(new Date(log.recordedAt).toLocaleString())}`
-              : ""}
           </p>
 
-          <div class="item-meta">${statusTag(log.status)}</div>
+          <p>
+            Dosage: ${escapeHTML(log.dosage || "Not specified")}
+          </p>
+
+          ${log.recordedAt ? `
+            <p>
+              Recorded: ${escapeHTML(
+                new Date(log.recordedAt).toLocaleString()
+              )}
+            </p>
+          ` : ""}
+
+          ${statusTag(log.status)}
         </div>
       </article>
     `).join("");
@@ -1620,19 +1872,23 @@ function listenToConnection(uid) {
           : null;
 
       if (caregiverUid && caregiverUid !== uid) {
-        const connectionChanged = state.caregiverUid !== caregiverUid;
+        const connectionChanged =
+          state.caregiverUid !== caregiverUid;
 
         state.caregiverUid = caregiverUid;
         state.connectionInfo = connection;
 
         updateConnectionStatus(
           true,
-          "Connected. Your caregiver's medicines and reminders are syncing live."
+          "Connected. Your caregiver's assigned medicines and reminders are syncing live."
         );
 
         renderActiveCaregiver();
 
-        if (connectionChanged || state.unsubscribers.length === 0) {
+        if (
+          connectionChanged ||
+          state.unsubscribers.length === 0
+        ) {
           listenToPatientData(uid);
         }
 
@@ -1667,15 +1923,16 @@ function listenToConnection(uid) {
 }
 
 /* =====================================================
-   PATIENT-OWNED MEDICINES AND REMINDERS
+   PATIENT MEDICINES AND REMINDERS
 
-   IMPORTANT:
-   The caregiver now saves each patient's medicines
-   and reminders under the patient's UID.
+   Reads patient-owned data:
 
-   Patient data paths:
    users/PATIENT_UID/medicines
    users/PATIENT_UID/reminders
+
+   The reminder records must include medicine information.
+   The patient dashboard does not read the caregiver's
+   private medicine inventory directly.
 ===================================================== */
 
 function listenToPatientData(patientUid) {
@@ -1694,7 +1951,7 @@ function listenToPatientData(patientUid) {
 
       notice(
         "error",
-        "Medicines could not be loaded. Check your Firebase Database Rules."
+        "Existing patient medicines could not be loaded. Check your Firebase Database Rules."
       );
     }
   );
@@ -1704,6 +1961,8 @@ function listenToPatientData(patientUid) {
 
     snapshot => {
       state.reminders = normalizeCollection(snapshot.val());
+
+      // Medicine list is also refreshed whenever reminders change.
       renderAll();
     },
 
@@ -1793,10 +2052,12 @@ async function recordDose(reminderId, date, status, button) {
         reminder.name ||
         "Scheduled medicine",
 
-    dosage:
-      reminder.dose ||
-      reminder.dosage ||
-      (medicine ? medicineDosage(medicine) : "Not specified"),
+    dosage: medicine
+      ? medicineDosage(medicine)
+      : reminder.medicineDosage ||
+        reminder.dose ||
+        reminder.dosage ||
+        "Not specified",
 
     date,
     time: reminderTime(reminder),
@@ -1813,7 +2074,9 @@ async function recordDose(reminderId, date, status, button) {
     state.logs[key] = log;
 
     triggeredReminders.add(
-      `${reminderId}_${date}_${String(reminderTime(reminder)).slice(0, 5)}`
+      `${reminderId}_${date}_${String(
+        reminderTime(reminder)
+      ).slice(0, 5)}`
     );
 
     renderAll();
@@ -1915,7 +2178,10 @@ function setupEvents() {
         );
 
       } catch (error) {
-        console.error("Updating connection permission failed:", error);
+        console.error(
+          "Updating connection permission failed:",
+          error
+        );
 
         checkbox.checked = !enabled;
 
@@ -1940,8 +2206,11 @@ function setupEvents() {
     );
 
     if (connectionButton) {
-      const caregiverUid = connectionButton.dataset.caregiverUid;
-      const action = connectionButton.dataset.connectionAction;
+      const caregiverUid =
+        connectionButton.dataset.caregiverUid;
+
+      const action =
+        connectionButton.dataset.connectionAction;
 
       if (action === "approve") {
         approveConnectionRequest(caregiverUid);
