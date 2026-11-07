@@ -265,6 +265,24 @@ function getLog(reminderId, date) {
   return state.logs[logKey(reminderId, date)] || null;
 }
 
+/*
+  IMPORTANT FIX:
+  An intake log is NOT considered completed just because
+  a Firebase record exists.
+
+  It is completed only when its status is "taken" or "missed".
+
+  This allows old records without a status field to be updated.
+*/
+
+function isDoseCompleted(reminderId, date) {
+  const status = String(
+    getLog(reminderId, date)?.status || ""
+  ).toLowerCase();
+
+  return status === "taken" || status === "missed";
+}
+
 function getStatus(reminderId, date) {
   return String(
     getLog(reminderId, date)?.status || "pending"
@@ -379,28 +397,22 @@ function empty(containerId, title, message) {
 
 /* =====================================================
    BUILD PATIENT MEDICINE LIST FROM REMINDERS
-
-   This is the main change.
-
-   One medicine may have multiple reminders.
-   The medicine will only appear once in My medicines.
 ===================================================== */
 
 function getPatientMedicineEntries() {
   const medicines = new Map();
 
-  // Existing patient-owned medicine records.
   Object.entries(state.medicines).forEach(([id, medicine]) => {
     if (!isActiveMedicine(medicine)) return;
 
     medicines.set(`id:${id}`, {
       id,
       medicine,
-      source: "medicine"
+      source: "medicine",
+      reminders: []
     });
   });
 
-  // Medicines assigned through patient-specific reminders.
   Object.entries(state.reminders).forEach(([reminderId, reminder]) => {
     if (
       reminder?.active === false ||
@@ -821,7 +833,6 @@ function renderActiveCaregiver() {
    APPROVE CONNECTION
 ===================================================== */
 
-
 async function approveConnectionRequest(caregiverUid) {
   if (!state.user || !caregiverUid) return;
   if (state.processingRequests.has(caregiverUid)) return;
@@ -887,13 +898,10 @@ async function approveConnectionRequest(caregiverUid) {
       connectedAt
     };
 
-    // First save the patient's connection.
     await set(ref(db, patientConnectionPath), connectionData);
 
-    // Then save the patient under the authorized person's account.
     await set(ref(db, caregiverPatientPath), patientData);
 
-    // Verify both database records.
     const [patientCheck, caregiverCheck] = await Promise.all([
       get(ref(db, patientConnectionPath)),
       get(ref(db, caregiverPatientPath))
@@ -922,7 +930,6 @@ async function approveConnectionRequest(caregiverUid) {
   } catch (error) {
     console.error("Connection approval error:", error);
 
-    // Clean up both sides if approval fails.
     try {
       await Promise.all([
         remove(ref(db, patientConnectionPath)),
@@ -942,7 +949,6 @@ async function approveConnectionRequest(caregiverUid) {
     renderConnectionRequests();
   }
 }
-
 
 /* =====================================================
    REJECT CONNECTION
@@ -1201,7 +1207,9 @@ function showNextMedicineReminder() {
   const entry = reminderQueue.shift();
   if (!entry) return;
 
-  if (getLog(entry.id, entry.date)) {
+  // FIX: Check completed status instead of checking whether
+  // any intake-log record exists.
+  if (isDoseCompleted(entry.id, entry.date)) {
     showNextMedicineReminder();
     return;
   }
@@ -1264,7 +1272,8 @@ function checkDueMedicineReminders() {
 
     if (triggeredReminders.has(key)) return;
 
-    if (getLog(entry.id, date)) {
+    // FIX: Old records without a status are not completed.
+    if (isDoseCompleted(entry.id, date)) {
       triggeredReminders.add(key);
       return;
     }
@@ -1317,13 +1326,18 @@ $("modalTakenButton")?.addEventListener("click", async () => {
   if (!activeReminder) return;
 
   const entry = activeReminder;
+  const button = $("modalTakenButton");
+
+  if (button) button.disabled = true;
 
   const saved = await recordDose(
     entry.id,
     entry.date,
     "taken",
-    null
+    button
   );
+
+  if (button) button.disabled = false;
 
   if (saved) closeMedicineReminder();
 });
@@ -1346,7 +1360,7 @@ $("modalSnoozeButton")?.addEventListener("click", () => {
 
     if (!state.user || !state.caregiverUid) return;
 
-    if (getLog(snoozedEntry.id, snoozedEntry.date)) {
+    if (isDoseCompleted(snoozedEntry.id, snoozedEntry.date)) {
       showNextMedicineReminder();
       return;
     }
@@ -1523,16 +1537,6 @@ function renderToday() {
     $("todayList").innerHTML = entries.map(renderReminderCard).join("");
   }
 }
-
-/*
-  MEDICINE LIST
-
-  Reads:
-  1. Patient's existing medicines.
-  2. Medicine information embedded in patient reminders.
-
-  Multiple reminders for one medicine are combined.
-*/
 
 function renderMedicines() {
   const entries = getPatientMedicineEntries();
@@ -1818,6 +1822,12 @@ function listenToPatientLogs(uid) {
 
     snapshot => {
       state.logs = normalizeCollection(snapshot.val());
+
+      console.log(
+        "PATIENT INTAKE LOGS UPDATED:",
+        state.logs
+      );
+
       renderAll();
     },
 
@@ -1932,15 +1942,6 @@ function listenToConnection(uid) {
 
 /* =====================================================
    PATIENT MEDICINES AND REMINDERS
-
-   Reads patient-owned data:
-
-   users/PATIENT_UID/medicines
-   users/PATIENT_UID/reminders
-
-   The reminder records must include medicine information.
-   The patient dashboard does not read the caregiver's
-   private medicine inventory directly.
 ===================================================== */
 
 function listenToPatientData(patientUid) {
@@ -1969,8 +1970,6 @@ function listenToPatientData(patientUid) {
 
     snapshot => {
       state.reminders = normalizeCollection(snapshot.val());
-
-      // Medicine list is also refreshed whenever reminders change.
       renderAll();
     },
 
@@ -2037,7 +2036,16 @@ async function recordDose(reminderId, date, status, button) {
 
   const key = logKey(reminderId, date);
 
-  if (getLog(reminderId, date)) {
+  /*
+    IMPORTANT FIX:
+
+    Previously, any existing Firebase log prevented saving.
+
+    Your old log has no status field, so this condition
+    now checks whether the dose is actually completed.
+  */
+
+  if (isDoseCompleted(reminderId, date)) {
     notice("info", "This dose has already been recorded.");
     return false;
   }
@@ -2069,16 +2077,26 @@ async function recordDose(reminderId, date, status, button) {
 
     date,
     time: reminderTime(reminder),
-    status,
+
+    // This is the status the ESP32 must read.
+    status: status.toLowerCase(),
+
     recordedAt: new Date().toISOString()
   };
 
   try {
-    await set(
-      ref(db, `users/${state.user.uid}/intakeLogs/${key}`),
-      log
-    );
+    const logPath =
+      `users/${state.user.uid}/intakeLogs/${key}`;
 
+    console.log("====================================");
+    console.log("SAVING PATIENT INTAKE LOG");
+    console.log("Firebase path:", logPath);
+    console.log("Log data:", log);
+    console.log("====================================");
+
+    await set(ref(db, logPath), log);
+
+    // Update local state.
     state.logs[key] = log;
 
     triggeredReminders.add(
@@ -2088,6 +2106,11 @@ async function recordDose(reminderId, date, status, button) {
     );
 
     renderAll();
+
+    console.log("DOSE SUCCESSFULLY SAVED TO FIREBASE");
+    console.log("Saved status:", log.status);
+    console.log("Saved reminder ID:", reminderId);
+    console.log("Saved date:", date);
 
     notice(
       "success",
