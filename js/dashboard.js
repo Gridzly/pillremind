@@ -364,9 +364,18 @@ function getActivities() {
    ========================================================= */
 
 function patientIsActive(patient) {
+  if (!patient || typeof patient !== "object") {
+    return false;
+  }
+
   const status = String(
-    patient?.status || ""
+    patient.status || ""
   ).toLowerCase().trim();
+
+  // Older approved connection records may not have a status field.
+  if (!status) {
+    return true;
+  }
 
   return [
     "active",
@@ -387,9 +396,19 @@ function patientDisplayName(uid, patient) {
 
 function getConnectedPatients() {
   return Object.entries(state.connectedPatients || {})
-    .filter(([uid, patient]) =>
-      uid && patient && patientIsActive(patient)
-    );
+    .filter(([uid, patient]) => {
+      if (!uid || !patient) return false;
+
+      // Prevent mismatched patient records.
+      if (
+        patient.patientUid &&
+        patient.patientUid !== uid
+      ) {
+        return false;
+      }
+
+      return patientIsActive(patient);
+    });
 }
 
 function buildPatientOptions(selectedUid = "") {
@@ -462,17 +481,23 @@ function populateReminderPatientSelector(preferredUid = null) {
 function selectPatient(uid) {
   const patient = state.connectedPatients?.[uid];
 
-  if (!uid || !patient || !patientIsActive(patient)) {
+  if (
+    !uid ||
+    !patient ||
+    !patientIsActive(patient)
+  ) {
     state.selectedPatientUid = null;
     state.reminders = {};
 
     stopList(state.patientUnsubscribers);
-    renderReminders();
 
+    renderReminders();
     return;
   }
 
-  if (state.selectedPatientUid === uid) return;
+  if (state.selectedPatientUid === uid) {
+    return;
+  }
 
   state.selectedPatientUid = uid;
   state.reminders = {};
@@ -481,16 +506,42 @@ function selectPatient(uid) {
 
   renderReminders();
 
-  subscribePatient(
-    "reminders",
-    value => {
-      state.reminders = value;
+  const remindersPath =
+    `users/${uid}/reminders`;
+
+  const listener = onValue(
+    ref(db, remindersPath),
+
+    snapshot => {
+      if (state.selectedPatientUid !== uid) {
+        return;
+      }
+
+      state.reminders = snapshot.val() || {};
+
       renderReminders();
     },
-    uid
+
+    error => {
+      console.error(
+        "Patient reminders Firebase error:",
+        error
+      );
+
+      showMessage(
+        "pageMessage",
+        `Unable to load patient reminders: ${error.message}`,
+        "error"
+      );
+    }
   );
 
-  console.log("Selected patient:", uid);
+  state.patientUnsubscribers.push(listener);
+
+  console.log(
+    "Listening to patient reminders:",
+    remindersPath
+  );
 }
 
 function refreshPatientSelectors() {
@@ -1510,7 +1561,6 @@ $("reminderForm")?.addEventListener("submit", async event => {
     );
 
     $("reminderPatient")?.focus();
-
     return;
   }
 
@@ -1532,6 +1582,9 @@ $("reminderForm")?.addEventListener("submit", async event => {
   const dose =
     $("reminderDose")?.value.trim() || "";
 
+  const notes =
+    $("reminderNotes")?.value.trim() || "";
+
   if (!selectedMedicine) {
     showMessage(
       "pageMessage",
@@ -1540,19 +1593,17 @@ $("reminderForm")?.addEventListener("submit", async event => {
     );
 
     $("reminderMedicine")?.focus();
-
     return;
   }
 
   if (!dose) {
     showMessage(
       "pageMessage",
-      "Enter the prescribed dose for this reminder.",
+      "Enter the prescribed dose.",
       "error"
     );
 
     $("reminderDose")?.focus();
-
     return;
   }
 
@@ -1566,13 +1617,12 @@ $("reminderForm")?.addEventListener("submit", async event => {
     return;
   }
 
-  if (
-    recurrence === "once" &&
-    (!date || date < localDate())
-  ) {
+  const [hours, minutes] = time.split(":").map(Number);
+
+  if (hours > 23 || minutes > 59) {
     showMessage(
       "pageMessage",
-      "Choose today or a future date.",
+      "The reminder time is invalid.",
       "error"
     );
 
@@ -1583,6 +1633,19 @@ $("reminderForm")?.addEventListener("submit", async event => {
     showMessage(
       "pageMessage",
       "Choose a valid recurrence.",
+      "error"
+    );
+
+    return;
+  }
+
+  if (
+    recurrence === "once" &&
+    (!date || date < localDate())
+  ) {
+    showMessage(
+      "pageMessage",
+      "Choose today or a future date.",
       "error"
     );
 
@@ -1614,6 +1677,28 @@ $("reminderForm")?.addEventListener("submit", async event => {
     return;
   }
 
+  const id =
+    $("reminderId")?.value || "";
+
+  // Verify the existing reminder before editing.
+  if (id) {
+    const existing = state.reminders?.[id];
+
+    if (
+      !existing ||
+      existing.caregiverUid !== state.user.uid ||
+      existing.patientUid !== patientUid
+    ) {
+      showMessage(
+        "pageMessage",
+        "This reminder does not belong to your account or selected patient.",
+        "error"
+      );
+
+      return;
+    }
+  }
+
   state.busy = true;
 
   const button = $("reminderForm")
@@ -1622,20 +1707,9 @@ $("reminderForm")?.addEventListener("submit", async event => {
   setButtonBusy(button, true, "Saving…");
 
   try {
-    const id =
-      $("reminderId")?.value || "";
-
     const timestamp = Date.now();
 
-    /*
-      MEDICINE SNAPSHOT
-
-      This copies the medicine information from the
-      caregiver's inventory into the patient's reminder.
-
-      This is what the patient dashboard will display.
-    */
-
+    // Copy the medicine information into the patient reminder.
     const medicineSnapshot = {
       medicineId,
 
@@ -1655,10 +1729,28 @@ $("reminderForm")?.addEventListener("submit", async event => {
       snapshotUpdatedAt: timestamp
     };
 
+    /*
+      IMPORTANT DATABASE STRUCTURE:
+
+      users/{patientUid}/reminders/{reminderId}
+
+      This allows the patient dashboard to read its own
+      reminders without reading the caregiver inventory.
+    */
+
     const record = {
       patientUid,
 
+      patientName:
+        patientDisplayName(patientUid, patient),
+
       caregiverUid: state.user.uid,
+
+      caregiverName:
+        state.user.displayName ||
+        state.profile.displayName ||
+        state.user.email ||
+        "Authorized Person",
 
       medicineId,
 
@@ -1672,6 +1764,7 @@ $("reminderForm")?.addEventListener("submit", async event => {
 
       recurrence,
 
+      // Used by the ESP32 and patient dashboard.
       date:
         recurrence === "once"
           ? date
@@ -1688,44 +1781,65 @@ $("reminderForm")?.addEventListener("submit", async event => {
 
       dose,
 
-      notes:
-        $("reminderNotes")?.value.trim() || "",
+      notes,
 
       status: "active",
+
+      enabled: true,
 
       updatedAt: timestamp
     };
 
+    let reminderId = id;
+
     if (id) {
-      const existing =
-        state.reminders?.[id];
-
-      if (
-        !existing ||
-        existing.caregiverUid !== state.user.uid ||
-        existing.patientUid !== patientUid
-      ) {
-        throw new Error(
-          "This reminder does not belong to this caregiver and patient."
-        );
-      }
-
       await update(
         ref(
           db,
-          patientPath(patientUid, `reminders/${id}`)
+          `users/${patientUid}/reminders/${id}`
         ),
         record
       );
 
     } else {
-      record.createdAt = timestamp;
-
       const newReminderRef = push(
-        ref(db, patientPath(patientUid, "reminders"))
+        ref(
+          db,
+          `users/${patientUid}/reminders`
+        )
       );
 
+      reminderId = newReminderRef.key;
+
+      record.createdAt = timestamp;
+
       await set(newReminderRef, record);
+    }
+
+    // Verify the reminder was actually saved.
+    const savedSnapshot = await get(
+      ref(
+        db,
+        `users/${patientUid}/reminders/${reminderId}`
+      )
+    );
+
+    if (!savedSnapshot.exists()) {
+      throw new Error(
+        "The reminder could not be verified in Firebase."
+      );
+    }
+
+    const savedReminder = savedSnapshot.val();
+
+    if (
+      savedReminder.caregiverUid !== state.user.uid ||
+      savedReminder.patientUid !== patientUid ||
+      savedReminder.status !== "active"
+    ) {
+      throw new Error(
+        "The saved reminder information does not match the selected patient."
+      );
     }
 
     const scheduleDescription =
@@ -1743,10 +1857,7 @@ $("reminderForm")?.addEventListener("submit", async event => {
       patientUid
     );
 
-    /*
-      Keep the selected patient active after saving.
-    */
-
+    // Keep the correct patient selected.
     if (state.selectedPatientUid !== patientUid) {
       selectPatient(patientUid);
     }
@@ -1755,11 +1866,20 @@ $("reminderForm")?.addEventListener("submit", async event => {
 
     showMessage(
       "pageMessage",
-      `Reminder saved for ${patientDisplayName(patientUid, patient)}.`
+      `Reminder successfully saved for ${patientDisplayName(patientUid, patient)}.`
+    );
+
+    console.log(
+      "Reminder saved successfully:",
+      `users/${patientUid}/reminders/${reminderId}`,
+      savedReminder
     );
 
   } catch (error) {
-    console.error("Saving reminder failed:", error);
+    console.error(
+      "Saving patient reminder failed:",
+      error
+    );
 
     showMessage(
       "pageMessage",

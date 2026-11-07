@@ -821,24 +821,19 @@ function renderActiveCaregiver() {
    APPROVE CONNECTION
 ===================================================== */
 
+
 async function approveConnectionRequest(caregiverUid) {
   if (!state.user || !caregiverUid) return;
   if (state.processingRequests.has(caregiverUid)) return;
 
   if (state.caregiverUid && state.caregiverUid !== caregiverUid) {
-    notice(
-      "error",
-      "You already have an active caregiver. Disconnect the current caregiver first."
-    );
+    notice("error", "Disconnect your current caregiver first.");
     return;
   }
 
   const request = state.connectionRequests[caregiverUid];
 
-  if (
-    !request ||
-    String(request.status || "").toLowerCase() !== "pending"
-  ) {
+  if (!request || request.status !== "pending") {
     notice("error", "This connection request is no longer pending.");
     return;
   }
@@ -847,16 +842,16 @@ async function approveConnectionRequest(caregiverUid) {
   renderConnectionRequests();
 
   const patientUid = state.user.uid;
-  const connectionRef = ref(
-    db,
-    `users/${patientUid}/careConnection`
-  );
 
-  let connectionWasWritten = false;
+  const patientConnectionPath =
+    `users/${patientUid}/careConnection`;
+
+  const caregiverPatientPath =
+    `users/${caregiverUid}/connectedPatients/${patientUid}`;
 
   try {
     const [connectionSnapshot, profileSnapshot] = await Promise.all([
-      get(connectionRef),
+      get(ref(db, patientConnectionPath)),
       get(ref(db, `users/${patientUid}/profile`))
     ]);
 
@@ -868,9 +863,7 @@ async function approveConnectionRequest(caregiverUid) {
       currentConnection.authorizedUid &&
       currentConnection.authorizedUid !== caregiverUid
     ) {
-      throw new Error(
-        "You already have another active caregiver. Disconnect that caregiver first."
-      );
+      throw new Error("Another caregiver is already connected.");
     }
 
     const connectedAt = Date.now();
@@ -883,22 +876,40 @@ async function approveConnectionRequest(caregiverUid) {
       connectedAt
     };
 
-    await set(connectionRef, connectionData);
-    connectionWasWritten = true;
+    const patientData = {
+      patientUid,
+      patientName:
+        patientProfile.firstName ||
+        patientProfile.fullName ||
+        state.user.displayName ||
+        "Patient",
+      status: "active",
+      connectedAt
+    };
 
-    await set(
-      ref(db, `users/${caregiverUid}/connectedPatients/${patientUid}`),
-      {
-        patientUid,
-        patientName:
-          patientProfile.firstName ||
-          patientProfile.fullName ||
-          state.user.displayName ||
-          "Patient",
-        status: "active",
-        connectedAt
-      }
-    );
+    // First save the patient's connection.
+    await set(ref(db, patientConnectionPath), connectionData);
+
+    // Then save the patient under the authorized person's account.
+    await set(ref(db, caregiverPatientPath), patientData);
+
+    // Verify both database records.
+    const [patientCheck, caregiverCheck] = await Promise.all([
+      get(ref(db, patientConnectionPath)),
+      get(ref(db, caregiverPatientPath))
+    ]);
+
+    const patientConnection = patientCheck.val();
+    const caregiverPatient = caregiverCheck.val();
+
+    if (
+      patientConnection?.status !== "active" ||
+      patientConnection?.authorizedUid !== caregiverUid ||
+      caregiverPatient?.status !== "active" ||
+      caregiverPatient?.patientUid !== patientUid
+    ) {
+      throw new Error("Connection verification failed.");
+    }
 
     await remove(
       ref(db, `users/${patientUid}/connectionRequests/${caregiverUid}`)
@@ -906,28 +917,24 @@ async function approveConnectionRequest(caregiverUid) {
 
     delete state.connectionRequests[caregiverUid];
 
-    notice(
-      "success",
-      "Connection approved! Your caregiver has been added to your account."
-    );
-
-    renderConnectionRequests();
+    notice("success", "Connection approved and verified successfully!");
 
   } catch (error) {
-    console.error("Approving caregiver request failed:", error);
+    console.error("Connection approval error:", error);
 
-    if (connectionWasWritten) {
-      try {
-        await remove(connectionRef);
-      } catch (rollbackError) {
-        console.error("Connection rollback failed:", rollbackError);
-      }
+    // Clean up both sides if approval fails.
+    try {
+      await Promise.all([
+        remove(ref(db, patientConnectionPath)),
+        remove(ref(db, caregiverPatientPath))
+      ]);
+    } catch (rollbackError) {
+      console.error("Connection cleanup failed:", rollbackError);
     }
 
     notice(
       "error",
-      error.message ||
-      "Unable to approve this request. Check your Firebase Database Rules."
+      error.message || "Connection failed. Check your Firebase Database Rules."
     );
 
   } finally {
@@ -935,6 +942,7 @@ async function approveConnectionRequest(caregiverUid) {
     renderConnectionRequests();
   }
 }
+
 
 /* =====================================================
    REJECT CONNECTION
