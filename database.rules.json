@@ -3,24 +3,47 @@
   "rules": {
     "users": {
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid",
+        "profile": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        },
         "medicines": {
-          ".read": "auth != null && (auth.uid === $uid || root.child('connectionsByPatient').child(auth.uid).child($uid).child('status').val() === 'active')"
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
         },
         "reminders": {
-          ".read": "auth != null && (auth.uid === $uid || root.child('connectionsByPatient').child(auth.uid).child($uid).child('status').val() === 'active')"
+          ".read": "auth != null && (auth.uid === $uid || (root.child('users').child($uid).child('careConnection').child('authorizedUid').val() === auth.uid && root.child('users').child($uid).child('careConnection').child('status').val() === 'active') || (auth.uid === 'SUbKF5VkYIbJchWx80plCEJHWLe2' && root.child('users').child('J23LqPWx3IURJFqhYz8axJ3wo0Z2').child('connectedPatients').child($uid).exists() && root.child('users').child($uid).child('careConnection').child('authorizedUid').val() === 'J23LqPWx3IURJFqhYz8axJ3wo0Z2' && root.child('users').child($uid).child('careConnection').child('status').val() === 'active'))",
+          ".write": "auth != null && (auth.uid === $uid || (root.child('users').child($uid).child('careConnection').child('authorizedUid').val() === auth.uid && root.child('users').child($uid).child('careConnection').child('status').val() === 'active'))"
+        },
+        "activity": {
+          ".read": "auth != null && (auth.uid === $uid || (root.child('users').child($uid).child('careConnection').child('authorizedUid').val() === auth.uid && root.child('users').child($uid).child('careConnection').child('status').val() === 'active'))",
+          ".write": "auth != null && (auth.uid === $uid || (root.child('users').child($uid).child('careConnection').child('authorizedUid').val() === auth.uid && root.child('users').child($uid).child('careConnection').child('status').val() === 'active'))"
+        },
+        "refills": {
+          ".read": "auth != null && (auth.uid === $uid || (root.child('users').child($uid).child('careConnection').child('authorizedUid').val() === auth.uid && root.child('users').child($uid).child('careConnection').child('status').val() === 'active'))",
+          ".write": "auth != null && (auth.uid === $uid || (root.child('users').child($uid).child('careConnection').child('authorizedUid').val() === auth.uid && root.child('users').child($uid).child('careConnection').child('status').val() === 'active'))"
+        },
+        "intakeLogs": {
+          ".read": "auth != null && (auth.uid === $uid || (root.child('users').child($uid).child('careConnection').child('authorizedUid').val() === auth.uid && root.child('users').child($uid).child('careConnection').child('status').val() === 'active'))",
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "connectionRequests": {
+          ".read": "auth != null && auth.uid === $uid",
+          "$caregiverUid": {
+            ".read": "auth != null && (auth.uid === $uid || auth.uid === $caregiverUid)",
+            ".write": "auth != null && (auth.uid === $uid || (auth.uid === $caregiverUid && !data.exists() && newData.child('status').val() === 'pending' && newData.child('caregiverUid').val() === auth.uid && (root.child('users').child(auth.uid).child('profile').child('role').val() === 'authorized' || root.child('users').child(auth.uid).child('profile').child('role').val() === 'caregiver' || root.child('users').child(auth.uid).child('profile').child('role').val() === 'authorized_person') && (root.child('users').child($uid).child('profile').child('role').val() === 'patient' || root.child('users').child($uid).child('profile').child('role').val() === 'medicine taker' || root.child('users').child($uid).child('profile').child('role').val() === 'medicine_taker') && root.child('users').child($uid).child('profile').child('allowCaregiverConnections').val() === true))"
+          }
+        },
+        "careConnection": {
+          ".read": "auth != null && (auth.uid === $uid || (data.child('authorizedUid').val() === auth.uid && data.child('status').val() === 'active'))",
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "connectedPatients": {
+          ".read": "auth != null && (auth.uid === $uid || (auth.uid === 'SUbKF5VkYIbJchWx80plCEJHWLe2' && $uid === 'J23LqPWx3IURJFqhYz8axJ3wo0Z2'))",
+          "$patientUid": {
+            ".write": "auth != null && auth.uid === $patientUid && root.child('users').child(auth.uid).child('careConnection').child('authorizedUid').val() === $uid && root.child('users').child(auth.uid).child('careConnection').child('status').val() === 'active'"
+          }
         }
-      }
-    },
-    "connectionsByPatient": {
-      "$patientUid": {
-        ".read": "auth != null && auth.uid === $patientUid"
-      }
-    },
-    "connectionsByCaregiver": {
-      "$caregiverUid": {
-        ".read": "auth != null && auth.uid === $caregiverUid"
       }
     }
   }
