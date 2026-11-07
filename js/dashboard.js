@@ -1,3 +1,4 @@
+
 import { auth, db } from "./firebaseConfig.js";
 
 import {
@@ -21,28 +22,11 @@ import {
 
 /* =========================================================
    MEDMINDER — AUTHORIZED PERSON DASHBOARD
-
-   MEDICINES:
-   users/{authorizedUid}/medicines
-
-   REFILLS:
-   users/{authorizedUid}/refills
-
-   ACTIVITIES:
-   users/{authorizedUid}/activity
-
-   CONNECTED PATIENTS:
-   users/{authorizedUid}/connectedPatients
-
-   PATIENT REMINDERS:
-   users/{patientUid}/reminders
-
-   MEDICINE SNAPSHOT:
-   Each patient reminder contains a copy of the medicine
-   information so the patient dashboard can display it.
    ========================================================= */
 
 const $ = id => document.getElementById(id);
+
+const COMPARTMENT_COUNT = 7;
 
 const state = {
   user: null,
@@ -305,30 +289,6 @@ function subscribeAccount(path, callback) {
   state.unsubscribers.push(listener);
 }
 
-function subscribePatient(path, callback, patientUid) {
-  if (!patientUid) return;
-
-  const listener = onValue(
-    ref(db, patientPath(patientUid, path)),
-    snapshot => {
-      if (state.selectedPatientUid !== patientUid) return;
-
-      callback(snapshot.val() || {});
-    },
-    error => {
-      console.error(`Patient data error at ${path}:`, error);
-
-      showMessage(
-        "pageMessage",
-        `Unable to load this patient's ${path}: ${error.message}`,
-        "error"
-      );
-    }
-  );
-
-  state.patientUnsubscribers.push(listener);
-}
-
 /* =========================================================
    ACTIVITY HISTORY
    ========================================================= */
@@ -372,10 +332,7 @@ function patientIsActive(patient) {
     patient.status || ""
   ).toLowerCase().trim();
 
-  // Older approved connection records may not have a status field.
-  if (!status) {
-    return true;
-  }
+  if (!status) return true;
 
   return [
     "active",
@@ -399,7 +356,6 @@ function getConnectedPatients() {
     .filter(([uid, patient]) => {
       if (!uid || !patient) return false;
 
-      // Prevent mismatched patient records.
       if (
         patient.patientUid &&
         patient.patientUid !== uid
@@ -471,11 +427,6 @@ function populateReminderPatientSelector(preferredUid = null) {
 
 /* =========================================================
    PATIENT REMINDER SUBSCRIPTION
-
-   The caregiver reads and writes reminders under the
-   connected patient's account.
-
-   The patient's reminder includes medicineSnapshot.
    ========================================================= */
 
 function selectPatient(uid) {
@@ -556,7 +507,6 @@ function refreshPatientSelectors() {
     stopList(state.patientUnsubscribers);
 
     renderReminders();
-
     return;
   }
 
@@ -597,9 +547,7 @@ $("reminderPatient")?.addEventListener("change", event => {
 });
 
 /* =========================================================
-   MEDICINE DROPDOWN FOR REMINDERS
-
-   Uses the authorized person's own inventory.
+   MEDICINE DROPDOWN
    ========================================================= */
 
 function setReminderMedicineOptions(medicines, placeholder) {
@@ -676,6 +624,59 @@ function updateReminderMedicineDropdown() {
   if (state.medicines[previous]) {
     $("reminderMedicine").value = previous;
   }
+}
+
+/* =========================================================
+   COMPARTMENT SELECTOR — NEW
+   ========================================================= */
+
+function ensureCompartmentSelector() {
+  const medicineSelect = $("reminderMedicine");
+
+  if (!medicineSelect) return;
+
+  if ($("reminderCompartment")) return;
+
+  const wrapper = document.createElement("div");
+
+  wrapper.className = "form-group";
+  wrapper.style.marginTop = "12px";
+
+  const label = document.createElement("label");
+
+  label.htmlFor = "reminderCompartment";
+  label.textContent = "Assigned Compartment (1–7)";
+
+  const select = document.createElement("select");
+
+  select.id = "reminderCompartment";
+  select.name = "reminderCompartment";
+  select.required = true;
+  select.style.width = "100%";
+  select.style.padding = "12px";
+  select.style.borderRadius = "8px";
+  select.style.border = "1px solid #d0d5dd";
+  select.style.backgroundColor = "#ffffff";
+
+  select.innerHTML = `
+    <option value="">Select compartment</option>
+    ${Array.from(
+      { length: COMPARTMENT_COUNT },
+      (_, index) => `
+        <option value="${index + 1}">
+          Compartment ${index + 1}
+        </option>
+      `
+    ).join("")}
+  `;
+
+  wrapper.appendChild(label);
+  wrapper.appendChild(select);
+
+  medicineSelect.insertAdjacentElement(
+    "afterend",
+    wrapper
+  );
 }
 
 /* =========================================================
@@ -893,6 +894,11 @@ function renderReminders() {
           reminder.medicineDosage ||
           "";
 
+        const compartment =
+          reminder.compartment ??
+          snapshot.compartment ??
+          "Not assigned";
+
         return `
           <article class="record">
             <div class="record-main">
@@ -929,6 +935,11 @@ function renderReminders() {
                 ? `<p>Dose: ${escapeHTML(reminder.dose)}</p>`
                 : ""
               }
+
+              <p>
+                Assigned compartment:
+                ${escapeHTML(compartment)}
+              </p>
 
               ${snapshot.instructions
                 ? `
@@ -1103,7 +1114,6 @@ $("medicineForm")?.addEventListener("submit", async event => {
       "Enter the medicine name and strength/dosage.",
       "error"
     );
-
     return;
   }
 
@@ -1120,7 +1130,6 @@ $("medicineForm")?.addEventListener("submit", async event => {
       "Enter valid whole-number stock quantities.",
       "error"
     );
-
     return;
   }
 
@@ -1132,7 +1141,6 @@ $("medicineForm")?.addEventListener("submit", async event => {
     );
 
     verified.focus();
-
     return;
   }
 
@@ -1207,7 +1215,7 @@ $("medicineForm")?.addEventListener("submit", async event => {
 });
 
 /* =========================================================
-   MEDICINE EDIT / DELETE / REFILL BUTTONS
+   MEDICINE EDIT / DELETE / REFILL
    ========================================================= */
 
 $("medicineList")?.addEventListener("click", async event => {
@@ -1263,7 +1271,6 @@ $("medicineList")?.addEventListener("click", async event => {
   }
 
   medicinePanel(true);
-
   $("medicineName")?.focus();
 });
 
@@ -1303,7 +1310,6 @@ async function recordRefill(id) {
       "Enter a positive whole number up to 100,000.",
       "error"
     );
-
     return;
   }
 
@@ -1315,7 +1321,6 @@ async function recordRefill(id) {
       "The resulting stock quantity is too large.",
       "error"
     );
-
     return;
   }
 
@@ -1446,6 +1451,9 @@ function updateRecurrenceFields() {
 function resetReminderForm() {
   $("reminderForm")?.reset();
 
+  // Make sure the compartment selector exists.
+  ensureCompartmentSelector();
+
   if ($("reminderId")) {
     $("reminderId").value = "";
   }
@@ -1460,6 +1468,10 @@ function resetReminderForm() {
 
   if ($("reminderDate")) {
     $("reminderDate").value = "";
+  }
+
+  if ($("reminderCompartment")) {
+    $("reminderCompartment").value = "";
   }
 
   if ($("reminderFormTitle")) {
@@ -1481,9 +1493,7 @@ function resetReminderForm() {
   );
 
   reminderPanel(false);
-
   updateRecurrenceFields();
-
   hideMessage("pageMessage");
 }
 
@@ -1499,7 +1509,6 @@ $("addReminderButton")?.addEventListener("click", () => {
       "Connect to a patient and wait for approval before adding reminders.",
       "error"
     );
-
     return;
   }
 
@@ -1509,14 +1518,11 @@ $("addReminderButton")?.addEventListener("click", () => {
       "Add a medicine to your inventory before creating a reminder.",
       "error"
     );
-
     return;
   }
 
   resetReminderForm();
-
   reminderPanel(true);
-
   updateRecurrenceFields();
 
   $("reminderPatient")?.focus();
@@ -1530,18 +1536,18 @@ $("cancelReminderButton")?.addEventListener(
 /* =========================================================
    CREATE / UPDATE PATIENT REMINDER
 
-   IMPORTANT FIX:
-
-   medicineSnapshot is saved inside the patient's reminder.
-
-   The patient dashboard can read this snapshot without
-   accessing the caregiver's medicine inventory.
+   COMPARTMENT FIX:
+   - Saves reminder.compartment
+   - Saves medicineSnapshot.compartment
+   - Requires a valid compartment from 1 to 7
    ========================================================= */
 
 $("reminderForm")?.addEventListener("submit", async event => {
   event.preventDefault();
 
   if (!state.user || state.busy) return;
+
+  ensureCompartmentSelector();
 
   const patientUid =
     $("reminderPatient")?.value || "";
@@ -1585,6 +1591,11 @@ $("reminderForm")?.addEventListener("submit", async event => {
   const notes =
     $("reminderNotes")?.value.trim() || "";
 
+  // NEW: Read the selected compartment.
+  const compartment = Number(
+    $("reminderCompartment")?.value
+  );
+
   if (!selectedMedicine) {
     showMessage(
       "pageMessage",
@@ -1593,6 +1604,22 @@ $("reminderForm")?.addEventListener("submit", async event => {
     );
 
     $("reminderMedicine")?.focus();
+    return;
+  }
+
+  // NEW: Compartment validation.
+  if (
+    !Number.isInteger(compartment) ||
+    compartment < 1 ||
+    compartment > COMPARTMENT_COUNT
+  ) {
+    showMessage(
+      "pageMessage",
+      "Please assign a valid compartment from 1 to 7.",
+      "error"
+    );
+
+    $("reminderCompartment")?.focus();
     return;
   }
 
@@ -1613,7 +1640,6 @@ $("reminderForm")?.addEventListener("submit", async event => {
       "Choose a valid reminder time.",
       "error"
     );
-
     return;
   }
 
@@ -1625,7 +1651,6 @@ $("reminderForm")?.addEventListener("submit", async event => {
       "The reminder time is invalid.",
       "error"
     );
-
     return;
   }
 
@@ -1635,7 +1660,6 @@ $("reminderForm")?.addEventListener("submit", async event => {
       "Choose a valid recurrence.",
       "error"
     );
-
     return;
   }
 
@@ -1648,7 +1672,6 @@ $("reminderForm")?.addEventListener("submit", async event => {
       "Choose today or a future date.",
       "error"
     );
-
     return;
   }
 
@@ -1673,14 +1696,12 @@ $("reminderForm")?.addEventListener("submit", async event => {
       "Select at least one day for the weekly schedule.",
       "error"
     );
-
     return;
   }
 
   const id =
     $("reminderId")?.value || "";
 
-  // Verify the existing reminder before editing.
   if (id) {
     const existing = state.reminders?.[id];
 
@@ -1694,7 +1715,6 @@ $("reminderForm")?.addEventListener("submit", async event => {
         "This reminder does not belong to your account or selected patient.",
         "error"
       );
-
       return;
     }
   }
@@ -1709,13 +1729,16 @@ $("reminderForm")?.addEventListener("submit", async event => {
   try {
     const timestamp = Date.now();
 
-    // Copy the medicine information into the patient reminder.
+    // Medicine information copied into patient reminder.
     const medicineSnapshot = {
       medicineId,
 
       name: selectedMedicine.name || "",
 
       dosage: selectedMedicine.dosage || "",
+
+      // NEW: Save compartment in medicine snapshot.
+      compartment,
 
       instructions:
         selectedMedicine.instructions || "",
@@ -1728,15 +1751,6 @@ $("reminderForm")?.addEventListener("submit", async event => {
 
       snapshotUpdatedAt: timestamp
     };
-
-    /*
-      IMPORTANT DATABASE STRUCTURE:
-
-      users/{patientUid}/reminders/{reminderId}
-
-      This allows the patient dashboard to read its own
-      reminders without reading the caregiver inventory.
-    */
 
     const record = {
       patientUid,
@@ -1760,11 +1774,13 @@ $("reminderForm")?.addEventListener("submit", async event => {
       medicineDosage:
         selectedMedicine.dosage || "",
 
+      // NEW: Main compartment field read by ESP32.
+      compartment,
+
       medicineSnapshot,
 
       recurrence,
 
-      // Used by the ESP32 and patient dashboard.
       date:
         recurrence === "once"
           ? date
@@ -1835,10 +1851,12 @@ $("reminderForm")?.addEventListener("submit", async event => {
     if (
       savedReminder.caregiverUid !== state.user.uid ||
       savedReminder.patientUid !== patientUid ||
-      savedReminder.status !== "active"
+      savedReminder.status !== "active" ||
+      Number(savedReminder.compartment) !== compartment ||
+      Number(savedReminder.medicineSnapshot?.compartment) !== compartment
     ) {
       throw new Error(
-        "The saved reminder information does not match the selected patient."
+        "The saved reminder or compartment information does not match."
       );
     }
 
@@ -1852,12 +1870,11 @@ $("reminderForm")?.addEventListener("submit", async event => {
         ? "Patient reminder updated"
         : "Patient reminder added",
 
-      `${selectedMedicine.name} — ${scheduleDescription}. Patient: ${patientDisplayName(patientUid, patient)}`,
+      `${selectedMedicine.name} — ${scheduleDescription}. Compartment ${compartment}. Patient: ${patientDisplayName(patientUid, patient)}`,
 
       patientUid
     );
 
-    // Keep the correct patient selected.
     if (state.selectedPatientUid !== patientUid) {
       selectPatient(patientUid);
     }
@@ -1866,11 +1883,11 @@ $("reminderForm")?.addEventListener("submit", async event => {
 
     showMessage(
       "pageMessage",
-      `Reminder successfully saved for ${patientDisplayName(patientUid, patient)}.`
+      `Reminder saved successfully. Compartment ${compartment} assigned to ${selectedMedicine.name}.`
     );
 
     console.log(
-      "Reminder saved successfully:",
+      "REMINDER SAVED AND VERIFIED:",
       `users/${patientUid}/reminders/${reminderId}`,
       savedReminder
     );
@@ -1889,7 +1906,6 @@ $("reminderForm")?.addEventListener("submit", async event => {
 
   } finally {
     state.busy = false;
-
     setButtonBusy(button, false);
   }
 });
@@ -1914,7 +1930,6 @@ $("reminderList")?.addEventListener("click", async event => {
       "Select a connected patient first.",
       "error"
     );
-
     return;
   }
 
@@ -1922,9 +1937,7 @@ $("reminderList")?.addEventListener("click", async event => {
 
   if (del) {
     const id = del.dataset.delRem;
-
-    const reminder =
-      state.reminders[id];
+    const reminder = state.reminders[id];
 
     if (!reminder) return;
 
@@ -1937,7 +1950,6 @@ $("reminderList")?.addEventListener("click", async event => {
         "You cannot delete this reminder.",
         "error"
       );
-
       return;
     }
 
@@ -1982,9 +1994,7 @@ $("reminderList")?.addEventListener("click", async event => {
   if (!edit) return;
 
   const id = edit.dataset.editRem;
-
-  const reminder =
-    state.reminders[id];
+  const reminder = state.reminders[id];
 
   if (!reminder) return;
 
@@ -1997,7 +2007,6 @@ $("reminderList")?.addEventListener("click", async event => {
       "You cannot edit this reminder.",
       "error"
     );
-
     return;
   }
 
@@ -2007,7 +2016,6 @@ $("reminderList")?.addEventListener("click", async event => {
       "The medicine for this reminder is no longer in your inventory.",
       "error"
     );
-
     return;
   }
 
@@ -2027,10 +2035,22 @@ $("reminderList")?.addEventListener("click", async event => {
 
   updateReminderMedicineDropdown();
 
+  // Ensure selector exists before restoring its value.
+  ensureCompartmentSelector();
+
   $("reminderId").value = id;
 
   $("reminderMedicine").value =
     reminder.medicineId || "";
+
+  // NEW: Restore previously assigned compartment.
+  const savedCompartment =
+    reminder.compartment ??
+    reminder.medicineSnapshot?.compartment ??
+    "";
+
+  $("reminderCompartment").value =
+    String(savedCompartment);
 
   $("reminderRecurrence").value =
     reminder.recurrence || "once";
@@ -2157,7 +2177,6 @@ $("startPatientScanner")?.addEventListener(
         "The QR scanner could not load. Enter the patient's UID manually.",
         "error"
       );
-
       return;
     }
 
@@ -2225,9 +2244,6 @@ $("stopPatientScanner")?.addEventListener(
 
 /* =========================================================
    SEND PATIENT CONNECTION REQUEST
-
-   The patient must approve the request before the
-   authorized person can create patient reminders.
    ========================================================= */
 
 $("connectionForm")?.addEventListener(
@@ -2241,7 +2257,6 @@ $("connectionForm")?.addEventListener(
         "Please sign in again.",
         "error"
       );
-
       return;
     }
 
@@ -2261,7 +2276,6 @@ $("connectionForm")?.addEventListener(
         "Enter or scan a valid Firebase patient UID.",
         "error"
       );
-
       return;
     }
 
@@ -2271,7 +2285,6 @@ $("connectionForm")?.addEventListener(
         "You cannot connect your account to itself.",
         "error"
       );
-
       return;
     }
 
@@ -2306,7 +2319,6 @@ $("connectionForm")?.addEventListener(
             "connectionMessage",
             "A request is already pending. Please wait for the patient's approval."
           );
-
           return;
         }
 
@@ -2319,7 +2331,6 @@ $("connectionForm")?.addEventListener(
             "connectionMessage",
             "This connection request has already been approved."
           );
-
           return;
         }
       }
@@ -2332,14 +2343,12 @@ $("connectionForm")?.addEventListener(
 
       await set(requestRef, {
         caregiverUid,
-
         caregiverName,
 
         caregiverEmail:
           state.user.email || "",
 
         status: "pending",
-
         createdAt: Date.now()
       });
 
@@ -2443,7 +2452,6 @@ $("profileForm")?.addEventListener(
         "Enter your first name.",
         "error"
       );
-
       return;
     }
 
@@ -2520,7 +2528,6 @@ $("profileForm")?.addEventListener(
 
     } finally {
       state.busy = false;
-
       setButtonBusy(button, false);
     }
   }
@@ -2552,7 +2559,6 @@ $("passwordForm")?.addEventListener(
         "New password must contain at least 8 characters.",
         "error"
       );
-
       return;
     }
 
@@ -2562,7 +2568,6 @@ $("passwordForm")?.addEventListener(
         "New passwords do not match.",
         "error"
       );
-
       return;
     }
 
@@ -2572,7 +2577,6 @@ $("passwordForm")?.addEventListener(
         "Choose a different password.",
         "error"
       );
-
       return;
     }
 
@@ -2582,7 +2586,6 @@ $("passwordForm")?.addEventListener(
         "This account has no email address for password verification.",
         "error"
       );
-
       return;
     }
 
@@ -2652,7 +2655,6 @@ $("passwordForm")?.addEventListener(
 
     } finally {
       state.busy = false;
-
       setButtonBusy(button, false);
     }
   }
@@ -2708,7 +2710,6 @@ onAuthStateChanged(
       state.selectedPatientUid = null;
 
       window.location.replace("login.html");
-
       return;
     }
 
@@ -2759,7 +2760,6 @@ onAuthStateChanged(
         );
 
         window.location.replace("login.html");
-
         return;
       }
 
@@ -2799,7 +2799,6 @@ onAuthStateChanged(
         "medicines",
         value => {
           state.medicines = value;
-
           renderMedicines();
         }
       );
@@ -2819,7 +2818,6 @@ onAuthStateChanged(
         "activity",
         value => {
           state.activities = value;
-
           renderHistory();
         }
       );
@@ -2830,10 +2828,12 @@ onAuthStateChanged(
         "connectedPatients",
         value => {
           state.connectedPatients = value || {};
-
           refreshPatientSelectors();
         }
       );
+
+      // Create the compartment selector when the dashboard loads.
+      ensureCompartmentSelector();
 
       updateRecurrenceFields();
 
@@ -2862,6 +2862,5 @@ onAuthStateChanged(
 
 window.addEventListener("beforeunload", () => {
   stopSubscriptions();
-
   stopPatientQrScanner();
 });
