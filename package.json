@@ -34,7 +34,7 @@
     "html-encoding-sniffer": "^3.0.0",
     "http-proxy": "^1.18.1",
     "iconv-lite": "^0.6.3",
-    "math-intrinsics": "^1.1.2",
+    "math-intrinsics": "^1.1.0",
     "mime": "^1.6.0",
     "minimist": "^1.2.8",
     "ms": "^2.1.3",
