@@ -1698,7 +1698,7 @@ const authorizedGuideSteps = [
     title: "Welcome to Medminder!",
     description:
       "This is your Authorized Person dashboard. You can manage your medicine inventory, connect with patients, and create medicine schedules for them.",
-    target: "#pageTitle",
+    target: "#welcomeTitle",
     navigate: () => showPage("medicinesPage")
   },
   {
@@ -2144,121 +2144,501 @@ function createAuthorizedSpotlight({ steps, helpButton, onComplete }) {
 }
 
 
-function ensureAuthorizedHelpButton() {
-  let button = $("medminderHelpButton");
+function createAuthorizedSpotlight({ steps, helpButton, onComplete }) {
+  let currentStep = 0;
+  let isOpen = false;
+  let completionHandled = false;
+  let positionFrame = null;
 
-  if (!button) {
-    button = document.createElement("button");
-    button.id = "medminderHelpButton";
-    button.type = "button";
-    button.textContent = "❔ How to Use";
-    document.body.appendChild(button);
+  const overlay = document.createElement("div");
+  overlay.id = "medminderSpotlightOverlay";
+
+  const style = document.createElement("style");
+  style.id = "medminderSpotlightStyles";
+
+  style.textContent = `
+    #medminderSpotlightOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 99990;
+      display: none;
+      pointer-events: none;
+    }
+
+    #medminderSpotlightOverlay.active {
+      display: block;
+    }
+
+    #medminderSpotlight {
+      position: fixed;
+      z-index: 99991;
+      border: 3px solid #42b875;
+      border-radius: 12px;
+      box-shadow:
+        0 0 0 9999px rgba(0, 0, 0, .68),
+        0 0 20px rgba(66, 184, 117, .5);
+      pointer-events: none;
+      transition: top .2s ease, left .2s ease,
+                  width .2s ease, height .2s ease;
+    }
+
+    #medminderSpotlightCard {
+      position: fixed;
+      z-index: 99992;
+      width: min(360px, calc(100vw - 32px));
+      max-height: min(420px, 75vh);
+      overflow-y: auto;
+      background: #fff;
+      color: #20352a;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 12px 45px rgba(0,0,0,.25);
+      pointer-events: auto;
+      font-family: Inter, Arial, sans-serif;
+      box-sizing: border-box;
+    }
+
+    #medminderSpotlightCard h3 {
+      margin: 0 0 9px;
+      font-size: 17px;
+      color: #175638;
+    }
+
+    #medminderSpotlightCard p {
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 0 0 15px;
+      color: #53665a;
+    }
+
+    #medminderSpotlightCard .tour-progress {
+      height: 5px;
+      background: #e6eee8;
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    #medminderSpotlightCard .tour-progress div {
+      height: 100%;
+      background: #24945a;
+      transition: width .2s;
+    }
+
+    #medminderSpotlightCard .tour-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    #medminderSpotlightCard button {
+      border: 0;
+      border-radius: 8px;
+      padding: 9px 13px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    #medminderSpotlightCard button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    #medminderSpotlightCard .tour-skip {
+      background: transparent;
+      color: #758579;
+      padding-left: 0;
+    }
+
+    #medminderSpotlightCard .tour-back {
+      background: #edf4ef;
+      color: #175638;
+    }
+
+    #medminderSpotlightCard .tour-next {
+      background: #175638;
+      color: white;
+    }
+
+    #medminderSpotlightCard .tour-close {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      background: transparent;
+      color: #738176;
+      padding: 4px 8px;
+      font-size: 18px;
+    }
+
+    @media(max-width: 480px) {
+      #medminderSpotlightCard {
+        width: calc(100vw - 24px);
+        max-height: 42vh;
+        padding: 14px;
+        border-radius: 13px;
+      }
+
+      #medminderSpotlightCard h3 {
+        font-size: 15px;
+        margin-bottom: 7px;
+      }
+
+      #medminderSpotlightCard p {
+        font-size: 12px;
+        line-height: 1.5;
+        margin-bottom: 10px;
+      }
+
+      #medminderSpotlightCard .tour-progress {
+        margin-bottom: 9px;
+      }
+
+      #medminderSpotlightCard button {
+        padding: 8px 10px;
+        font-size: 11px;
+      }
+
+      #medminderSpotlightCard .tour-close {
+        top: 5px;
+        right: 7px;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+
+  overlay.innerHTML = `
+    <div id="medminderSpotlight"></div>
+
+    <div
+      id="medminderSpotlightCard"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tourTitle"
+    >
+      <button
+        class="tour-close"
+        id="tourClose"
+        type="button"
+        aria-label="Close tutorial"
+      >&times;</button>
+
+      <div class="tour-progress">
+        <div id="tourProgressBar"></div>
+      </div>
+
+      <small id="tourStepCount"></small>
+      <h3 id="tourTitle"></h3>
+      <p id="tourDescription"></p>
+
+      <div class="tour-actions">
+        <button class="tour-skip" id="tourSkip" type="button">
+          Skip tutorial
+        </button>
+
+        <div style="display:flex;gap:8px">
+          <button class="tour-back" id="tourBack" type="button">
+            Back
+          </button>
+
+          <button class="tour-next" id="tourNext" type="button">
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const spotlight = overlay.querySelector("#medminderSpotlight");
+  const card = overlay.querySelector("#medminderSpotlightCard");
+
+  function findTarget(step) {
+    if (!step?.target) return null;
+
+    if (typeof step.target === "function") {
+      return step.target();
+    }
+
+    return document.querySelector(step.target);
   }
 
-  const styleId = "medminderHelpButtonStyles";
+  function updateSpotlight(target) {
+    if (!target || !target.isConnected) {
+      spotlight.style.display = "none";
+      return;
+    }
 
-  if (!$(styleId)) {
-    const style = document.createElement("style");
-    style.id = styleId;
+    spotlight.style.display = "block";
 
-    style.textContent = `
-      #medminderHelpButton {
-        position: fixed;
-        right: 24px;
-        bottom: 24px;
-        z-index: 9998;
-        border: none;
-        border-radius: 50px;
-        padding: 14px 20px;
-        background: #175638;
-        color: white;
-        font-size: 14px;
-        font-weight: 700;
-        cursor: pointer;
-        box-shadow: 0 5px 18px rgba(0,0,0,.18);
-        transition: bottom .2s ease, transform .2s ease;
-      }
+    const rect = target.getBoundingClientRect();
+    const padding = 6;
 
-      #medminderHelpButton:hover {
-        background: #10442b;
-        transform: translateY(-2px);
-      }
-
-      @media(max-width:480px) {
-        #medminderHelpButton {
-          right: 14px;
-          padding: 11px 15px;
-          font-size: 12px;
-        }
-      }
-    `;
-
-    document.head.appendChild(style);
+    spotlight.style.top = `${Math.max(0, rect.top - padding)}px`;
+    spotlight.style.left = `${Math.max(0, rect.left - padding)}px`;
+    spotlight.style.width = `${Math.min(
+      rect.width + padding * 2,
+      window.innerWidth
+    )}px`;
+    spotlight.style.height = `${Math.min(
+      rect.height + padding * 2,
+      window.innerHeight
+    )}px`;
   }
 
-  // Detect the bottom navigation.
-  function getBottomNavigation() {
-    return document.querySelector(
-      "#bottomNav, " +
-      "#bottomNavigation, " +
-      "#mobileBottomNav, " +
-      ".bottom-nav, " +
-      ".bottom-navigation, " +
-      ".mobile-bottom-nav, " +
-      ".bottom-navbar, " +
-      ".navbar-bottom"
-    );
+  function positionCard(target) {
+    if (!target || !target.isConnected) {
+      card.style.top = "50%";
+      card.style.left = "50%";
+      card.style.bottom = "auto";
+      card.style.transform = "translate(-50%, -50%)";
+      return;
+    }
+
+    card.style.transform = "none";
+    card.style.bottom = "auto";
+
+    const rect = target.getBoundingClientRect();
+    const mobile = window.innerWidth <= 480;
+    const margin = 12;
+    const gap = 14;
+
+    const cardWidth = mobile
+      ? window.innerWidth - 24
+      : Math.min(360, window.innerWidth - 32);
+
+    card.style.width = `${cardWidth}px`;
+
+    const cardHeight = card.offsetHeight;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const candidates = [
+      {
+        left: rect.left,
+        top: rect.bottom + gap
+      },
+      {
+        left: rect.left,
+        top: rect.top - cardHeight - gap
+      },
+      {
+        left: rect.right + gap,
+        top: rect.top
+      },
+      {
+        left: rect.left - cardWidth - gap,
+        top: rect.top
+      }
+    ];
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(value, max));
+    }
+
+    function calculateOverlap(candidate) {
+      const left = clamp(
+        candidate.left,
+        margin,
+        viewportWidth - cardWidth - margin
+      );
+
+      const top = clamp(
+        candidate.top,
+        margin,
+        viewportHeight - cardHeight - margin
+      );
+
+      const overlapWidth = Math.max(
+        0,
+        Math.min(left + cardWidth, rect.right + 8) -
+        Math.max(left, rect.left - 8)
+      );
+
+      const overlapHeight = Math.max(
+        0,
+        Math.min(top + cardHeight, rect.bottom + 8) -
+        Math.max(top, rect.top - 8)
+      );
+
+      return {
+        left,
+        top,
+        overlap: overlapWidth * overlapHeight
+      };
+    }
+
+    const positions = candidates.map(calculateOverlap);
+
+    positions.sort((a, b) => a.overlap - b.overlap);
+
+    let bestPosition = positions[0];
+
+    // On mobile, favor the area with the least overlap.
+    // The card remains scrollable if its content is taller.
+    if (mobile) {
+      bestPosition = positions.reduce((best, current) => {
+        return current.overlap < best.overlap ? current : best;
+      }, positions[0]);
+    }
+
+    card.style.left = `${bestPosition.left}px`;
+    card.style.top = `${bestPosition.top}px`;
   }
 
-  // Keep the floating button above the bottom navigation.
-  function positionHelpButton() {
-    const isMobile = window.matchMedia("(max-width: 768px)").matches;
-    const bottomNav = getBottomNavigation();
+  function reposition() {
+    if (!isOpen) return;
 
-    if (isMobile) {
-      if (bottomNav) {
-        const navRect = bottomNav.getBoundingClientRect();
+    const target = findTarget(steps[currentStep]);
 
-        // Calculate the actual distance from the screen bottom
-        // to the top of the navigation, including any bottom inset.
-        const spaceBelowNav = window.innerHeight - navRect.top;
+    updateSpotlight(target);
+    positionCard(target);
+  }
 
-        button.style.bottom = `${spaceBelowNav + 14}px`;
-      } else {
-        // Fallback if the navigation selector is not found.
-        button.style.bottom = "90px";
+  function renderStep() {
+    const step = steps[currentStep];
+    if (!step) return;
+
+    if (typeof step.navigate === "function") {
+      step.navigate();
+    }
+
+    const target = findTarget(step);
+
+    if (target) {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest"
+      });
+    }
+
+    overlay.querySelector("#tourStepCount").textContent =
+      `STEP ${currentStep + 1} OF ${steps.length}`;
+
+    overlay.querySelector("#tourTitle").textContent = step.title;
+    overlay.querySelector("#tourDescription").textContent =
+      step.description;
+
+    overlay.querySelector("#tourProgressBar").style.width =
+      `${((currentStep + 1) / steps.length) * 100}%`;
+
+    overlay.querySelector("#tourBack").style.visibility =
+      currentStep === 0 ? "hidden" : "visible";
+
+    overlay.querySelector("#tourNext").textContent =
+      currentStep === steps.length - 1 ? "Finish" : "Next";
+
+    // Reposition after the page navigation and scrolling.
+    if (positionFrame) {
+      cancelAnimationFrame(positionFrame);
+    }
+
+    positionFrame = requestAnimationFrame(() => {
+      reposition();
+
+      setTimeout(() => {
+        reposition();
+      }, 350);
+    });
+  }
+
+  async function closeTour(markCompleted = true) {
+    if (!isOpen) return;
+
+    isOpen = false;
+    overlay.classList.remove("active");
+    document.body.style.overflow = "";
+
+    window.removeEventListener("resize", reposition);
+    window.removeEventListener("scroll", reposition, true);
+
+    if (markCompleted && !completionHandled) {
+      completionHandled = true;
+
+      if (typeof onComplete === "function") {
+        await onComplete();
       }
-    } else {
-      button.style.bottom = "24px";
     }
   }
 
-  positionHelpButton();
+  function openTour() {
+    currentStep = 0;
+    completionHandled = false;
+    isOpen = true;
 
-  // Recalculate when the screen changes.
-  if (button.dataset.positioningBound !== "true") {
-    window.addEventListener("resize", positionHelpButton);
-    window.addEventListener("orientationchange", positionHelpButton);
+    overlay.classList.add("active");
+    document.body.style.overflow = "hidden";
 
-    button.dataset.positioningBound = "true";
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+
+    renderStep();
   }
 
-  // Observe navigation size changes.
-  const bottomNav = getBottomNavigation();
+  overlay.querySelector("#tourNext").addEventListener("click", async () => {
+    if (currentStep < steps.length - 1) {
+      currentStep++;
+      renderStep();
+    } else {
+      await closeTour(true);
+    }
+  });
 
-  if (
-    bottomNav &&
-    window.ResizeObserver &&
-    !button._navResizeObserver
-  ) {
-    button._navResizeObserver = new ResizeObserver(() => {
-      positionHelpButton();
+  overlay.querySelector("#tourBack").addEventListener("click", () => {
+    if (currentStep > 0) {
+      currentStep--;
+      renderStep();
+    }
+  });
+
+  overlay.querySelector("#tourSkip").addEventListener("click", () => {
+    closeTour(true);
+  });
+
+  overlay.querySelector("#tourClose").addEventListener("click", () => {
+    closeTour(true);
+  });
+
+  const keyHandler = event => {
+    if (isOpen && event.key === "Escape") {
+      closeTour(true);
+    }
+  };
+
+  document.addEventListener("keydown", keyHandler);
+
+  if (helpButton) {
+    helpButton.addEventListener("click", event => {
+      event.preventDefault();
+      openTour();
     });
-
-    button._navResizeObserver.observe(bottomNav);
   }
 
-  return button;
+  return {
+    open: openTour,
+    close: closeTour,
+
+    destroy() {
+      if (isOpen) {
+        document.body.style.overflow = "";
+      }
+
+      document.removeEventListener("keydown", keyHandler);
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+
+      if (positionFrame) {
+        cancelAnimationFrame(positionFrame);
+      }
+
+      overlay.remove();
+      style.remove();
+    }
+  };
 }
 
 

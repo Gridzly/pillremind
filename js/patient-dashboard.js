@@ -2183,7 +2183,7 @@ const patientVisualSteps = [
     description:
       "Welcome to your medicine dashboard! Here you can view your assigned medicines, follow reminders, and record your daily intake.",
     page: "homeSection",
-    target: "#homeSection",
+    target: "#welcomeTitle",
     icon: "👋"
   },
   {
@@ -2240,10 +2240,13 @@ const patientVisualSteps = [
    SPOTLIGHT TUTORIAL CREATOR
 ===================================================== */
 
+//*for tutorial images to
+
 function createMedminderSpotlight(steps, onComplete) {
   let currentStep = 0;
   let isOpen = false;
   let closing = false;
+  let repositionFrame = null;
 
   document.getElementById("patientSpotlightOverlay")?.remove();
   document.getElementById("patientSpotlightStyles")?.remove();
@@ -2278,7 +2281,7 @@ function createMedminderSpotlight(steps, onComplete) {
           <button type="button" id="patientTourBack"
             class="patient-tour-back">Back</button>
           <button type="button" id="patientTourNext"
-            class="patient-tour-next">Next</button>
+            class="patient-tour-next">Next →</button>
         </div>
       </div>
     </div>
@@ -2289,104 +2292,243 @@ function createMedminderSpotlight(steps, onComplete) {
 
   style.textContent = `
     #patientSpotlightOverlay {
-      position:fixed;inset:0;z-index:100000;
-      display:none;pointer-events:none;
+      position:fixed;
+      inset:0;
+      z-index:100000;
+      display:none;
+      pointer-events:none;
     }
 
-    #patientSpotlightOverlay.active { display:block; }
+    #patientSpotlightOverlay.active {
+      display:block;
+    }
 
     #patientSpotlightHighlight {
-      position:fixed;display:none;z-index:100001;
-      border:3px solid #42b875;border-radius:13px;
-      box-shadow:0 0 0 9999px rgba(7,22,13,.72),
-        0 0 25px rgba(66,184,117,.45);
+      position:fixed;
+      display:none;
+      z-index:100001;
+      border:3px solid #42b875;
+      border-radius:12px;
+      box-shadow:
+        0 0 0 9999px rgba(7,22,13,.72),
+        0 0 20px rgba(66,184,117,.45);
       pointer-events:none;
-      transition:top .2s ease,left .2s ease,
-        width .2s ease,height .2s ease;
+      box-sizing:border-box;
+      transition:
+        top .2s ease,
+        left .2s ease,
+        width .2s ease,
+        height .2s ease;
     }
 
     #patientSpotlightCard {
-      position:fixed;z-index:100002;
-      width:min(370px,calc(100vw - 32px));
-      padding:22px;border-radius:17px;
-      background:#fff;color:#263a2d;
-      box-shadow:0 15px 50px rgba(0,0,0,.28);
-      pointer-events:auto;font-family:Inter,Arial,sans-serif;
+      position:fixed;
+      z-index:100002;
+      width:min(370px, calc(100vw - 32px));
+      max-height:calc(100vh - 24px);
+      overflow-y:auto;
+      overscroll-behavior:contain;
+      box-sizing:border-box;
+      padding:22px;
+      border-radius:17px;
+      background:#ffffff;
+      color:#263a2d;
+      box-shadow:0 12px 35px rgba(0,0,0,.25);
+      pointer-events:auto;
+      font-family:Inter,Arial,sans-serif;
+      scrollbar-width:thin;
     }
 
     .patient-tour-top {
-      display:flex;align-items:center;
-      justify-content:space-between;margin-bottom:12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:12px;
       padding-right:27px;
     }
 
     #patientTourStepLabel {
-      color:#175638;font-size:11px;
-      font-weight:800;letter-spacing:.7px;
+      color:#175638;
+      font-size:11px;
+      font-weight:800;
+      letter-spacing:.7px;
     }
 
-    #patientTourStepIcon { font-size:21px; }
+    #patientTourStepIcon {
+      font-size:21px;
+    }
 
     #patientSpotlightClose {
-      position:absolute;top:11px;right:12px;
-      width:30px;height:30px;border:0;
-      border-radius:50%;background:#f0f5f1;
-      color:#526259;font-size:21px;cursor:pointer;
+      position:absolute;
+      top:10px;
+      right:11px;
+      width:30px;
+      height:30px;
+      border:0;
+      border-radius:50%;
+      background:#f0f5f1;
+      color:#526259;
+      font-size:21px;
+      cursor:pointer;
     }
 
     .patient-tour-progress {
-      width:100%;height:5px;margin-bottom:17px;
-      overflow:hidden;border-radius:20px;background:#e6eee8;
+      width:100%;
+      height:5px;
+      margin-bottom:16px;
+      overflow:hidden;
+      border-radius:20px;
+      background:#e6eee8;
     }
 
     #patientTourProgressBar {
-      width:0;height:100%;border-radius:20px;
-      background:#24945a;transition:width .25s ease;
+      width:0;
+      height:100%;
+      border-radius:20px;
+      background:#24945a;
+      transition:width .25s ease;
     }
 
     #patientTourTitle {
-      margin:0 0 9px;color:#175638;
-      font-size:18px;font-weight:800;line-height:1.4;
+      margin:0 0 8px;
+      color:#175638;
+      font-size:18px;
+      font-weight:800;
+      line-height:1.4;
     }
 
     #patientTourDescription {
-      margin:0;color:#64736a;
-      font-size:13px;line-height:1.75;
+      margin:0;
+      color:#64736a;
+      font-size:13px;
+      line-height:1.65;
+      overflow-wrap:anywhere;
     }
 
     .patient-tour-footer {
-      display:flex;align-items:center;
-      justify-content:space-between;gap:8px;margin-top:22px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      margin-top:20px;
     }
 
-    .patient-tour-navigation { display:flex;gap:8px; }
+    .patient-tour-navigation {
+      display:flex;
+      gap:8px;
+    }
 
     #patientSpotlightCard button {
-      min-height:38px;padding:9px 13px;
-      border-radius:9px;font-size:12px;
-      font-weight:800;cursor:pointer;
+      min-height:38px;
+      padding:9px 13px;
+      border-radius:9px;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
     }
 
     .patient-tour-skip {
-      padding-left:0!important;border:0;
-      background:transparent;color:#7a8980;
+      padding-left:0!important;
+      border:0;
+      background:transparent;
+      color:#7a8980;
     }
 
     .patient-tour-back {
       border:1px solid #dce8df;
-      background:#f4f8f5;color:#175638;
+      background:#f4f8f5;
+      color:#175638;
     }
 
     .patient-tour-next {
-      border:0;background:#175638;color:white;
+      border:0;
+      background:#175638;
+      color:white;
     }
 
-    .patient-tour-next:hover { background:#10442b; }
+    .patient-tour-next:hover {
+      background:#10442b;
+    }
 
-    @media(max-width:600px) {
+    @media(max-width:768px) {
       #patientSpotlightCard {
-        left:16px!important;right:16px!important;
-        bottom:16px!important;top:auto!important;width:auto;
+        width:calc(100vw - 24px);
+        max-width:420px;
+        max-height:42vh;
+        padding:14px 16px;
+        border-radius:14px;
+      }
+
+      #patientTourStepLabel {
+        font-size:10px;
+      }
+
+      #patientTourStepIcon {
+        font-size:18px;
+      }
+
+      #patientSpotlightClose {
+        width:27px;
+        height:27px;
+        top:8px;
+        right:9px;
+      }
+
+      .patient-tour-top {
+        margin-bottom:9px;
+      }
+
+      .patient-tour-progress {
+        margin-bottom:11px;
+        height:4px;
+      }
+
+      #patientTourTitle {
+        font-size:16px;
+        margin-bottom:6px;
+      }
+
+      #patientTourDescription {
+        font-size:12px;
+        line-height:1.5;
+      }
+
+      .patient-tour-footer {
+        margin-top:13px;
+      }
+
+      #patientSpotlightCard button {
+        min-height:34px;
+        padding:8px 10px;
+        font-size:11px;
+      }
+
+      .patient-tour-navigation {
+        gap:6px;
+      }
+    }
+
+    @media(max-width:380px) {
+      #patientSpotlightCard {
+        width:calc(100vw - 20px);
+        padding:12px 13px;
+      }
+
+      #patientTourTitle {
+        font-size:15px;
+      }
+
+      #patientTourDescription {
+        font-size:11px;
+      }
+
+      .patient-tour-footer {
+        margin-top:10px;
+      }
+
+      #patientSpotlightCard button {
+        padding:7px 9px;
+        font-size:10px;
       }
     }
   `;
@@ -2397,10 +2539,58 @@ function createMedminderSpotlight(steps, onComplete) {
   const highlight = overlay.querySelector("#patientSpotlightHighlight");
   const card = overlay.querySelector("#patientSpotlightCard");
 
+  function isMobile() {
+    return window.matchMedia("(max-width: 768px)").matches;
+  }
+
+  function getBottomNavigationHeight() {
+    const nav = document.querySelector(
+      "#bottomNav, #bottomNavigation, .bottom-nav, " +
+      ".bottom-navigation, .mobile-bottom-nav, " +
+      ".bottom-navbar, .navbar-bottom"
+    );
+
+    if (!nav) return 0;
+
+    const rect = nav.getBoundingClientRect();
+
+    if (rect.top >= window.innerHeight) return 0;
+
+    return Math.max(0, window.innerHeight - rect.top);
+  }
+
   function getTarget(step) {
     if (!step) return null;
-    if (typeof step.target === "function") return step.target();
-    return document.querySelector(step.target);
+
+    let target = typeof step.target === "function"
+      ? step.target()
+      : document.querySelector(step.target);
+
+    if (!target) return null;
+
+    // Avoid highlighting an entire long list or page.
+    // Highlight its first visible child instead.
+    const rect = target.getBoundingClientRect();
+
+    if (rect.height > window.innerHeight * 0.45) {
+      const children = Array.from(target.children);
+
+      const firstVisibleChild = children.find(child => {
+        const childRect = child.getBoundingClientRect();
+
+        return (
+          childRect.width > 0 &&
+          childRect.height > 0 &&
+          childRect.height <= window.innerHeight * 0.45
+        );
+      });
+
+      if (firstVisibleChild) {
+        target = firstVisibleChild;
+      }
+    }
+
+    return target;
   }
 
   function navigateToStep(step) {
@@ -2430,53 +2620,200 @@ function createMedminderSpotlight(steps, onComplete) {
     }
   }
 
+  function rectanglesOverlap(a, b, gap = 8) {
+    return !(
+      a.right + gap <= b.left ||
+      a.left >= b.right + gap ||
+      a.bottom + gap <= b.top ||
+      a.top >= b.bottom + gap
+    );
+  }
+
   function positionCard(target) {
+    card.style.left = "12px";
+    card.style.right = "auto";
+    card.style.top = "12px";
+    card.style.bottom = "auto";
     card.style.transform = "none";
 
-    if (window.innerWidth <= 600) {
-      card.style.top = "auto";
-      card.style.bottom = "16px";
-      card.style.left = "16px";
-      card.style.right = "16px";
-      return;
-    }
-
-    const cardRect = card.getBoundingClientRect();
+    const mobile = isMobile();
+    const margin = mobile ? 10 : 12;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    let top;
-    let left;
+    const navHeight = mobile ? getBottomNavigationHeight() : 0;
+
+    const availableBottom = viewportHeight - navHeight - margin;
+
+    // Measure the actual card after its text has been rendered.
+    const cardRect = card.getBoundingClientRect();
+
+    const cardWidth = cardRect.width;
+    const cardHeight = cardRect.height;
 
     if (!target) {
-      top = (viewportHeight - cardRect.height) / 2;
-      left = (viewportWidth - cardRect.width) / 2;
-    } else {
-      const rect = target.getBoundingClientRect();
+      card.style.left = `${Math.max(
+        margin,
+        (viewportWidth - cardWidth) / 2
+      )}px`;
 
-      top = rect.bottom + 17;
+      card.style.top = `${Math.max(
+        margin,
+        (viewportHeight - cardHeight) / 2
+      )}px`;
 
-      if (top + cardRect.height > viewportHeight - 12) {
-        top = rect.top - cardRect.height - 17;
-      }
-
-      if (top < 12) {
-        top = Math.max(12, (viewportHeight - cardRect.height) / 2);
-      }
-
-      left = rect.left;
-
-      if (left + cardRect.width > viewportWidth - 12) {
-        left = viewportWidth - cardRect.width - 12;
-      }
-
-      left = Math.max(12, left);
+      return;
     }
 
-    card.style.top = `${top}px`;
-    card.style.left = `${left}px`;
-    card.style.bottom = "auto";
-    card.style.right = "auto";
+    const rect = target.getBoundingClientRect();
+
+    const targetRect = {
+      left: rect.left - 5,
+      right: rect.right + 5,
+      top: rect.top - 5,
+      bottom: rect.bottom + 5
+    };
+
+    const gap = 12;
+
+    const candidates = [
+      {
+        name: "bottom",
+        left: Math.max(
+          margin,
+          Math.min(
+            rect.left,
+            viewportWidth - cardWidth - margin
+          )
+        ),
+        top: targetRect.bottom + gap
+      },
+      {
+        name: "top",
+        left: Math.max(
+          margin,
+          Math.min(
+            rect.left,
+            viewportWidth - cardWidth - margin
+          )
+        ),
+        top: targetRect.top - cardHeight - gap
+      },
+      {
+        name: "right",
+        left: targetRect.right + gap,
+        top: Math.max(
+          margin,
+          Math.min(
+            rect.top,
+            availableBottom - cardHeight
+          )
+        )
+      },
+      {
+        name: "left",
+        left: targetRect.left - cardWidth - gap,
+        top: Math.max(
+          margin,
+          Math.min(
+            rect.top,
+            availableBottom - cardHeight
+          )
+        )
+      }
+    ];
+
+    // On mobile, use above/below first to preserve the screen width.
+    const orderedCandidates = mobile
+      ? [candidates[0], candidates[1], candidates[2], candidates[3]]
+      : candidates;
+
+    let selected = null;
+
+    for (const candidate of orderedCandidates) {
+      const candidateRect = {
+        left: candidate.left,
+        right: candidate.left + cardWidth,
+        top: candidate.top,
+        bottom: candidate.top + cardHeight
+      };
+
+      const insideViewport =
+        candidateRect.left >= margin &&
+        candidateRect.right <= viewportWidth - margin &&
+        candidateRect.top >= margin &&
+        candidateRect.bottom <= availableBottom;
+
+      if (
+        insideViewport &&
+        !rectanglesOverlap(candidateRect, targetRect, 5)
+      ) {
+        selected = candidate;
+        break;
+      }
+    }
+
+    // If no position is available, move the target toward the top
+    // of the screen and place the tutorial beneath it.
+    if (!selected) {
+      const maximumTargetHeight = Math.max(
+        55,
+        availableBottom - cardHeight - gap - margin * 2
+      );
+
+      if (rect.height > maximumTargetHeight) {
+        const firstChild = target.querySelector(":scope > *");
+
+        if (firstChild) {
+          const childRect = firstChild.getBoundingClientRect();
+
+          if (
+            childRect.height > 0 &&
+            childRect.height <= maximumTargetHeight
+          ) {
+            target = firstChild;
+            updateHighlight(target);
+            return;
+          }
+        }
+      }
+
+      selected = {
+        left: Math.max(
+          margin,
+          Math.min(
+            rect.left,
+            viewportWidth - cardWidth - margin
+          )
+        ),
+        top: Math.max(
+          margin,
+          Math.min(
+            targetRect.bottom + gap,
+            availableBottom - cardHeight
+          )
+        )
+      };
+    }
+
+    const finalLeft = Math.max(
+      margin,
+      Math.min(
+        selected.left,
+        viewportWidth - cardWidth - margin
+      )
+    );
+
+    const finalTop = Math.max(
+      margin,
+      Math.min(
+        selected.top,
+        availableBottom - cardHeight
+      )
+    );
+
+    card.style.left = `${finalLeft}px`;
+    card.style.top = `${finalTop}px`;
   }
 
   function updateHighlight(target) {
@@ -2487,7 +2824,7 @@ function createMedminderSpotlight(steps, onComplete) {
     }
 
     const rect = target.getBoundingClientRect();
-    const padding = 7;
+    const padding = 5;
 
     highlight.style.display = "block";
     highlight.style.top = `${rect.top - padding}px`;
@@ -2510,7 +2847,9 @@ function createMedminderSpotlight(steps, onComplete) {
     overlay.querySelector("#patientTourStepIcon").textContent =
       step.icon || "🌿";
 
-    overlay.querySelector("#patientTourTitle").textContent = step.title;
+    overlay.querySelector("#patientTourTitle").textContent =
+      step.title;
+
     overlay.querySelector("#patientTourDescription").textContent =
       step.description;
 
@@ -2533,14 +2872,27 @@ function createMedminderSpotlight(steps, onComplete) {
       });
     }
 
+    // Wait for scrolling and layout to settle before positioning.
     setTimeout(() => {
-      if (isOpen) updateHighlight(getTarget(step));
-    }, 350);
+      if (!isOpen) return;
+
+      const updatedTarget = getTarget(step);
+      updateHighlight(updatedTarget);
+    }, 450);
   }
 
   function reposition() {
     if (!isOpen) return;
-    updateHighlight(getTarget(steps[currentStep]));
+
+    if (repositionFrame) {
+      cancelAnimationFrame(repositionFrame);
+    }
+
+    repositionFrame = requestAnimationFrame(() => {
+      repositionFrame = null;
+
+      updateHighlight(getTarget(steps[currentStep]));
+    });
   }
 
   async function closeTour() {
@@ -2550,11 +2902,18 @@ function createMedminderSpotlight(steps, onComplete) {
     isOpen = false;
 
     overlay.classList.remove("active");
+
     document.body.style.overflow = "";
 
     window.removeEventListener("resize", reposition);
+    window.removeEventListener("orientationchange", reposition);
     window.removeEventListener("scroll", reposition, true);
     document.removeEventListener("keydown", handleEscape);
+
+    if (repositionFrame) {
+      cancelAnimationFrame(repositionFrame);
+      repositionFrame = null;
+    }
 
     try {
       if (typeof onComplete === "function") {
@@ -2572,9 +2931,11 @@ function createMedminderSpotlight(steps, onComplete) {
     isOpen = true;
 
     overlay.classList.add("active");
+
     document.body.style.overflow = "hidden";
 
     window.addEventListener("resize", reposition);
+    window.addEventListener("orientationchange", reposition);
     window.addEventListener("scroll", reposition, true);
 
     renderStep();
@@ -2625,6 +2986,7 @@ function createMedminderSpotlight(steps, onComplete) {
     close: closeTour
   };
 }
+
 
 /* =====================================================
    ONBOARDING COMPLETION
