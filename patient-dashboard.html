@@ -973,6 +973,254 @@
       overflow-wrap: anywhere;
     }
 
+    /* NEW: HELP BUTTON */
+
+    .help-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 40px;
+      padding: 9px 13px;
+      border: 1px solid #cbded0;
+      border-radius: 10px;
+      background: var(--green-light);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+      transition: .2s ease;
+    }
+
+    .help-button:hover {
+      background: #d7ebdd;
+    }
+
+    /* NEW: USER GUIDE MODAL */
+
+    .user-guide-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(10, 25, 15, .65);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+    }
+
+    .user-guide-overlay[hidden] {
+      display: none !important;
+    }
+
+    .user-guide-modal {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 760px;
+      max-height: min(88vh, 850px);
+      max-height: min(88dvh, 850px);
+      overflow: hidden;
+      border-radius: 19px;
+      background: white;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      animation: guideAppear .22s ease;
+    }
+
+    @keyframes guideAppear {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .user-guide-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      flex-shrink: 0;
+      padding: 21px 23px;
+      background: linear-gradient(120deg, #10442b, #28794d);
+      color: white;
+    }
+
+    .user-guide-header h2 {
+      margin: 0 0 6px;
+      font-size: 20px;
+    }
+
+    .user-guide-header p {
+      margin: 0;
+      color: #e2eee6;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .user-guide-close {
+      display: grid;
+      flex: 0 0 38px;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 10px;
+      background: rgba(255,255,255,.12);
+      color: white;
+      font-size: 25px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .user-guide-close:hover {
+      background: rgba(255,255,255,.22);
+    }
+
+    .user-guide-body {
+      flex: 1;
+      min-height: 0;
+      padding: 22px 25px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .guide-intro {
+      margin: 0 0 20px;
+      padding: 15px;
+      border-radius: 12px;
+      background: var(--green-soft);
+      color: #52685a;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .guide-step {
+      padding: 17px 0;
+      border-bottom: 1px solid #edf1ee;
+    }
+
+    .guide-step:last-of-type {
+      border-bottom: none;
+    }
+
+    .guide-step h3 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 11px;
+      color: var(--green);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .guide-step-number {
+      display: grid;
+      flex: 0 0 29px;
+      place-items: center;
+      width: 29px;
+      height: 29px;
+      border-radius: 9px;
+      background: var(--green-light);
+      color: var(--green);
+      font-size: 12px;
+    }
+
+    .guide-step p,
+    .guide-step li {
+      color: #526259;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .guide-step p {
+      margin: 7px 0;
+    }
+
+    .guide-step ul,
+    .guide-step ol {
+      padding-left: 22px;
+      margin: 8px 0;
+    }
+
+    .guide-step li {
+      margin-bottom: 5px;
+    }
+
+    .guide-tip {
+      margin-top: 12px;
+      padding: 13px 15px;
+      border-radius: 11px;
+      background: #fff8e9;
+      color: #805a19;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .guide-important {
+      padding: 16px;
+      margin-top: 17px;
+      border: 1px solid #cde5d3;
+      border-radius: 12px;
+      background: var(--green-soft);
+    }
+
+    .guide-important h3 {
+      margin: 0 0 9px;
+      color: var(--green);
+      font-size: 14px;
+    }
+
+    .guide-important ul {
+      padding-left: 19px;
+      margin: 0;
+    }
+
+    .guide-important li {
+      margin: 7px 0;
+      color: #526259;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .user-guide-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+      padding: 14px 22px;
+      border-top: 1px solid var(--border);
+      background: white;
+    }
+
+    .user-guide-footer span {
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .guide-done-button {
+      min-height: 42px;
+      padding: 10px 22px;
+      border: none;
+      border-radius: 10px;
+      background: var(--green);
+      color: white;
+      font-size: 12px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .guide-done-button:hover {
+      background: var(--dark);
+    }
+
     /* MOBILE NAV */
 
     .bottom-nav {
@@ -1502,6 +1750,56 @@
       .medicine-reminder-modal h2 {
         font-size: 20px;
       }
+
+      .help-button {
+        min-height: 36px;
+        padding: 8px 9px;
+        font-size: 10px;
+        gap: 5px;
+      }
+
+      .user-guide-overlay {
+        padding: 9px;
+      }
+
+      .user-guide-modal {
+        max-height: 92vh;
+        max-height: 92dvh;
+        border-radius: 15px;
+      }
+
+      .user-guide-header {
+        padding: 16px;
+      }
+
+      .user-guide-header h2 {
+        font-size: 17px;
+      }
+
+      .user-guide-header p {
+        font-size: 10px;
+      }
+
+      .user-guide-body {
+        padding: 14px 16px;
+      }
+
+      .guide-step {
+        padding: 14px 0;
+      }
+
+      .guide-step h3 {
+        font-size: 13px;
+      }
+
+      .guide-step p,
+      .guide-step li {
+        font-size: 11px;
+      }
+
+      .user-guide-footer {
+        padding: 11px 15px;
+      }
     }
 
     @media (max-width: 360px) {
@@ -1594,6 +1892,273 @@
     </div>
   </div>
 
+  <!-- NEW: PATIENT USER GUIDE MODAL -->
+  <div id="userGuideModal" class="user-guide-overlay" hidden>
+    <div class="user-guide-modal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="userGuideTitle">
+
+      <div class="user-guide-header">
+        <div>
+          <h2 id="userGuideTitle">How to Use Medminder 💚</h2>
+          <p>Your step-by-step guide to using your Patient Dashboard.</p>
+        </div>
+
+        <button
+          type="button"
+          id="closeUserGuideButton"
+          class="user-guide-close"
+          aria-label="Close user guide">
+          &times;
+        </button>
+      </div>
+
+      <div class="user-guide-body">
+
+        <p class="guide-intro">
+          Welcome to Medminder! This guide will help you understand your
+          dashboard, connect with your caregiver, view your medicines,
+          respond to reminders, and review your medication history.
+        </p>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">1</span>
+            Understand your dashboard
+          </h3>
+          <p>Your Patient Dashboard has four main sections:</p>
+          <ul>
+            <li><strong>Today:</strong> View your scheduled doses for the current day.</li>
+            <li><strong>Medicines:</strong> View medicines shared by your caregiver.</li>
+            <li><strong>Reminders:</strong> View today's and the next six days' scheduled reminders.</li>
+            <li><strong>History:</strong> Review doses you have recorded as taken or missed.</li>
+          </ul>
+        </section>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">2</span>
+            Find and share your Patient ID
+          </h3>
+          <ol>
+            <li>Find the Patient QR Code panel on your Today dashboard.</li>
+            <li>Your unique Patient ID appears below the QR code.</li>
+            <li>Click <strong>Copy Patient ID</strong> to copy your ID.</li>
+            <li>You may also show your QR code to your authorized caregiver.</li>
+          </ol>
+          <div class="guide-tip">
+            <strong>Security tip:</strong> Your Patient ID identifies your account.
+            It is not your password. Share it only with someone you trust.
+          </div>
+        </section>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">3</span>
+            Connect with your caregiver
+          </h3>
+          <ol>
+            <li>Enable <strong>Allow Caregiver Connection Requests</strong>.</li>
+            <li>Wait for your caregiver to send a connection request.</li>
+            <li>Find the Caregiver Connections panel on your dashboard.</li>
+            <li>Review the caregiver's name, email, and ID.</li>
+            <li>Click <strong>Approve</strong> if you recognize and trust the caregiver.</li>
+            <li>Click <strong>Reject</strong> if you do not recognize the request.</li>
+          </ol>
+          <p>
+            Once approved, your caregiver's connection information will appear
+            on your dashboard. Your caregiver can then assign medicines and
+            schedule reminders for you.
+          </p>
+          <div class="guide-tip">
+            <strong>Important:</strong> Enabling connection requests does not
+            automatically approve anyone. You must approve each request.
+            Your account supports one active caregiver at a time.
+          </div>
+        </section>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">4</span>
+            View your assigned medicines
+          </h3>
+          <ol>
+            <li>Open <strong>My Medicines</strong>.</li>
+            <li>Review the medicines shared by your caregiver.</li>
+            <li>Check the medicine name, dosage, strength, and other available details.</li>
+            <li>Read the instructions provided for each medicine.</li>
+          </ol>
+          <p>
+            Your caregiver manages the medicine information. The patient
+            dashboard is intended for viewing and tracking your assigned medicines.
+          </p>
+        </section>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">5</span>
+            Check today's medicine schedule
+          </h3>
+          <ol>
+            <li>Open <strong>Today's Schedule</strong>.</li>
+            <li>Review each scheduled medicine.</li>
+            <li>Check the medicine name, dosage, and scheduled time.</li>
+            <li>Check the current dose status.</li>
+          </ol>
+          <p>There are three possible dose statuses:</p>
+          <ul>
+            <li><strong>Pending:</strong> The dose has not yet been recorded.</li>
+            <li><strong>Dose Taken:</strong> You have recorded the dose as taken.</li>
+            <li><strong>Dose Missed:</strong> You have recorded the dose as missed.</li>
+          </ul>
+        </section>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">6</span>
+            Respond to a medicine reminder
+          </h3>
+          <p>
+            When a scheduled reminder becomes due while your dashboard is
+            open, Medminder can display a popup and play a reminder sound.
+          </p>
+          <ul>
+            <li>
+              <strong>Mark as Taken:</strong> Select this after you have
+              actually taken your medicine. The dose will be recorded as taken.
+            </li>
+            <li>
+              <strong>Remind Me Later:</strong> The reminder will appear
+              again after five minutes. This does not record the dose as taken.
+            </li>
+            <li>
+              <strong>Stop Sound:</strong> Stops the sound, but keeps the
+              reminder popup open.
+            </li>
+          </ul>
+          <div class="guide-tip">
+            Stopping the sound does not mean the medicine has been taken.
+            Make sure you record the correct dose status.
+          </div>
+        </section>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">7</span>
+            View your upcoming reminders
+          </h3>
+          <ol>
+            <li>Open <strong>My Reminders</strong>.</li>
+            <li>Review today's reminders and those scheduled for the following six days.</li>
+            <li>Check the date, medicine name, dosage, time, and status.</li>
+            <li>Use the available actions to record the dose as taken or missed.</li>
+          </ol>
+        </section>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">8</span>
+            Record a dose manually
+          </h3>
+          <ol>
+            <li>Open Today's Schedule or My Reminders.</li>
+            <li>Find the correct scheduled medicine.</li>
+            <li>Select <strong>Mark as Taken</strong> if you took the dose.</li>
+            <li>Select <strong>Mark as Missed</strong> if you missed the dose.</li>
+            <li>Wait for the confirmation message.</li>
+          </ol>
+          <p>
+            Successfully recorded doses will be reflected in your schedule
+            and intake history.
+          </p>
+        </section>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">9</span>
+            Review your intake history
+          </h3>
+          <ol>
+            <li>Open <strong>Intake History</strong>.</li>
+            <li>Review your previously recorded doses.</li>
+            <li>Check the medicine name, dosage, date, recorded time, and status.</li>
+          </ol>
+          <p>
+            Your history displays records marked as Taken or Missed.
+          </p>
+        </section>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">10</span>
+            Disconnect your caregiver
+          </h3>
+          <ol>
+            <li>Find the Caregiver Connections section.</li>
+            <li>Review your active caregiver information.</li>
+            <li>Select <strong>Disconnect Caregiver</strong>.</li>
+            <li>Confirm the action if you want to proceed.</li>
+          </ol>
+          <p>
+            After disconnecting, shared medicines and reminders will no
+            longer appear on your dashboard. Your existing intake history
+            will remain in your account.
+          </p>
+        </section>
+
+        <section class="guide-step">
+          <h3>
+            <span class="guide-step-number">11</span>
+            Sign out safely
+          </h3>
+          <p>
+            Click <strong>Sign Out</strong> when you finish using Medminder.
+            Always sign out when using a shared or public computer.
+          </p>
+        </section>
+
+        <div class="guide-important">
+          <h3>Important reminders 💚</h3>
+          <ul>
+            <li>Keep your account password private.</li>
+            <li>Approve connection requests only from caregivers you trust.</li>
+            <li>Check your medicine details and instructions regularly.</li>
+            <li>Record your doses accurately.</li>
+            <li>
+              Keep your Patient Dashboard open and connected to the internet
+              to receive browser-based reminder popups and sounds. These
+              reminders are not guaranteed when the browser is closed or
+              your device is turned off.
+            </li>
+            <li>
+              If medicine information looks incorrect, contact your caregiver
+              or healthcare professional before taking the medicine.
+            </li>
+            <li>
+              Medminder helps organize medication schedules and does not
+              replace professional medical advice.
+            </li>
+          </ul>
+        </div>
+
+        <p style="text-align:center;color:#718078;font-size:12px;line-height:1.7;margin:22px 0 5px;">
+          Thank you for using <strong style="color:#175638;">Medminder!</strong><br>
+          Stay organized and take care of yourself.
+        </p>
+
+      </div>
+
+      <div class="user-guide-footer">
+        <span>Medminder Patient Help Guide</span>
+        <button type="button" id="closeUserGuideFooterButton" class="guide-done-button">
+          Got it!
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- LOADING -->
   <div id="loading" class="loading">
     <div class="loading-card">
@@ -1664,12 +2229,25 @@
           <div class="muted" id="todayLabel">Your medicine schedule</div>
         </div>
 
-        <div class="profile-shortcut">
-          <span class="top-avatar" id="headerUserName">P</span>
-          <span class="profile-text">
-            <b id="headerAccountName">Patient account</b><br>
-            <small class="muted">Medicine taker</small>
-          </span>
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+          <!-- NEW HELP BUTTON -->
+          <button
+            type="button"
+            id="showUserGuideButton"
+            class="help-button"
+            aria-haspopup="dialog"
+            aria-controls="userGuideModal">
+            <span>❔</span>
+            <span>How to Use</span>
+          </button>
+
+          <div class="profile-shortcut">
+            <span class="top-avatar" id="headerUserName">P</span>
+            <span class="profile-text">
+              <b id="headerAccountName">Patient account</b><br>
+              <small class="muted">Medicine taker</small>
+            </span>
+          </div>
         </div>
       </header>
 
@@ -1920,6 +2498,55 @@
 
   <!-- QR CODE GENERATOR -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- USER GUIDE MODAL CONTROLS -->
+  <script>
+    (() => {
+      const modal = document.getElementById("userGuideModal");
+      const openButton = document.getElementById("showUserGuideButton");
+      const closeButton = document.getElementById("closeUserGuideButton");
+      const doneButton = document.getElementById("closeUserGuideFooterButton");
+
+      if (!modal || !openButton || !closeButton || !doneButton) {
+        console.error("Medminder user guide elements could not be found.");
+        return;
+      }
+
+      let previousFocus = null;
+
+      function openGuide() {
+        previousFocus = document.activeElement;
+        modal.hidden = false;
+        document.body.style.overflow = "hidden";
+        closeButton.focus();
+      }
+
+      function closeGuide() {
+        modal.hidden = true;
+        document.body.style.overflow = "";
+
+        if (previousFocus && typeof previousFocus.focus === "function") {
+          previousFocus.focus();
+        }
+      }
+
+      openButton.addEventListener("click", openGuide);
+      closeButton.addEventListener("click", closeGuide);
+      doneButton.addEventListener("click", closeGuide);
+
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+          closeGuide();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !modal.hidden) {
+          closeGuide();
+        }
+      });
+    })();
+  </script>
 
   <!-- PATIENT DASHBOARD JAVASCRIPT -->
   <script type="module" src="./js/patient-dashboard.js"></script>
