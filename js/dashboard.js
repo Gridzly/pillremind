@@ -2143,9 +2143,6 @@ function createAuthorizedSpotlight({ steps, helpButton, onComplete }) {
   };
 }
 
-/* =========================================================
-   FLOATING HOW TO USE BUTTON
-========================================================= */
 
 function ensureAuthorizedHelpButton() {
   let button = $("medminderHelpButton");
@@ -2179,7 +2176,7 @@ function ensureAuthorizedHelpButton() {
         font-weight: 700;
         cursor: pointer;
         box-shadow: 0 5px 18px rgba(0,0,0,.18);
-        transition: .2s ease;
+        transition: bottom .2s ease, transform .2s ease;
       }
 
       #medminderHelpButton:hover {
@@ -2189,9 +2186,9 @@ function ensureAuthorizedHelpButton() {
 
       @media(max-width:480px) {
         #medminderHelpButton {
-          right: 16px;
-          bottom: 16px;
-          padding: 12px 16px;
+          right: 14px;
+          padding: 11px 15px;
+          font-size: 12px;
         }
       }
     `;
@@ -2199,8 +2196,71 @@ function ensureAuthorizedHelpButton() {
     document.head.appendChild(style);
   }
 
+  // Detect the bottom navigation.
+  function getBottomNavigation() {
+    return document.querySelector(
+      "#bottomNav, " +
+      "#bottomNavigation, " +
+      "#mobileBottomNav, " +
+      ".bottom-nav, " +
+      ".bottom-navigation, " +
+      ".mobile-bottom-nav, " +
+      ".bottom-navbar, " +
+      ".navbar-bottom"
+    );
+  }
+
+  // Keep the floating button above the bottom navigation.
+  function positionHelpButton() {
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    const bottomNav = getBottomNavigation();
+
+    if (isMobile) {
+      if (bottomNav) {
+        const navRect = bottomNav.getBoundingClientRect();
+
+        // Calculate the actual distance from the screen bottom
+        // to the top of the navigation, including any bottom inset.
+        const spaceBelowNav = window.innerHeight - navRect.top;
+
+        button.style.bottom = `${spaceBelowNav + 14}px`;
+      } else {
+        // Fallback if the navigation selector is not found.
+        button.style.bottom = "90px";
+      }
+    } else {
+      button.style.bottom = "24px";
+    }
+  }
+
+  positionHelpButton();
+
+  // Recalculate when the screen changes.
+  if (button.dataset.positioningBound !== "true") {
+    window.addEventListener("resize", positionHelpButton);
+    window.addEventListener("orientationchange", positionHelpButton);
+
+    button.dataset.positioningBound = "true";
+  }
+
+  // Observe navigation size changes.
+  const bottomNav = getBottomNavigation();
+
+  if (
+    bottomNav &&
+    window.ResizeObserver &&
+    !button._navResizeObserver
+  ) {
+    button._navResizeObserver = new ResizeObserver(() => {
+      positionHelpButton();
+    });
+
+    button._navResizeObserver.observe(bottomNav);
+  }
+
   return button;
 }
+
 
 /* =========================================================
    SAVE TUTORIAL COMPLETION
