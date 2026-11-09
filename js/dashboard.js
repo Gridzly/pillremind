@@ -42,6 +42,8 @@ const state = {
   initializedUid: null
 };
 
+let authorizedSpotlight = null;
+
 const DAYS = [
   "Sunday", "Monday", "Tuesday", "Wednesday",
   "Thursday", "Friday", "Saturday"
@@ -1681,6 +1683,12 @@ $("logoutButton")?.addEventListener("click", async () => {
   try {
     stopSubscriptions();
     await stopPatientQrScanner();
+
+    if (authorizedSpotlight) {
+      authorizedSpotlight.destroy();
+      authorizedSpotlight = null;
+    }
+
     await signOut(auth);
     window.location.replace("login.html");
   } catch (error) {
@@ -1690,7 +1698,7 @@ $("logoutButton")?.addEventListener("click", async () => {
 });
 
 /* =========================================================
-   AUTHORIZED PERSON — VISUAL SPOTLIGHT TUTORIAL
+   AUTHORIZED PERSON — TUTORIAL STEPS
 ========================================================= */
 
 const authorizedGuideSteps = [
@@ -1737,6 +1745,7 @@ const authorizedGuideSteps = [
     navigate: () => {
       showPage("remindersPage");
       if ($("reminderFormPanel")) $("reminderFormPanel").hidden = false;
+      ensureCompartmentSelector();
       updateRecurrenceFields();
     }
   },
@@ -1774,664 +1783,342 @@ const authorizedGuideSteps = [
   }
 ];
 
-let authorizedSpotlight = null;
+/* =========================================================
+   FLOATING HOW TO USE BUTTON
+========================================================= */
+
+function ensureAuthorizedHelpButton() {
+  let button = $("authorizedHelpButton");
+
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "authorizedHelpButton";
+    button.type = "button";
+    button.textContent = "❔ How to Use";
+    document.body.appendChild(button);
+  }
+
+  if (!$("authorizedHelpButtonStyles")) {
+    const style = document.createElement("style");
+    style.id = "authorizedHelpButtonStyles";
+
+    style.textContent = `
+      #authorizedHelpButton {
+        position: fixed;
+        right: 20px;
+        bottom: 24px;
+        z-index: 9000;
+        border: none;
+        border-radius: 30px;
+        padding: 12px 18px;
+        background: #246b50;
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(0,0,0,.18);
+      }
+
+      #authorizedHelpButton:hover {
+        background: #18543d;
+      }
+
+      @media(max-width: 600px) {
+        #authorizedHelpButton {
+          right: 14px;
+          bottom: 85px;
+          padding: 10px 14px;
+          font-size: 12px;
+        }
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  return button;
+}
+
+/* =========================================================
+   RESPONSIVE SPOTLIGHT TUTORIAL
+========================================================= */
 
 function createAuthorizedSpotlight({ steps, helpButton, onComplete }) {
   let currentStep = 0;
   let isOpen = false;
-  let completionHandled = false;
 
-  const overlay = document.createElement("div");
-  overlay.id = "medminderSpotlightOverlay";
+  let overlay = null;
+  let highlight = null;
+  let card = null;
 
-  const style = document.createElement("style");
-  style.id = "medminderSpotlightStyles";
+  let title = null;
+  let description = null;
+  let counter = null;
 
-  style.textContent = `
-    #medminderSpotlightOverlay {
-      position: fixed;
-      inset: 0;
-      z-index: 99990;
-      display: none;
-      pointer-events: none;
+  let backButton = null;
+  let nextButton = null;
+  let skipButton = null;
+
+  let resizeHandler = null;
+  let scrollHandler = null;
+  let keyHandler = null;
+
+  function createElements() {
+    if (overlay) return;
+
+    if (!$("authorizedSpotlightStyles")) {
+      const style = document.createElement("style");
+      style.id = "authorizedSpotlightStyles";
+
+      style.textContent = `
+        #authorizedSpotlightOverlay {
+          position: fixed;
+          inset: 0;
+          z-index: 9990;
+          background: rgba(12, 20, 18, .62);
+        }
+
+        #authorizedSpotlightHighlight {
+          position: fixed;
+          z-index: 9992;
+          border: 3px solid #40c98b;
+          border-radius: 12px;
+          pointer-events: none;
+          box-shadow: 0 0 0 9999px rgba(12,20,18,.58);
+          transition: all .2s ease;
+        }
+
+        #authorizedSpotlightCard {
+          position: fixed;
+          z-index: 9995;
+          width: min(360px, calc(100vw - 28px));
+          max-height: 70vh;
+          overflow-y: auto;
+          background: #ffffff;
+          color: #202b26;
+          border-radius: 14px;
+          padding: 20px;
+          box-shadow: 0 12px 35px rgba(0,0,0,.25);
+          box-sizing: border-box;
+        }
+
+        #authorizedSpotlightCard h3 {
+          margin: 0 0 10px;
+          font-size: 19px;
+          color: #18543d;
+        }
+
+        #authorizedSpotlightDescription {
+          font-size: 14px;
+          line-height: 1.6;
+          margin: 0 0 16px;
+        }
+
+        #authorizedSpotlightCounter {
+          font-size: 12px;
+          color: #66736c;
+          margin-bottom: 12px;
+        }
+
+        .authorized-spotlight-actions {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .authorized-spotlight-actions button {
+          border: none;
+          border-radius: 8px;
+          padding: 9px 13px;
+          cursor: pointer;
+          font-size: 13px;
+        }
+
+        #authorizedSpotlightBack {
+          background: #edf1ee;
+          color: #26352d;
+        }
+
+        #authorizedSpotlightNext {
+          background: #246b50;
+          color: #ffffff;
+        }
+
+        #authorizedSpotlightSkip {
+          background: transparent;
+          color: #66736c;
+        }
+
+        @media(max-width: 600px) {
+          #authorizedSpotlightCard {
+            width: min(310px, calc(100vw - 24px));
+            max-height: 36vh;
+            padding: 13px;
+            border-radius: 11px;
+          }
+
+          #authorizedSpotlightCard h3 {
+            font-size: 15px;
+            margin-bottom: 6px;
+          }
+
+          #authorizedSpotlightDescription {
+            font-size: 12px;
+            line-height: 1.4;
+            margin-bottom: 10px;
+          }
+
+          #authorizedSpotlightCounter {
+            font-size: 10px;
+            margin-bottom: 8px;
+          }
+
+          .authorized-spotlight-actions {
+            gap: 5px;
+          }
+
+          .authorized-spotlight-actions button {
+            padding: 7px 9px;
+            font-size: 11px;
+          }
+        }
+      `;
+
+      document.head.appendChild(style);
     }
 
-    #medminderSpotlightOverlay.active {
-      display: block;
-    }
+    overlay = document.createElement("div");
+    overlay.id = "authorizedSpotlightOverlay";
 
-    #medminderSpotlight {
-      position: fixed;
-      z-index: 99991;
-      border: 3px solid #42b875;
-      border-radius: 12px;
-      box-shadow:
-        0 0 0 9999px rgba(0, 0, 0, .68),
-        0 0 20px rgba(66, 184, 117, .5);
-      pointer-events: none;
-      transition: all .25s ease;
-    }
+    highlight = document.createElement("div");
+    highlight.id = "authorizedSpotlightHighlight";
 
-    #medminderSpotlightCard {
-      position: fixed;
-      z-index: 99992;
-      width: min(360px, calc(100vw - 32px));
-      background: #fff;
-      color: #20352a;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 12px 45px rgba(0,0,0,.25);
-      pointer-events: auto;
-      font-family: Inter, Arial, sans-serif;
-    }
+    card = document.createElement("div");
+    card.id = "authorizedSpotlightCard";
 
-    #medminderSpotlightCard h3 {
-      margin: 0 0 9px;
-      font-size: 17px;
-      color: #175638;
-    }
+    card.innerHTML = `
+      <div id="authorizedSpotlightCounter"></div>
+      <h3 id="authorizedSpotlightTitle"></h3>
+      <p id="authorizedSpotlightDescription"></p>
 
-    #medminderSpotlightCard p {
-      font-size: 13px;
-      line-height: 1.65;
-      margin: 0 0 15px;
-      color: #53665a;
-    }
+      <div class="authorized-spotlight-actions">
+        <button type="button" id="authorizedSpotlightSkip">Skip</button>
+        <button type="button" id="authorizedSpotlightBack">Back</button>
+        <button type="button" id="authorizedSpotlightNext">Next</button>
+      </div>
+    `;
 
-    #medminderSpotlightCard .tour-progress {
-      height: 5px;
-      background: #e6eee8;
-      border-radius: 20px;
-      overflow: hidden;
-      margin-bottom: 15px;
-    }
+    document.body.append(overlay, highlight, card);
 
-    #medminderSpotlightCard .tour-progress div {
-      height: 100%;
-      background: #24945a;
-      transition: width .2s;
-    }
+    title = $("authorizedSpotlightTitle");
+    description = $("authorizedSpotlightDescription");
+    counter = $("authorizedSpotlightCounter");
 
-    #medminderSpotlightCard .tour-actions {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
+    backButton = $("authorizedSpotlightBack");
+    nextButton = $("authorizedSpotlightNext");
+    skipButton = $("authorizedSpotlightSkip");
 
-    #medminderSpotlightCard button {
-      border: 0;
-      border-radius: 8px;
-      padding: 9px 13px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 12px;
-    }
+    nextButton.addEventListener("click", next);
+    backButton.addEventListener("click", back);
+    skipButton.addEventListener("click", finish);
+    overlay.addEventListener("click", finish);
 
-    #medminderSpotlightCard button:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-    }
+    resizeHandler = () => positionCard();
+    scrollHandler = () => positionCard();
 
-    #medminderSpotlightCard .tour-skip {
-      background: transparent;
-      color: #758579;
-      padding-left: 0;
-    }
-
-    #medminderSpotlightCard .tour-back {
-      background: #edf4ef;
-      color: #175638;
-    }
-
-    #medminderSpotlightCard .tour-next {
-      background: #175638;
-      color: white;
-    }
-
-    #medminderSpotlightCard .tour-close {
-      position: absolute;
-      top: 10px;
-      right: 12px;
-      background: transparent;
-      color: #738176;
-      padding: 4px 8px;
-      font-size: 18px;
-    }
-
-    @media(max-width: 480px) {
-      #medminderSpotlightCard {
-        left: 16px !important;
-        right: 16px;
-        bottom: 18px !important;
-        top: auto !important;
-        width: auto;
+    keyHandler = event => {
+      if (event.key === "Escape" && isOpen) {
+        finish();
       }
-    }
-  `;
-
-  document.head.appendChild(style);
-
-  overlay.innerHTML = `
-    <div id="medminderSpotlight"></div>
-
-    <div id="medminderSpotlightCard" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
-      <button class="tour-close" id="tourClose" type="button" aria-label="Close tutorial">&times;</button>
-
-      <div class="tour-progress">
-        <div id="tourProgressBar"></div>
-      </div>
-
-      <small id="tourStepCount"></small>
-      <h3 id="tourTitle"></h3>
-      <p id="tourDescription"></p>
-
-      <div class="tour-actions">
-        <button class="tour-skip" id="tourSkip" type="button">Skip tutorial</button>
-
-        <div style="display:flex;gap:8px">
-          <button class="tour-back" id="tourBack" type="button">Back</button>
-          <button class="tour-next" id="tourNext" type="button">Next</button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  const spotlight = overlay.querySelector("#medminderSpotlight");
-  const card = overlay.querySelector("#medminderSpotlightCard");
+    };
+  }
 
   function findTarget(step) {
-    if (!step?.target) return null;
+    let target = document.querySelector(step.target);
 
-    if (typeof step.target === "function") {
-      return step.target();
-    }
-
-    return document.querySelector(step.target);
-  }
-
-  function positionSpotlight(target) {
-    if (!target || !target.isConnected) {
-      spotlight.style.display = "none";
-      card.style.top = "50%";
-      card.style.left = "50%";
-      card.style.bottom = "auto";
-      card.style.transform = "translate(-50%, -50%)";
-      return;
-    }
-
-    spotlight.style.display = "block";
+    if (!target) return null;
 
     const rect = target.getBoundingClientRect();
-    const padding = 7;
 
-    spotlight.style.top = `${Math.max(0, rect.top - padding)}px`;
-    spotlight.style.left = `${Math.max(0, rect.left - padding)}px`;
-    spotlight.style.width = `${rect.width + padding * 2}px`;
-    spotlight.style.height = `${rect.height + padding * 2}px`;
+    const tooLarge =
+      rect.height > window.innerHeight * 0.65 ||
+      rect.width > window.innerWidth * 0.90;
 
-    card.style.transform = "none";
+    if (tooLarge) {
+      const children = [...target.children];
 
-    const cardHeight = card.offsetHeight || 200;
-    const cardWidth = Math.min(360, window.innerWidth - 32);
+      const smallerChild = children.find(child => {
+        const childRect = child.getBoundingClientRect();
 
-    let top = rect.bottom + 18;
+        return (
+          childRect.width > 0 &&
+          childRect.height > 0 &&
+          childRect.height < window.innerHeight * 0.65 &&
+          childRect.width < window.innerWidth * 0.95
+        );
+      });
 
-    if (top + cardHeight > window.innerHeight - 12) {
-      top = rect.top - cardHeight - 18;
+      if (smallerChild) {
+        target = smallerChild;
+      }
     }
 
-    if (top < 12) {
-      top = Math.max(12, (window.innerHeight - cardHeight) / 2);
-    }
-
-    let left = rect.left;
-
-    if (left + cardWidth > window.innerWidth - 12) {
-      left = window.innerWidth - cardWidth - 12;
-    }
-
-    left = Math.max(12, left);
-
-    if (window.innerWidth <= 480) {
-      card.style.top = "";
-      card.style.left = "";
-      card.style.bottom = "18px";
-    } else {
-      card.style.top = `${top}px`;
-      card.style.left = `${left}px`;
-      card.style.bottom = "auto";
-    }
+    return target;
   }
 
-  function reposition() {
-    if (!isOpen) return;
-    positionSpotlight(findTarget(steps[currentStep]));
-  }
+  function positionCard() {
+    if (!isOpen || !card || !highlight) return;
 
-  function renderStep() {
     const step = steps[currentStep];
     if (!step) return;
 
-    if (typeof step.navigate === "function") {
-      step.navigate();
-    }
-
     const target = findTarget(step);
 
-    if (target) {
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "center"
-      });
-    }
-
-    overlay.querySelector("#tourStepCount").textContent =
-      `STEP ${currentStep + 1} OF ${steps.length}`;
-
-    overlay.querySelector("#tourTitle").textContent = step.title;
-    overlay.querySelector("#tourDescription").textContent = step.description;
-
-    overlay.querySelector("#tourProgressBar").style.width =
-      `${((currentStep + 1) / steps.length) * 100}%`;
-
-    overlay.querySelector("#tourBack").style.visibility =
-      currentStep === 0 ? "hidden" : "visible";
-
-    overlay.querySelector("#tourNext").textContent =
-      currentStep === steps.length - 1 ? "Finish" : "Next";
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        positionSpotlight(findTarget(step));
-      });
-    });
-  }
-
-  async function closeTour(markCompleted = true) {
-    if (!isOpen) return;
-
-    isOpen = false;
-    overlay.classList.remove("active");
-    document.body.style.overflow = "";
-
-    window.removeEventListener("resize", reposition);
-    window.removeEventListener("scroll", reposition, true);
-
-    if (markCompleted && !completionHandled) {
-      completionHandled = true;
-      if (typeof onComplete === "function") {
-        await onComplete();
-      }
-    }
-  }
-
-  function openTour() {
-    currentStep = 0;
-    completionHandled = false;
-    isOpen = true;
-
-    overlay.classList.add("active");
-    document.body.style.overflow = "hidden";
-
-    window.addEventListener("resize", reposition);
-    window.addEventListener("scroll", reposition, true);
-
-    renderStep();
-  }
-
-  overlay.querySelector("#tourNext").addEventListener("click", async () => {
-    if (currentStep < steps.length - 1) {
-      currentStep++;
-      renderStep();
-    } else {
-      await closeTour(true);
-    }
-  });
-
-  overlay.querySelector("#tourBack").addEventListener("click", () => {
-    if (currentStep > 0) {
-      currentStep--;
-      renderStep();
-    }
-  });
-
-  overlay.querySelector("#tourSkip").addEventListener("click", () => {
-    closeTour(true);
-  });
-
-  overlay.querySelector("#tourClose").addEventListener("click", () => {
-    closeTour(true);
-  });
-
-  overlay.addEventListener("click", event => {
-    if (event.target === overlay) {
-      closeTour(true);
-    }
-  });
-
-  const keyHandler = event => {
-    if (isOpen && event.key === "Escape") {
-      closeTour(true);
-    }
-  };
-
-  document.addEventListener("keydown", keyHandler);
-
-  if (helpButton) {
-    helpButton.addEventListener("click", event => {
-      event.preventDefault();
-      openTour();
-    });
-  }
-
-  return {
-    open: openTour,
-    close: closeTour,
-    destroy() {
-      if (isOpen) {
-        document.body.style.overflow = "";
-      }
-      document.removeEventListener("keydown", keyHandler);
-      window.removeEventListener("resize", reposition);
-      window.removeEventListener("scroll", reposition, true);
-      overlay.remove();
-      style.remove();
-    }
-  };
-}
-
-
-function createAuthorizedSpotlight({ steps, helpButton, onComplete }) {
-  let currentStep = 0;
-  let isOpen = false;
-  let completionHandled = false;
-  let positionFrame = null;
-
-  const overlay = document.createElement("div");
-  overlay.id = "medminderSpotlightOverlay";
-
-  const style = document.createElement("style");
-  style.id = "medminderSpotlightStyles";
-
-  style.textContent = `
-    #medminderSpotlightOverlay {
-      position: fixed;
-      inset: 0;
-      z-index: 99990;
-      display: none;
-      pointer-events: none;
-    }
-
-    #medminderSpotlightOverlay.active {
-      display: block;
-    }
-
-    #medminderSpotlight {
-      position: fixed;
-      z-index: 99991;
-      border: 3px solid #42b875;
-      border-radius: 12px;
-      box-shadow:
-        0 0 0 9999px rgba(0, 0, 0, .68),
-        0 0 20px rgba(66, 184, 117, .5);
-      pointer-events: none;
-      transition: top .2s ease, left .2s ease,
-                  width .2s ease, height .2s ease;
-    }
-
-    #medminderSpotlightCard {
-      position: fixed;
-      z-index: 99992;
-      width: min(360px, calc(100vw - 32px));
-      max-height: min(420px, 75vh);
-      overflow-y: auto;
-      background: #fff;
-      color: #20352a;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 12px 45px rgba(0,0,0,.25);
-      pointer-events: auto;
-      font-family: Inter, Arial, sans-serif;
-      box-sizing: border-box;
-    }
-
-    #medminderSpotlightCard h3 {
-      margin: 0 0 9px;
-      font-size: 17px;
-      color: #175638;
-    }
-
-    #medminderSpotlightCard p {
-      font-size: 13px;
-      line-height: 1.6;
-      margin: 0 0 15px;
-      color: #53665a;
-    }
-
-    #medminderSpotlightCard .tour-progress {
-      height: 5px;
-      background: #e6eee8;
-      border-radius: 20px;
-      overflow: hidden;
-      margin-bottom: 12px;
-    }
-
-    #medminderSpotlightCard .tour-progress div {
-      height: 100%;
-      background: #24945a;
-      transition: width .2s;
-    }
-
-    #medminderSpotlightCard .tour-actions {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    #medminderSpotlightCard button {
-      border: 0;
-      border-radius: 8px;
-      padding: 9px 13px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 12px;
-    }
-
-    #medminderSpotlightCard button:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-    }
-
-    #medminderSpotlightCard .tour-skip {
-      background: transparent;
-      color: #758579;
-      padding-left: 0;
-    }
-
-    #medminderSpotlightCard .tour-back {
-      background: #edf4ef;
-      color: #175638;
-    }
-
-    #medminderSpotlightCard .tour-next {
-      background: #175638;
-      color: white;
-    }
-
-    #medminderSpotlightCard .tour-close {
-      position: absolute;
-      top: 8px;
-      right: 10px;
-      background: transparent;
-      color: #738176;
-      padding: 4px 8px;
-      font-size: 18px;
-    }
-
-    @media(max-width: 480px) {
-      #medminderSpotlightCard {
-        width: calc(100vw - 24px);
-        max-height: 42vh;
-        padding: 14px;
-        border-radius: 13px;
-      }
-
-      #medminderSpotlightCard h3 {
-        font-size: 15px;
-        margin-bottom: 7px;
-      }
-
-      #medminderSpotlightCard p {
-        font-size: 12px;
-        line-height: 1.5;
-        margin-bottom: 10px;
-      }
-
-      #medminderSpotlightCard .tour-progress {
-        margin-bottom: 9px;
-      }
-
-      #medminderSpotlightCard button {
-        padding: 8px 10px;
-        font-size: 11px;
-      }
-
-      #medminderSpotlightCard .tour-close {
-        top: 5px;
-        right: 7px;
-      }
-    }
-  `;
-
-  document.head.appendChild(style);
-
-  overlay.innerHTML = `
-    <div id="medminderSpotlight"></div>
-
-    <div
-      id="medminderSpotlightCard"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="tourTitle"
-    >
-      <button
-        class="tour-close"
-        id="tourClose"
-        type="button"
-        aria-label="Close tutorial"
-      >&times;</button>
-
-      <div class="tour-progress">
-        <div id="tourProgressBar"></div>
-      </div>
-
-      <small id="tourStepCount"></small>
-      <h3 id="tourTitle"></h3>
-      <p id="tourDescription"></p>
-
-      <div class="tour-actions">
-        <button class="tour-skip" id="tourSkip" type="button">
-          Skip tutorial
-        </button>
-
-        <div style="display:flex;gap:8px">
-          <button class="tour-back" id="tourBack" type="button">
-            Back
-          </button>
-
-          <button class="tour-next" id="tourNext" type="button">
-            Next
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  const spotlight = overlay.querySelector("#medminderSpotlight");
-  const card = overlay.querySelector("#medminderSpotlightCard");
-
-  function findTarget(step) {
-    if (!step?.target) return null;
-
-    if (typeof step.target === "function") {
-      return step.target();
-    }
-
-    return document.querySelector(step.target);
-  }
-
-  function updateSpotlight(target) {
-    if (!target || !target.isConnected) {
-      spotlight.style.display = "none";
-      return;
-    }
-
-    spotlight.style.display = "block";
-
-    const rect = target.getBoundingClientRect();
-    const padding = 6;
-
-    spotlight.style.top = `${Math.max(0, rect.top - padding)}px`;
-    spotlight.style.left = `${Math.max(0, rect.left - padding)}px`;
-    spotlight.style.width = `${Math.min(
-      rect.width + padding * 2,
-      window.innerWidth
-    )}px`;
-    spotlight.style.height = `${Math.min(
-      rect.height + padding * 2,
-      window.innerHeight
-    )}px`;
-  }
-
-  function positionCard(target) {
-    if (!target || !target.isConnected) {
-      card.style.top = "50%";
+    if (!target) {
+      highlight.style.display = "none";
       card.style.left = "50%";
-      card.style.bottom = "auto";
+      card.style.top = "50%";
       card.style.transform = "translate(-50%, -50%)";
       return;
     }
 
-    card.style.transform = "none";
-    card.style.bottom = "auto";
+    highlight.style.display = "block";
 
     const rect = target.getBoundingClientRect();
-    const mobile = window.innerWidth <= 480;
+    const padding = 5;
+
+    highlight.style.left = `${Math.max(4, rect.left - padding)}px`;
+    highlight.style.top = `${Math.max(4, rect.top - padding)}px`;
+    highlight.style.width = `${Math.min(rect.width + padding * 2, window.innerWidth - 8)}px`;
+    highlight.style.height = `${Math.min(rect.height + padding * 2, window.innerHeight - 8)}px`;
+
+    card.style.transform = "none";
+
+    const cardRect = card.getBoundingClientRect();
+    const gap = 12;
     const margin = 12;
-    const gap = 14;
 
-    const cardWidth = mobile
-      ? window.innerWidth - 24
-      : Math.min(360, window.innerWidth - 32);
-
-    card.style.width = `${cardWidth}px`;
-
-    const cardHeight = card.offsetHeight;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    const candidates = [
+    const positions = [
       {
-        left: rect.left,
+        left: rect.left + rect.width / 2 - cardRect.width / 2,
         top: rect.bottom + gap
       },
       {
-        left: rect.left,
-        top: rect.top - cardHeight - gap
+        left: rect.left + rect.width / 2 - cardRect.width / 2,
+        top: rect.top - cardRect.height - gap
       },
       {
         left: rect.right + gap,
-        top: rect.top
+        top: rect.top + rect.height / 2 - cardRect.height / 2
       },
       {
-        left: rect.left - cardWidth - gap,
-        top: rect.top
+        left: rect.left - cardRect.width - gap,
+        top: rect.top + rect.height / 2 - cardRect.height / 2
       }
     ];
 
@@ -2439,66 +2126,56 @@ function createAuthorizedSpotlight({ steps, helpButton, onComplete }) {
       return Math.max(min, Math.min(value, max));
     }
 
-    function calculateOverlap(candidate) {
+    function overlapArea(a, b) {
+      const width = Math.max(
+        0,
+        Math.min(a.right, b.right) - Math.max(a.left, b.left)
+      );
+
+      const height = Math.max(
+        0,
+        Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+      );
+
+      return width * height;
+    }
+
+    const candidates = positions.map(position => {
       const left = clamp(
-        candidate.left,
+        position.left,
         margin,
-        viewportWidth - cardWidth - margin
+        viewportWidth - cardRect.width - margin
       );
 
       const top = clamp(
-        candidate.top,
+        position.top,
         margin,
-        viewportHeight - cardHeight - margin
+        viewportHeight - cardRect.height - margin
       );
 
-      const overlapWidth = Math.max(
-        0,
-        Math.min(left + cardWidth, rect.right + 8) -
-        Math.max(left, rect.left - 8)
-      );
-
-      const overlapHeight = Math.max(
-        0,
-        Math.min(top + cardHeight, rect.bottom + 8) -
-        Math.max(top, rect.top - 8)
-      );
+      const candidateRect = {
+        left,
+        top,
+        right: left + cardRect.width,
+        bottom: top + cardRect.height
+      };
 
       return {
         left,
         top,
-        overlap: overlapWidth * overlapHeight
+        overlap: overlapArea(candidateRect, rect)
       };
-    }
+    });
 
-    const positions = candidates.map(calculateOverlap);
+    candidates.sort((a, b) => a.overlap - b.overlap);
 
-    positions.sort((a, b) => a.overlap - b.overlap);
+    const best = candidates[0];
 
-    let bestPosition = positions[0];
-
-    // On mobile, favor the area with the least overlap.
-    // The card remains scrollable if its content is taller.
-    if (mobile) {
-      bestPosition = positions.reduce((best, current) => {
-        return current.overlap < best.overlap ? current : best;
-      }, positions[0]);
-    }
-
-    card.style.left = `${bestPosition.left}px`;
-    card.style.top = `${bestPosition.top}px`;
+    card.style.left = `${best.left}px`;
+    card.style.top = `${best.top}px`;
   }
 
-  function reposition() {
-    if (!isOpen) return;
-
-    const target = findTarget(steps[currentStep]);
-
-    updateSpotlight(target);
-    positionCard(target);
-  }
-
-  function renderStep() {
+  function displayStep() {
     const step = steps[currentStep];
     if (!step) return;
 
@@ -2506,141 +2183,116 @@ function createAuthorizedSpotlight({ steps, helpButton, onComplete }) {
       step.navigate();
     }
 
-    const target = findTarget(step);
+    title.textContent = step.title;
+    description.textContent = step.description;
+    counter.textContent = `Step ${currentStep + 1} of ${steps.length}`;
 
-    if (target) {
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "nearest"
-      });
-    }
+    backButton.disabled = currentStep === 0;
+    backButton.style.opacity = currentStep === 0 ? ".45" : "1";
 
-    overlay.querySelector("#tourStepCount").textContent =
-      `STEP ${currentStep + 1} OF ${steps.length}`;
-
-    overlay.querySelector("#tourTitle").textContent = step.title;
-    overlay.querySelector("#tourDescription").textContent =
-      step.description;
-
-    overlay.querySelector("#tourProgressBar").style.width =
-      `${((currentStep + 1) / steps.length) * 100}%`;
-
-    overlay.querySelector("#tourBack").style.visibility =
-      currentStep === 0 ? "hidden" : "visible";
-
-    overlay.querySelector("#tourNext").textContent =
+    nextButton.textContent =
       currentStep === steps.length - 1 ? "Finish" : "Next";
 
-    // Reposition after the page navigation and scrolling.
-    if (positionFrame) {
-      cancelAnimationFrame(positionFrame);
-    }
+    card.style.visibility = "hidden";
 
-    positionFrame = requestAnimationFrame(() => {
-      reposition();
+    requestAnimationFrame(() => {
+      const target = findTarget(step);
+
+      if (target) {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest"
+        });
+      }
 
       setTimeout(() => {
-        reposition();
-      }, 350);
+        if (!isOpen) return;
+
+        card.style.visibility = "visible";
+        positionCard();
+      }, 450);
     });
   }
 
-  async function closeTour(markCompleted = true) {
+  function open() {
+    if (isOpen) return;
+
+    createElements();
+
+    currentStep = 0;
+    isOpen = true;
+
+    overlay.style.display = "block";
+    highlight.style.display = "block";
+    card.style.display = "block";
+
+    window.addEventListener("resize", resizeHandler);
+    window.addEventListener("scroll", scrollHandler, true);
+    document.addEventListener("keydown", keyHandler);
+
+    displayStep();
+  }
+
+  function next() {
+    if (currentStep < steps.length - 1) {
+      currentStep++;
+      displayStep();
+    } else {
+      finish();
+    }
+  }
+
+  function back() {
+    if (currentStep > 0) {
+      currentStep--;
+      displayStep();
+    }
+  }
+
+  async function finish() {
     if (!isOpen) return;
 
     isOpen = false;
-    overlay.classList.remove("active");
-    document.body.style.overflow = "";
 
-    window.removeEventListener("resize", reposition);
-    window.removeEventListener("scroll", reposition, true);
+    if (overlay) overlay.style.display = "none";
+    if (highlight) highlight.style.display = "none";
+    if (card) card.style.display = "none";
 
-    if (markCompleted && !completionHandled) {
-      completionHandled = true;
+    window.removeEventListener("resize", resizeHandler);
+    window.removeEventListener("scroll", scrollHandler, true);
+    document.removeEventListener("keydown", keyHandler);
 
-      if (typeof onComplete === "function") {
-        await onComplete();
-      }
+    if (typeof onComplete === "function") {
+      await onComplete();
     }
   }
 
-  function openTour() {
-    currentStep = 0;
-    completionHandled = false;
-    isOpen = true;
+  function destroy() {
+    isOpen = false;
 
-    overlay.classList.add("active");
-    document.body.style.overflow = "hidden";
+    window.removeEventListener("resize", resizeHandler);
+    window.removeEventListener("scroll", scrollHandler, true);
+    document.removeEventListener("keydown", keyHandler);
 
-    window.addEventListener("resize", reposition);
-    window.addEventListener("scroll", reposition, true);
+    overlay?.remove();
+    highlight?.remove();
+    card?.remove();
 
-    renderStep();
+    overlay = null;
+    highlight = null;
+    card = null;
+
+    helpButton?.removeEventListener("click", open);
   }
 
-  overlay.querySelector("#tourNext").addEventListener("click", async () => {
-    if (currentStep < steps.length - 1) {
-      currentStep++;
-      renderStep();
-    } else {
-      await closeTour(true);
-    }
-  });
-
-  overlay.querySelector("#tourBack").addEventListener("click", () => {
-    if (currentStep > 0) {
-      currentStep--;
-      renderStep();
-    }
-  });
-
-  overlay.querySelector("#tourSkip").addEventListener("click", () => {
-    closeTour(true);
-  });
-
-  overlay.querySelector("#tourClose").addEventListener("click", () => {
-    closeTour(true);
-  });
-
-  const keyHandler = event => {
-    if (isOpen && event.key === "Escape") {
-      closeTour(true);
-    }
-  };
-
-  document.addEventListener("keydown", keyHandler);
-
-  if (helpButton) {
-    helpButton.addEventListener("click", event => {
-      event.preventDefault();
-      openTour();
-    });
-  }
+  helpButton?.addEventListener("click", open);
 
   return {
-    open: openTour,
-    close: closeTour,
-
-    destroy() {
-      if (isOpen) {
-        document.body.style.overflow = "";
-      }
-
-      document.removeEventListener("keydown", keyHandler);
-      window.removeEventListener("resize", reposition);
-      window.removeEventListener("scroll", reposition, true);
-
-      if (positionFrame) {
-        cancelAnimationFrame(positionFrame);
-      }
-
-      overlay.remove();
-      style.remove();
-    }
+    open,
+    destroy
   };
 }
-
 
 /* =========================================================
    SAVE TUTORIAL COMPLETION
@@ -2772,7 +2424,7 @@ onAuthStateChanged(auth, async authenticatedUser => {
 
     loadProfileForm(profile);
 
-    // Start the visual spotlight tutorial and floating help button.
+    // Initialize the tutorial and floating How to Use button.
     startAuthorizedGuide(profile);
 
     subscribeAccount("medicines", value => {
