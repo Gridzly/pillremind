@@ -1305,47 +1305,79 @@ $("modalTakenButton")?.addEventListener("click", async () => {
 });
 
 //*modal of snoozebutton
-$("modalSnoozeButton")?.addEventListener("click", () => {
-  if (!activeReminder) return;
+
+$("modalSnoozeButton")?.addEventListener("click", async () => {
+  if (!activeReminder || !state.user || !state.caregiverUid) return;
 
   const snoozedEntry = activeReminder;
+  const button = $("modalSnoozeButton");
 
-  // Stop the current reminder sound
-  stopReminderSound();
+  if (button) button.disabled = true;
 
-  // Hide the reminder modal
-  if ($("medicineReminderModal")) {
-    $("medicineReminderModal").hidden = true;
-  }
+  // Set snooze duration to 2 minutes.
+  const snoozeUntil = Date.now() + (2 * 60 * 1000);
 
-  // Clear the active reminder
-  activeReminder = null;
+  // Generate the existing intake log key.
+  const key = logKey(snoozedEntry.id, snoozedEntry.date);
 
-  // Remind again after 2 minutes
-  reminderSnoozeTimeout = setTimeout(() => {
-    reminderSnoozeTimeout = null;
+  // Firebase path for this patient's snooze instruction.
+  const snoozePath =
+    `users/${state.user.uid}/intakeLogs/${key}/snoozeUntil`;
 
-    if (!state.user || !state.caregiverUid) return;
+  try {
+    // Send the snooze timestamp to Firebase.
+    await set(ref(db, snoozePath), snoozeUntil);
 
-    // Do not remind if the medicine was already taken
-    if (isDoseCompleted(snoozedEntry.id, snoozedEntry.date)) {
-      showNextMedicineReminder();
-      return;
+    // Stop the website reminder sound.
+    stopReminderSound();
+
+    // Hide the reminder modal.
+    if ($("medicineReminderModal")) {
+      $("medicineReminderModal").hidden = true;
     }
 
-    // Show the reminder again
-    enqueueMedicineReminder(snoozedEntry);
+    activeReminder = null;
 
-  }, 2 * 60 * 1000);
+    // Clear any previous snooze timer.
+    if (reminderSnoozeTimeout) {
+      clearTimeout(reminderSnoozeTimeout);
+    }
 
-  // Continue processing other queued reminders
-  showNextMedicineReminder();
+    // Show the website reminder again after 2 minutes.
+    reminderSnoozeTimeout = setTimeout(() => {
+      reminderSnoozeTimeout = null;
 
-  notice(
-    "info",
-    "Reminder postponed. Medminder will remind you again in 2 minutes."
-  );
+      if (!state.user || !state.caregiverUid) return;
+
+      if (isDoseCompleted(snoozedEntry.id, snoozedEntry.date)) {
+        showNextMedicineReminder();
+        return;
+      }
+
+      enqueueMedicineReminder(snoozedEntry);
+
+    }, 2 * 60 * 1000);
+
+    showNextMedicineReminder();
+
+    notice(
+      "success",
+      "Reminder snoozed. The device buzzer will pause for 2 minutes."
+    );
+
+  } catch (error) {
+    console.error("Saving snooze instruction failed:", error);
+
+    notice(
+      "error",
+      "Unable to snooze. Please check your internet connection and try again."
+    );
+
+  } finally {
+    if (button) button.disabled = false;
+  }
 });
+
 
 /* =====================================================
    MEDICINE AND REMINDER DISPLAY
