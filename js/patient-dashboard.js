@@ -753,12 +753,11 @@ function renderActiveCaregiver() {
    PATIENT MUST APPROVE THE CAREGIVER REQUEST
 ===================================================== */
 
+
 async function approveConnectionRequest(caregiverUid) {
   if (!state.user || !caregiverUid) return;
-
   if (state.processingRequests.has(caregiverUid)) return;
 
-  // Prevent connecting to another caregiver while one is active.
   if (state.caregiverUid && state.caregiverUid !== caregiverUid) {
     notice("error", "Disconnect your current caregiver first.");
     return;
@@ -777,7 +776,14 @@ async function approveConnectionRequest(caregiverUid) {
   state.processingRequests.add(caregiverUid);
   renderConnectionRequests();
 
-  const patientUid = state.user.uid;
+  const patientUid = auth.currentUser?.uid;
+
+  if (!patientUid || patientUid !== state.user.uid) {
+    state.processingRequests.delete(caregiverUid);
+    renderConnectionRequests();
+    notice("error", "Patient authentication has expired. Please sign in again.");
+    return;
+  }
 
   const patientConnectionPath =
     `users/${patientUid}/careConnection`;
@@ -788,6 +794,9 @@ async function approveConnectionRequest(caregiverUid) {
   const requestPath =
     `users/${patientUid}/connectionRequests/${caregiverUid}`;
 
+  const deviceIndexPath =
+    `devicePatientIndex/${patientUid}`;
+
   try {
     console.log("====================================");
     console.log("PATIENT APPROVAL STARTED");
@@ -795,19 +804,30 @@ async function approveConnectionRequest(caregiverUid) {
     console.log("Caregiver UID:", caregiverUid);
     console.log("====================================");
 
-    // STEP 1: Read the patient's existing connection and profile.
-    const [connectionSnapshot, profileSnapshot] = await Promise.all([
-      get(ref(db, patientConnectionPath)),
-      get(ref(db, `users/${patientUid}/profile`))
-    ]);
+    // STEP 1: Read current connection and patient profile.
+    const [connectionSnapshot, profileSnapshot, requestSnapshot] =
+      await Promise.all([
+        get(ref(db, patientConnectionPath)),
+        get(ref(db, `users/${patientUid}/profile`)),
+        get(ref(db, requestPath))
+      ]);
 
     const currentConnection = connectionSnapshot.val() || {};
     const patientProfile = profileSnapshot.val() || {};
+    const latestRequest = requestSnapshot.val();
 
-    // STEP 2: Prevent another active caregiver from being connected.
+    // STEP 2: Verify that the request is still pending.
+    if (
+      !latestRequest ||
+      latestRequest.caregiverUid !== caregiverUid ||
+      String(latestRequest.status || "").toLowerCase() !== "pending"
+    ) {
+      throw new Error("This request is no longer pending. Refresh and try again.");
+    }
+
+    // STEP 3: Do not overwrite another caregiver's active connection.
     if (
       currentConnection.status === "active" &&
-      currentConnection.authorizedUid &&
       currentConnection.authorizedUid !== caregiverUid
     ) {
       throw new Error(
@@ -815,36 +835,20 @@ async function approveConnectionRequest(caregiverUid) {
       );
     }
 
-    // STEP 3: Confirm that the request still exists and is pending.
-    const latestRequestSnapshot = await get(ref(db, requestPath));
-    const latestRequest = latestRequestSnapshot.val();
-
-    if (
-      !latestRequest ||
-      String(latestRequest.status || "").toLowerCase() !== "pending"
-    ) {
-      throw new Error(
-        "This connection request is no longer pending. Please refresh your dashboard."
-      );
-    }
-
     const connectedAt = Date.now();
 
-    // STEP 4: Prepare the patient's connection information.
+    // STEP 4: Prepare patient connection.
     const connectionData = {
       authorizedUid: caregiverUid,
-      caregiverName:
-        latestRequest.caregiverName ||
-        "Authorized Caregiver",
-      caregiverEmail:
-        latestRequest.caregiverEmail || "",
+      caregiverName: latestRequest.caregiverName || "Authorized Caregiver",
+      caregiverEmail: latestRequest.caregiverEmail || "",
       status: "active",
       connectedAt
     };
 
-    // STEP 5: Prepare the caregiver's connected-patient entry.
+    // STEP 5: Prepare caregiver's patient list entry.
     const patientData = {
-      patientUid: patientUid,
+      patientUid,
       patientName:
         patientProfile.firstName ||
         patientProfile.fullName ||
@@ -854,66 +858,75 @@ async function approveConnectionRequest(caregiverUid) {
       connectedAt
     };
 
-    // STEP 6: Activate the connection on the PATIENT side first.
-    await set(
-      ref(db, patientConnectionPath),
-      connectionData
-    );
+    // STEP 6: Activate careConnection FIRST.
+    // Firebase index rules require this record to exist and be active.
+    await set(ref(db, patientConnectionPath), connectionData);
 
-    console.log("PATIENT CARE CONNECTION ACTIVATED.");
+    console.log("STEP 6 SUCCESS: CARE CONNECTION ACTIVATED.");
 
-    // STEP 7: Add the patient to the caregiver's connected-patients list.
-    await set(
-      ref(db, caregiverPatientPath),
-      patientData
-    );
+    // STEP 7: Register the patient in the ESP32 index.
+    // This must execute while the patient is authenticated.
+    await set(ref(db, deviceIndexPath), {
+      authorizedUid: caregiverUid,
+      status: "active"
+    });
 
-    console.log("PATIENT ADDED TO CAREGIVER LIST.");
+    console.log("STEP 7 SUCCESS: DEVICE PATIENT INDEX CREATED.");
 
-    // STEP 8: Verify both records.
-    const [patientCheck, caregiverCheck] = await Promise.all([
+    // STEP 8: Add patient to caregiver's connected-patient list.
+    await set(ref(db, caregiverPatientPath), patientData);
+
+    console.log("STEP 8 SUCCESS: CAREGIVER PATIENT LIST UPDATED.");
+
+    // STEP 9: Verify all three database records.
+    const [
+      patientCheck,
+      indexCheck,
+      caregiverCheck
+    ] = await Promise.all([
       get(ref(db, patientConnectionPath)),
+      get(ref(db, deviceIndexPath)),
       get(ref(db, caregiverPatientPath))
     ]);
 
     const patientConnection = patientCheck.val();
+    const deviceIndex = indexCheck.val();
     const caregiverPatient = caregiverCheck.val();
 
     if (
       patientConnection?.status !== "active" ||
       patientConnection?.authorizedUid !== caregiverUid
     ) {
-      throw new Error(
-        "Patient connection verification failed."
-      );
+      throw new Error("Patient careConnection verification failed.");
+    }
+
+    if (
+      deviceIndex?.status !== "active" ||
+      deviceIndex?.authorizedUid !== caregiverUid
+    ) {
+      throw new Error("ESP32 device index verification failed.");
     }
 
     if (
       caregiverPatient?.status !== "active" ||
       caregiverPatient?.patientUid !== patientUid
     ) {
-      throw new Error(
-        "Caregiver patient-list verification failed."
-      );
+      throw new Error("Caregiver patient-list verification failed.");
     }
 
     console.log("====================================");
-    console.log("CONNECTION VERIFIED SUCCESSFULLY");
+    console.log("ALL THREE CONNECTION RECORDS VERIFIED");
     console.log("Patient UID:", patientUid);
     console.log("Caregiver UID:", caregiverUid);
+    console.log("ESP32 INDEX:", deviceIndexPath);
     console.log("====================================");
 
-    // STEP 9: Remove the pending request after successful verification.
+    // STEP 10: Remove pending request only after verification.
     await remove(ref(db, requestPath));
 
     delete state.connectionRequests[caregiverUid];
 
-    notice(
-      "success",
-      "Connection approved successfully! Your caregiver is now connected."
-    );
-
-    // STEP 10: Update the dashboard immediately.
+    // STEP 11: Update dashboard state.
     state.caregiverUid = caregiverUid;
     state.connectionInfo = connectionData;
 
@@ -924,28 +937,30 @@ async function approveConnectionRequest(caregiverUid) {
 
     renderActiveCaregiver();
 
-    // Start patient data listeners if they have not started yet.
     if (state.unsubscribers.length === 0) {
       listenToPatientData(patientUid);
     }
 
     renderAll();
 
+    notice(
+      "success",
+      "Connection approved! Your caregiver is connected and your patient account is registered with the ESP32."
+    );
+
   } catch (error) {
     console.error("====================================");
     console.error("CONNECTION APPROVAL ERROR:", error);
     console.error("Patient UID:", patientUid);
     console.error("Caregiver UID:", caregiverUid);
+    console.error("Error code:", error.code);
     console.error("Error message:", error.message);
     console.error("====================================");
-
-    // Do not automatically delete connection records here.
-    // This prevents accidental deletion of a successfully created connection.
 
     notice(
       "error",
       error.message ||
-      "Unable to approve the connection. Please check your Firebase Database Rules."
+      "Connection approval failed. Check Firebase Database Rules."
     );
 
   } finally {
@@ -953,6 +968,7 @@ async function approveConnectionRequest(caregiverUid) {
     renderConnectionRequests();
   }
 }
+
 
 
 /* =====================================================
@@ -996,43 +1012,79 @@ async function rejectConnectionRequest(caregiverUid) {
    DISCONNECT CAREGIVER
 ===================================================== */
 
+
 async function disconnectCaregiver() {
   if (!state.user || !state.caregiverUid) {
     notice("info", "There is no active caregiver connection.");
     return;
   }
 
+  const patientUid = auth.currentUser?.uid;
   const caregiverUid = state.caregiverUid;
+
+  if (!patientUid || patientUid !== state.user.uid) {
+    notice("error", "Patient authentication has expired. Please sign in again.");
+    return;
+  }
+
   const caregiverName =
     state.connectionInfo?.caregiverName || "this caregiver";
 
   const confirmed = window.confirm(
     `Are you sure you want to disconnect ${caregiverName}?\n\n` +
-    "You will no longer receive this caregiver's shared medicines and reminders. " +
+    "Your caregiver will lose access to your connected medication records. " +
     "Your dose history will remain in your account."
   );
 
   if (!confirmed) return;
 
   const button = $("disconnectCaregiverButton");
+
   if (button) {
     button.disabled = true;
     button.textContent = "Disconnecting...";
   }
 
   try {
+    console.log("DISCONNECTING CAREGIVER");
+    console.log("Patient UID:", patientUid);
+    console.log("Caregiver UID:", caregiverUid);
+
+    // STEP 1: Remove the patient from caregiver's patient list.
     await remove(
-      ref(db, `users/${caregiverUid}/connectedPatients/${state.user.uid}`)
+      ref(db, `users/${caregiverUid}/connectedPatients/${patientUid}`)
     );
 
-    await remove(ref(db, `users/${state.user.uid}/careConnection`));
+    // STEP 2: Remove the patient from ESP32 discovery.
+    await remove(
+      ref(db, `devicePatientIndex/${patientUid}`)
+    );
 
+    // STEP 3: Remove the patient's active caregiver connection.
+    await remove(
+      ref(db, `users/${patientUid}/careConnection`)
+    );
+
+    // STEP 4: Verify the records are gone.
+    const [indexCheck, connectionCheck] = await Promise.all([
+      get(ref(db, `devicePatientIndex/${patientUid}`)),
+      get(ref(db, `users/${patientUid}/careConnection`))
+    ]);
+
+    if (indexCheck.exists() || connectionCheck.exists()) {
+      throw new Error(
+        "Disconnect verification failed. Some connection records still exist."
+      );
+    }
+
+    // STEP 5: Clear dashboard state.
     state.caregiverUid = null;
     state.connectionInfo = {};
     state.medicines = {};
     state.reminders = {};
 
     stopDataListeners();
+
     renderActiveCaregiver();
     renderAll();
 
@@ -1043,18 +1095,30 @@ async function disconnectCaregiver() {
 
     notice(
       "success",
-      "Caregiver disconnected successfully. Your dose history has been kept."
+      "Caregiver disconnected. The patient was also removed from ESP32 discovery."
     );
+
+    console.log("CAREGIVER DISCONNECTED SUCCESSFULLY.");
 
   } catch (error) {
     console.error("Disconnect caregiver failed:", error);
+
     notice(
       "error",
+      error.message ||
       "Unable to disconnect. Check your Firebase Database Rules."
     );
+
     renderActiveCaregiver();
+
+  } finally {
+    if ($("disconnectCaregiverButton")) {
+      $("disconnectCaregiverButton").disabled = false;
+      $("disconnectCaregiverButton").textContent = "✕ Disconnect Caregiver";
+    }
   }
 }
+
 
 /* =====================================================
    REMINDER SOUND AND MODAL
