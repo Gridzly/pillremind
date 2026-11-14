@@ -19,6 +19,7 @@ import {
 ===================================================== */
 
 const $ = id => document.getElementById(id);
+let selectedHistoryDate = todayKey();
 
 const state = {
   user: null,
@@ -1368,81 +1369,6 @@ $("modalTakenButton")?.addEventListener("click", async () => {
   if (saved) closeMedicineReminder();
 });
 
-//*modal of snoozebutton
-
-$("modalSnoozeButton")?.addEventListener("click", async () => {
-  if (!activeReminder || !state.user || !state.caregiverUid) return;
-
-  const snoozedEntry = activeReminder;
-  const button = $("modalSnoozeButton");
-
-  if (button) button.disabled = true;
-
-  // Set snooze duration to 2 minutes.
-  const snoozeUntil = Date.now() + (2 * 60 * 1000);
-
-  // Generate the existing intake log key.
-  const key = logKey(snoozedEntry.id, snoozedEntry.date);
-
-  // Firebase path for this patient's snooze instruction.
-  const snoozePath =
-    `users/${state.user.uid}/intakeLogs/${key}/snoozeUntil`;
-
-  try {
-    // Send the snooze timestamp to Firebase.
-    await set(ref(db, snoozePath), snoozeUntil);
-
-    // Stop the website reminder sound.
-    stopReminderSound();
-
-    // Hide the reminder modal.
-    if ($("medicineReminderModal")) {
-      $("medicineReminderModal").hidden = true;
-    }
-
-    activeReminder = null;
-
-    // Clear any previous snooze timer.
-    if (reminderSnoozeTimeout) {
-      clearTimeout(reminderSnoozeTimeout);
-    }
-
-    // Show the website reminder again after 2 minutes.
-    reminderSnoozeTimeout = setTimeout(() => {
-      reminderSnoozeTimeout = null;
-
-      if (!state.user || !state.caregiverUid) return;
-
-      if (isDoseCompleted(snoozedEntry.id, snoozedEntry.date)) {
-        showNextMedicineReminder();
-        return;
-      }
-
-      enqueueMedicineReminder(snoozedEntry);
-
-    }, 2 * 60 * 1000);
-
-    showNextMedicineReminder();
-
-    notice(
-      "success",
-      "Reminder snoozed. The device buzzer will pause for 2 minutes."
-    );
-
-  } catch (error) {
-    console.error("Saving snooze instruction failed:", error);
-
-    notice(
-      "error",
-      "Unable to snooze. Please check your internet connection and try again."
-    );
-
-  } finally {
-    if (button) button.disabled = false;
-  }
-});
-
-
 /* =====================================================
    MEDICINE AND REMINDER DISPLAY
 ===================================================== */
@@ -1563,7 +1489,10 @@ function renderReminderCard(entry) {
 
 function renderToday() {
   const date = todayKey();
-  const entries = getReminderEntries(date);
+  const scheduledEntries = getReminderEntries(date);
+  const entries = scheduledEntries.filter(
+    entry => getStatus(entry.id, date) === "pending"
+  );
 
   if ($("todayLabel")) {
     $("todayLabel").textContent = new Date().toLocaleDateString(
@@ -1580,7 +1509,7 @@ function renderToday() {
   if ($("todayCount")) $("todayCount").textContent = entries.length;
 
   if ($("takenCount")) {
-    $("takenCount").textContent = entries.filter(
+    $("takenCount").textContent = scheduledEntries.filter(
       entry => getStatus(entry.id, date) === "taken"
     ).length;
   }
@@ -1588,10 +1517,14 @@ function renderToday() {
   if (!entries.length) {
     empty(
       "todayList",
-      "No reminders for today",
-      state.caregiverUid
-        ? "No doses are scheduled for today."
-        : "Your caregiver's schedule will appear here after the accounts are connected."
+      "No pending medicines for today",
+      scheduledEntries.length && scheduledEntries.every(entry =>
+        ["taken", "missed"].includes(getStatus(entry.id, date))
+      )
+        ? "All of today's scheduled doses have already been recorded."
+        : state.caregiverUid
+          ? "No pending doses are scheduled for today."
+          : "Your caregiver's schedule will appear here after the accounts are connected."
     );
     return;
   }
@@ -1743,18 +1676,44 @@ function renderReminders() {
 }
 
 function renderHistory() {
+  const selectedDate = selectedHistoryDate || todayKey();
+  const today = todayKey();
+
+  if ($("historyDatePicker")) {
+    $("historyDatePicker").value = selectedDate;
+    $("historyDatePicker").max = today;
+  }
+
+  if ($("historyDateLabel")) {
+    $("historyDateLabel").textContent =
+      `Showing intake records for ${formatDate(selectedDate)}`;
+  }
+
+  if ($("historyNextDay")) {
+    $("historyNextDay").disabled = selectedDate >= today;
+  }
+
   const entries = Object.entries(state.logs)
     .filter(([, log]) => log && typeof log === "object")
     .map(([id, log]) => ({ id, ...log }))
     .filter(log =>
       ["taken", "missed"].includes(String(log.status || "").toLowerCase())
     )
+    .filter(log => {
+      const recordedDate = log.date ||
+        (log.recordedAt ? todayKey(new Date(log.recordedAt)) : "");
+      return recordedDate === selectedDate;
+    })
     .sort((a, b) =>
       String(b.recordedAt || "").localeCompare(String(a.recordedAt || ""))
     );
 
   if (!entries.length) {
-    empty("historyList", "No history yet", "Doses you record will appear here.");
+    empty(
+      "historyList",
+      "No intake records for this day",
+      `No medicine doses were recorded on ${formatDate(selectedDate)}.`
+    );
     return;
   }
 
@@ -1764,23 +1723,18 @@ function renderHistory() {
         <div class="medicine-icon">
           ${String(log.status).toLowerCase() === "taken" ? "✓" : "◷"}
         </div>
-
         <div class="record-main">
           <h3>${escapeHTML(log.medicineName || log.name || "Medicine dose")}</h3>
-          <p>Date: ${escapeHTML(formatDate(log.date))}</p>
+          <p>Date: ${escapeHTML(formatDate(log.date || selectedDate))}</p>
           <p>Dosage: ${escapeHTML(log.dosage || "Not specified")}</p>
-
-          ${log.recordedAt ? `
-            <p>Recorded: ${escapeHTML(new Date(log.recordedAt).toLocaleString())}</p>
-          ` : ""}
-
+          ${log.time ? `<p>Scheduled: ${escapeHTML(formatTime(log.time))}</p>` : ""}
+          ${log.recordedAt ? `<p>Recorded: ${escapeHTML(new Date(log.recordedAt).toLocaleString())}</p>` : ""}
           ${statusTag(log.status)}
         </div>
       </article>
     `).join("");
   }
 }
-
 function renderAll() {
   renderToday();
   renderMedicines();
@@ -2147,6 +2101,28 @@ function setupNavigation() {
 
 function setupEvents() {
   $("copyPatientUidButton")?.addEventListener("click", copyPatientUid);
+
+  $("historyDatePicker")?.addEventListener("change", event => {
+    const chosenDate = event.currentTarget.value;
+    if (!chosenDate) return;
+    selectedHistoryDate = chosenDate;
+    renderHistory();
+  });
+
+  $("historyPreviousDay")?.addEventListener("click", () => {
+    const date = new Date(`${selectedHistoryDate}T12:00:00`);
+    date.setDate(date.getDate() - 1);
+    selectedHistoryDate = todayKey(date);
+    renderHistory();
+  });
+
+  $("historyNextDay")?.addEventListener("click", () => {
+    if (selectedHistoryDate >= todayKey()) return;
+    const date = new Date(`${selectedHistoryDate}T12:00:00`);
+    date.setDate(date.getDate() + 1);
+    selectedHistoryDate = todayKey(date);
+    renderHistory();
+  });
 
   $("allowCaregiverConnections")?.addEventListener(
     "change",
