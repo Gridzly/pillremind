@@ -788,8 +788,23 @@
       .topbar h1 { font-size:18px; }
       .topbar .muted { font-size:11px; }
       .mobile-logout { display:inline-flex; }
-      .profile-shortcut { gap:0; }
-      .profile-text { display:none; }
+      .profile-shortcut { gap:7px; }
+      .profile-text {
+        display:block;
+        min-width:0;
+        line-height:1.35;
+      }
+      .profile-name-row {
+        gap:5px;
+      }
+      #displayName {
+        max-width:clamp(54px, 19vw, 112px);
+        font-size:11px;
+      }
+      .account-role-badge {
+        padding:3px 5px;
+        font-size:8px;
+      }
 
       .avatar {
         width:37px;
@@ -935,8 +950,15 @@
     }
 
     @media(max-width:360px) {
-      .topbar { padding:9px 10px; }
+      .topbar { padding:9px 8px; gap:7px; }
       .topbar h1 { font-size:16px; }
+      .topbar-heading { flex:1 1 auto; min-width:0; }
+      .topbar-actions { gap:6px; }
+      .profile-shortcut { gap:5px; }
+      #displayName { max-width:54px; font-size:10px; }
+      .account-role-badge { padding:2px 4px; font-size:7px; }
+      .avatar { width:34px; height:34px; flex-basis:34px; }
+      .mobile-logout { min-width:34px; padding:0 6px; font-size:9px; }
       .mobile-logout { min-width:37px; padding:0 8px; font-size:10px; }
       .content { padding-right:11px; padding-left:11px; }
       .bottom-nav .nav-btn { font-size:9px; }
