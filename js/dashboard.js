@@ -26,6 +26,7 @@ import {
 
 const $ = id => document.getElementById(id);
 const COMPARTMENT_COUNT = 7;
+let selectedHistoryDate = localDate();
 
 const state = {
   user: null,
@@ -33,6 +34,7 @@ const state = {
   medicines: {},
   refills: {},
   reminders: {},
+  patientIntakeLogs: {},
   activities: {},
   connectedPatients: {},
   selectedPatientUid: null,
@@ -141,6 +143,12 @@ function localDate() {
     String(now.getMonth() + 1).padStart(2, "0"),
     String(now.getDate()).padStart(2, "0")
   ].join("-");
+}
+
+function dateKeyFromTimestamp(timestamp) {
+  const date = new Date(Number(timestamp));
+  if (Number.isNaN(date.getTime())) return "";
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
 }
 
 function formatDate(value) {
@@ -350,8 +358,10 @@ function selectPatient(uid) {
 
   state.selectedPatientUid = uid;
   state.reminders = {};
+  state.patientIntakeLogs = {};
   stopList(state.patientUnsubscribers);
   renderReminders();
+  updateCompartmentOptions();
 
   const remindersPath = `users/${uid}/reminders`;
 
@@ -361,6 +371,7 @@ function selectPatient(uid) {
       if (state.selectedPatientUid !== uid) return;
       state.reminders = snapshot.val() || {};
       renderReminders();
+      updateCompartmentOptions();
     },
     error => {
       console.error("Patient reminders Firebase error:", error);
@@ -369,7 +380,24 @@ function selectPatient(uid) {
   );
 
   state.patientUnsubscribers.push(listener);
-  console.log("Listening to patient reminders:", remindersPath);
+
+  const intakeLogsPath = `users/${uid}/intakeLogs`;
+  const intakeLogsListener = onValue(
+    ref(db, intakeLogsPath),
+    snapshot => {
+      if (state.selectedPatientUid !== uid) return;
+      state.patientIntakeLogs = snapshot.val() || {};
+      renderReminders();
+      updateCompartmentOptions();
+    },
+    error => {
+      console.error("Patient intake log listener failed:", error);
+      showMessage("pageMessage", `Unable to load patient dose records: ${error.message}`, "error");
+    }
+  );
+  state.patientUnsubscribers.push(intakeLogsListener);
+
+  console.log("Listening to patient reminders and intake logs:", remindersPath, intakeLogsPath);
 }
 
 function refreshPatientSelectors() {
@@ -493,21 +521,68 @@ function ensureCompartmentSelector() {
   select.style.border = "1px solid #d0d5dd";
   select.style.backgroundColor = "#ffffff";
 
-  select.innerHTML = `
-    <option value="">Select compartment</option>
-    ${Array.from({ length: COMPARTMENT_COUNT }, (_, index) => `
-      <option value="${index + 1}">Compartment ${index + 1}</option>
-    `).join("")}
-  `;
-
   wrapper.appendChild(label);
   wrapper.appendChild(select);
   medicineSelect.insertAdjacentElement("afterend", wrapper);
+  updateCompartmentOptions();
 }
 
-/* =========================================================
-   DISPLAY HELPERS
-========================================================= */
+function isDoseTakenForReminder(reminderId, date) {
+  if (!reminderId || !date) return false;
+  const log = state.patientIntakeLogs?.[`${reminderId}_${date}`];
+  return String(log?.status || "").toLowerCase() === "taken";
+}
+
+function reminderScheduledToday(reminder) {
+  const today = localDate();
+  if (reminder?.recurrence !== "weekly") {
+    return reminder?.date || "";
+  }
+  const todayDay = new Date(`${today}T12:00:00`).getDay();
+  const days = Array.isArray(reminder.daysOfWeek) ? reminder.daysOfWeek.map(Number) : [];
+  return days.includes(todayDay) ? today : "";
+}
+
+function getReservedCompartments(excludeReminderId = "") {
+  const reserved = new Set();
+  Object.entries(state.reminders || {}).forEach(([id, reminder]) => {
+    if (id === excludeReminderId) return;
+    if (!reminder || reminder.status === "inactive" || reminder.enabled === false) return;
+
+    const compartment = Number(reminder.compartment ?? reminder.medicineSnapshot?.compartment);
+    if (!Number.isInteger(compartment) || compartment < 1 || compartment > COMPARTMENT_COUNT) return;
+
+    const dueDate = reminderScheduledToday(reminder);
+    const taken = dueDate && isDoseTakenForReminder(id, dueDate);
+    if (!taken) reserved.add(compartment);
+  });
+  return reserved;
+}
+
+function updateCompartmentOptions() {
+  const select = $("reminderCompartment");
+  if (!select) return;
+
+  const editingId = $("reminderId")?.value || "";
+  const currentValue = select.value || (
+    editingId
+      ? String(state.reminders?.[editingId]?.compartment ?? state.reminders?.[editingId]?.medicineSnapshot?.compartment ?? "")
+      : ""
+  );
+  const reserved = getReservedCompartments(editingId);
+
+  select.innerHTML = '<option value="">Select available compartment</option>';
+  for (let number = 1; number <= COMPARTMENT_COUNT; number++) {
+    if (reserved.has(number)) continue;
+    const option = document.createElement("option");
+    option.value = String(number);
+    option.textContent = `Compartment ${number}`;
+    select.appendChild(option);
+  }
+
+  if (currentValue && !reserved.has(Number(currentValue))) select.value = currentValue;
+  if (select.options.length === 1) select.options[0].textContent = "No compartments available";
+}
 
 function medicineName(id) {
   return state.medicines[id]?.name || "Medicine unavailable";
@@ -601,6 +676,10 @@ function renderRefills() {
 
 function renderReminders() {
   const entries = Object.entries(state.reminders || {})
+    .filter(([id, reminder]) => {
+      const dueDate = reminderScheduledToday(reminder);
+      return !dueDate || !isDoseTakenForReminder(id, dueDate);
+    })
     .sort((a, b) => String(a[1].time || "").localeCompare(String(b[1].time || "")));
 
   if ($("reminderCount")) $("reminderCount").textContent = entries.length;
@@ -656,36 +735,67 @@ function renderReminders() {
    HISTORY AND NOTIFICATIONS
 ========================================================= */
 
+function renderActivityCards(entries, emptyMessage) {
+  if (!entries.length) return emptyState(emptyMessage);
+  return entries.map(activity => `
+    <article class="record">
+      <div class="record-main">
+        <h3>${escapeHTML(activity.action || "Activity")}</h3>
+        <p>${escapeHTML(activity.detail || "")}</p>
+        <p class="muted">${escapeHTML(formatStamp(activity.timestamp))}</p>
+      </div>
+    </article>
+  `).join("");
+}
+
 function renderHistory() {
-  const entries = getActivities();
-
-  if ($("historyList")) {
-    $("historyList").innerHTML = entries.length
-      ? entries.slice(0, 100).map(activity => `
-          <article class="record">
-            <div class="record-main">
-              <h3>${escapeHTML(activity.action || "Activity")}</h3>
-              <p>${escapeHTML(activity.detail || "")}</p>
-              <p class="muted">${escapeHTML(formatStamp(activity.timestamp))}</p>
-            </div>
-          </article>
-        `).join("")
-      : emptyState("No activity history yet.");
+  const selectedDate = selectedHistoryDate || localDate();
+  if ($("historyDatePicker")) {
+    $("historyDatePicker").value = selectedDate;
+    $("historyDatePicker").max = localDate();
   }
-
-  if ($("notificationList")) {
-    $("notificationList").innerHTML = entries.length
-      ? entries.slice(0, 30).map(activity => `
-          <article class="record">
-            <div class="record-main">
-              <h3>${escapeHTML(activity.action || "Activity")}</h3>
-              <p>${escapeHTML(activity.detail || "")}</p>
-              <p class="muted">${escapeHTML(formatStamp(activity.timestamp))}</p>
-            </div>
-          </article>
-        `).join("")
-      : emptyState("No notifications to display.");
+  if ($("historyDateLabel")) {
+    $("historyDateLabel").textContent = `Showing activity for ${formatDate(selectedDate)}`;
   }
+  if ($("historyNextDay")) $("historyNextDay").disabled = selectedDate >= localDate();
+
+  const entries = getActivities().filter(activity =>
+    dateKeyFromTimestamp(activity.timestamp) === selectedDate
+  );
+  const medicineEntries = entries.filter(activity =>
+    String(activity.action || "").toLowerCase() === "medicine added"
+  );
+  const reminderEntries = entries.filter(activity =>
+    String(activity.action || "").toLowerCase() === "patient reminder added"
+  );
+
+  if ($("medicineHistoryList")) {
+    $("medicineHistoryList").innerHTML = renderActivityCards(medicineEntries, "No medicines were added on this date.");
+  }
+  if ($("reminderHistoryList")) {
+    $("reminderHistoryList").innerHTML = renderActivityCards(reminderEntries, "No reminders were added on this date.");
+  }
+  renderNotifications();
+}
+
+function renderNotifications() {
+  const entries = getActivities().slice(0, 50);
+  if (!$("notificationList")) return;
+
+  $("notificationList").innerHTML = entries.length
+    ? entries.map(activity => `
+        <article class="record notification-record">
+          <div class="record-main">
+            <div class="notification-heading">
+              <h3>${escapeHTML(activity.action || "Update")}</h3>
+              <span class="notification-dot" aria-hidden="true"></span>
+            </div>
+            <p>${escapeHTML(activity.detail || "")}</p>
+            <p class="muted">${escapeHTML(formatStamp(activity.timestamp))}</p>
+          </div>
+        </article>
+      `).join("")
+    : emptyState("No notifications yet. New medicine and reminder activity will appear here.");
 }
 
 /* =========================================================
@@ -1044,8 +1154,10 @@ $("reminderForm")?.addEventListener("submit", async event => {
     return;
   }
 
-  if (!Number.isInteger(compartment) || compartment < 1 || compartment > COMPARTMENT_COUNT) {
-    showMessage("pageMessage", "Please assign a valid compartment from 1 to 7.", "error");
+  const reservedCompartments = getReservedCompartments($("reminderId")?.value || "");
+  if (!Number.isInteger(compartment) || compartment < 1 || compartment > COMPARTMENT_COUNT || reservedCompartments.has(compartment)) {
+    updateCompartmentOptions();
+    showMessage("pageMessage", "That compartment is already assigned to another pending reminder. Choose an available compartment.", "error");
     $("reminderCompartment")?.focus();
     return;
   }
@@ -1330,6 +1442,31 @@ $("reminderList")?.addEventListener("click", async event => {
 });
 
 /* =========================================================
+   HISTORY CALENDAR
+========================================================= */
+
+$("historyDatePicker")?.addEventListener("change", event => {
+  if (!event.target.value) return;
+  selectedHistoryDate = event.target.value;
+  renderHistory();
+});
+
+$("historyPreviousDay")?.addEventListener("click", () => {
+  const date = new Date(`${selectedHistoryDate}T12:00:00`);
+  date.setDate(date.getDate() - 1);
+  selectedHistoryDate = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+  renderHistory();
+});
+
+$("historyNextDay")?.addEventListener("click", () => {
+  if (selectedHistoryDate >= localDate()) return;
+  const date = new Date(`${selectedHistoryDate}T12:00:00`);
+  date.setDate(date.getDate() + 1);
+  selectedHistoryDate = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+  renderHistory();
+});
+
+/* =========================================================
    NAVIGATION
 ========================================================= */
 
@@ -1339,7 +1476,6 @@ document.querySelectorAll("[data-page]").forEach(button => {
 
 $("openConnection")?.addEventListener("click", () => showPage("connectionPage"));
 $("mobileConnectionButton")?.addEventListener("click", () => showPage("connectionPage"));
-$("openNotifications")?.addEventListener("click", () => showPage("notificationsPage"));
 $("openProfile")?.addEventListener("click", () => showPage("profilePage"));
 $("profileButton")?.addEventListener("click", () => showPage("profilePage"));
 
