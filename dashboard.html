@@ -569,6 +569,16 @@
       min-width:0;
     }
 
+    .history-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:20px; }
+    .history-date-controls { display:flex; align-items:center; gap:8px; }
+    .history-date-controls input[type="date"] { width:auto; min-width:150px; min-height:40px; }
+    .history-day-button { width:40px; min-height:40px; border:1px solid var(--border); border-radius:9px; background:#fff; color:var(--green); font-size:22px; font-weight:700; }
+    .history-day-button:disabled { opacity:.4; cursor:not-allowed; }
+    .history-section { margin-top:22px; }
+    .history-section h3 { margin:0 0 12px; color:var(--green); font-size:15px; }
+    .notification-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .notification-dot { width:8px; height:8px; flex:0 0 8px; border-radius:50%; background:var(--green); }
+
     .record {
       display:flex;
       align-items:flex-start;
@@ -949,7 +959,7 @@
     <div class="sidebar-bottom">
       <div class="nav-label">ACCOUNT</div>
       <button class="nav-btn" id="openConnection" type="button">🔗 Patient connection</button>
-      <button class="nav-btn" id="openNotifications" type="button">🔔 Notifications</button>
+      <button class="nav-btn" id="openNotifications" data-page="notificationsPage" type="button">🔔 Notifications</button>
       <button class="nav-btn" id="openProfile" type="button">👤 My profile</button>
       <button class="nav-btn" id="logoutButton" type="button">↪ Log out</button>
     </div>
@@ -1285,11 +1295,24 @@
       <!-- HISTORY PAGE -->
       <section class="page" id="historyPage">
         <div class="panel">
-          <h2>Activity history</h2>
-          <p class="muted">Review recent medicine and schedule changes.</p>
-
-          <div id="historyList" class="record-list">
-            <div class="empty-state">Loading activity...</div>
+          <div class="history-heading">
+            <div>
+              <h2>Activity history</h2>
+              <p class="muted" id="historyDateLabel">Showing activity for today.</p>
+            </div>
+            <div class="history-date-controls">
+              <button class="history-day-button" id="historyPreviousDay" type="button" aria-label="Previous day">‹</button>
+              <input id="historyDatePicker" type="date" aria-label="Choose history date">
+              <button class="history-day-button" id="historyNextDay" type="button" aria-label="Next day">›</button>
+            </div>
+          </div>
+          <div class="history-section">
+            <h3>💊 Added medicines</h3>
+            <div id="medicineHistoryList" class="record-list"><div class="empty-state">Loading medicine history...</div></div>
+          </div>
+          <div class="history-section">
+            <h3>🔔 Added reminders</h3>
+            <div id="reminderHistoryList" class="record-list"><div class="empty-state">Loading reminder history...</div></div>
           </div>
         </div>
       </section>
@@ -1457,6 +1480,8 @@
   <button class="nav-btn" data-page="historyPage" type="button">
     📋<span>History</span>
   </button>
+
+  <button class="nav-btn" data-page="notificationsPage" type="button">🔔<span>Notifications</span></button>
 
   <button class="nav-btn" id="mobileConnectionButton" type="button">
     🔗<span>Connect</span>
