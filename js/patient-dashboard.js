@@ -1396,8 +1396,9 @@ function statusTag(status) {
   `;
 }
 
-function renderReminderCard(entry) {
+function renderReminderCard(entry, options = {}) {
   const { id, reminder, date, time } = entry;
+  const showDoseActions = options.showDoseActions !== false;
   const medicine = findMedicine(reminder);
 
   const name = medicine
@@ -1445,7 +1446,17 @@ function renderReminderCard(entry) {
           ${escapeHTML(formatTime(time))}
         </div>
 
-        ${!completed ? `
+        ${completed ? `
+          <div class="dose-completion-message ${
+            status === "taken" ? "completion-taken" : "completion-missed"
+          }">
+            ${
+              status === "taken"
+                ? "✓ This dose has been recorded as taken."
+                : "! This dose has been recorded as missed."
+            }
+          </div>
+        ` : showDoseActions ? `
           <div class="dose-actions">
             <button
               class="dose-action-button taken-button"
@@ -1465,17 +1476,7 @@ function renderReminderCard(entry) {
               ! Mark as Missed
             </button>
           </div>
-        ` : `
-          <div class="dose-completion-message ${
-            status === "taken" ? "completion-taken" : "completion-missed"
-          }">
-            ${
-              status === "taken"
-                ? "✓ This dose has been recorded as taken."
-                : "! This dose has been recorded as missed."
-            }
-          </div>
-        `}
+        ` : ""}
       </div>
     </article>
   `;
@@ -1524,7 +1525,9 @@ function renderToday() {
   }
 
   if ($("todayList")) {
-    $("todayList").innerHTML = entries.map(renderReminderCard).join("");
+    $("todayList").innerHTML = entries.map(entry =>
+      renderReminderCard(entry, { showDoseActions: false })
+    ).join("");
   }
 }
 
