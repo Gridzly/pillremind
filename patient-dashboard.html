@@ -810,6 +810,46 @@
       gap: 11px;
     }
 
+    .history-date-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .history-date-controls button {
+      min-width: 38px;
+      min-height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: white;
+      color: var(--text);
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    .history-date-controls button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    .history-date-controls label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .history-date-controls input[type="date"] {
+      min-height: 38px;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: white;
+      color: var(--text);
+      font: inherit;
+    }
+
     .record {
       display: flex;
       align-items: flex-start;
@@ -1881,9 +1921,6 @@
           ✓ Mark as Taken
         </button>
 
-        <button id="modalSnoozeButton" class="modal-snooze-button" type="button">
-          Remind Me Later
-        </button>
       </div>
 
       <button id="stopReminderSound" class="stop-sound-button" type="button">
@@ -2447,12 +2484,18 @@
           <div class="panel">
             <div class="panel-heading">
               <div>
-                <h2>Recent activity</h2>
-                <p>Your recorded medicine doses.</p>
+                <h2>Medicine intake records</h2>
+                <p id="historyDateLabel">Showing intake records for today.</p>
               </div>
             </div>
 
             <div class="panel-body">
+              <div class="history-date-controls">
+                <button id="historyPreviousDay" type="button" aria-label="Previous day">‹</button>
+                <label for="historyDatePicker">Select date</label>
+                <input id="historyDatePicker" type="date" aria-label="Choose intake history date">
+                <button id="historyNextDay" type="button" aria-label="Next day">›</button>
+              </div>
               <div id="historyList" class="record-list">
                 <div class="empty-state">No history yet.</div>
               </div>
