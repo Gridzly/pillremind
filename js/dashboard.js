@@ -501,7 +501,11 @@ function updateReminderMedicineDropdown() {
 
 function ensureCompartmentSelector() {
   const medicineSelect = $("reminderMedicine");
-  if (!medicineSelect || $("reminderCompartment")) return;
+  if (!medicineSelect) return;
+  if ($("reminderCompartment")) {
+    updateCompartmentOptions();
+    return;
+  }
 
   const wrapper = document.createElement("div");
   wrapper.className = "form-group";
@@ -1411,6 +1415,7 @@ $("reminderList")?.addEventListener("click", async event => {
   ensureCompartmentSelector();
 
   $("reminderId").value = id;
+  updateCompartmentOptions();
   $("reminderMedicine").value = reminder.medicineId || "";
 
   const savedCompartment =
@@ -1907,7 +1912,7 @@ const authorizedGuideSteps = [
     title: "Review Activity History",
     description:
       "Use Activity History to review actions such as adding medicines, recording refills, connecting with patients, and creating reminders.",
-    target: "#historyList",
+    target: "#historyPage .history-heading",
     navigate: () => showPage("historyPage")
   },
   {
