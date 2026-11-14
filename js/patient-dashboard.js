@@ -1128,7 +1128,6 @@ async function disconnectCaregiver() {
 let reminderAudioContext = null;
 let reminderSoundInterval = null;
 let reminderCheckInterval = null;
-let reminderSnoozeTimeout = null;
 let activeReminder = null;
 
 const reminderQueue = [];
@@ -1337,11 +1336,6 @@ function stopReminderChecker() {
   if (reminderCheckInterval) {
     clearInterval(reminderCheckInterval);
     reminderCheckInterval = null;
-  }
-
-  if (reminderSnoozeTimeout) {
-    clearTimeout(reminderSnoozeTimeout);
-    reminderSnoozeTimeout = null;
   }
 
   stopReminderSound();
