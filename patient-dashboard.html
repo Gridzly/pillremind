@@ -1564,7 +1564,27 @@
       }
 
       .profile-text {
-        display: none;
+        display: block;
+        min-width: 0;
+        line-height: 1.35;
+      }
+
+      .profile-name-row {
+        gap: 5px;
+      }
+
+      #headerAccountName {
+        display: inline-block;
+        max-width: clamp(58px, 22vw, 125px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px;
+      }
+
+      .account-role-badge {
+        padding: 3px 6px;
+        font-size: 8px;
       }
 
       .welcome {
@@ -1628,7 +1648,12 @@
     @media (max-width: 520px) {
       .topbar {
         min-height: 65px;
-        padding: 11px 14px;
+        padding: 11px 10px;
+        gap: 8px;
+      }
+
+      .topbar > div:last-child {
+        gap: 7px !important;
       }
 
       .topbar h1 {
