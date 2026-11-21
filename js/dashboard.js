@@ -25,7 +25,7 @@ import {
 ========================================================= */
 
 const $ = id => document.getElementById(id);
-const COMPARTMENT_COUNT = 7;
+const COMPARTMENT_COUNT = 8;
 let selectedHistoryDate = localDate();
 
 const state = {
@@ -513,7 +513,7 @@ function ensureCompartmentSelector() {
 
   const label = document.createElement("label");
   label.htmlFor = "reminderCompartment";
-  label.textContent = "Assigned Compartment (1–7)";
+  label.textContent = "Assigned Compartment (1–8)";
 
   const select = document.createElement("select");
   select.id = "reminderCompartment";
@@ -1893,7 +1893,7 @@ const authorizedGuideSteps = [
   {
     title: "Assign a Device Compartment",
     description:
-      "Every reminder must have a compartment number from 1 to 7. Make sure the number you select matches the physical compartment containing the medicine.",
+      "Every reminder must have a compartment number from 1 to 8. Make sure the number you select matches the physical compartment containing the medicine.",
     target: "#reminderCompartment",
     navigate: () => {
       showPage("remindersPage");
