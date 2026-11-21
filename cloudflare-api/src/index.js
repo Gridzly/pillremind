@@ -380,6 +380,15 @@ async function redeemCode(env, caregiverUid, rawCode) {
   await database(env, "", {
     method: "PATCH",
     body: JSON.stringify({
+      [`users/${patientUid}/careConnection`]: {
+        authorizedUid: caregiverUid,
+        connectedAt,
+        status: "active"
+      },
+      [`devicePatientIndex/${patientUid}`]: {
+        authorizedUid: caregiverUid,
+        status: "active"
+      },
       [`connectionsByPatient/${patientUid}/${caregiverUid}`]: connection,
       [`connectionsByCaregiver/${caregiverUid}/${patientUid}`]: connection,
       [`activeConnectionCodes/${patientUid}`]: null,
@@ -464,6 +473,10 @@ async function connectPatientByUid(env, caregiverUid, rawPatientUid) {
       [`users/${patientUid}/careConnection`]: {
         authorizedUid: caregiverUid,
         connectedAt,
+        status: "active"
+      },
+      [`devicePatientIndex/${patientUid}`]: {
+        authorizedUid: caregiverUid,
         status: "active"
       },
       [`connectionsByPatient/${patientUid}/${caregiverUid}`]: connection,
